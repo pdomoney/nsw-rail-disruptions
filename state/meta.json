@@ -1,5 +1,5 @@
 {
- "alertsLastOkAt": "2026-10-12T11:42:36Z",
+ "alertsLastOkAt": "2026-10-12T11:44:29Z",
  "archiveImport": {
   "at": "2026-10-12T11:37:13Z",
   "since": "2023-07-01",
@@ -12,18 +12,40 @@
  "realtime": {
   "sydneytrains": {
    "map": {
-    "builtAt": null,
-    "error": "HTTP 404 for /v2/gtfs/schedule/sydneytrains ({ \"ErrorDetails\":{ \n\"TransactionId\":\"000001a1197736ef-26f428e\", \"ErrorDateTime\":\"2026-10-12T22:42:39.063+11:00\", \n\"Message\":\"The requested resource could not be)"
+    "builtAt": "2026-10-12T11:44:29.837Z",
+    "source": "/v1/gtfs/schedule/sydneytrains",
+    "stats": {
+     "routes": 137,
+     "matchedRoutes": 104,
+     "trips": 55481
+    },
+    "unmatchedRoutes": [
+     "CTY_NC1 | NRC | Sydney (Central) to Brisbane (Roma Street)",
+     "CTY_NC1a | NRC | Sydney (Central) to Brisbane (Roma Street)",
+     "CTY_NC2 | NRC | Brisbane (Roma Street) to Sydney (Central)",
+     "CTY_NW1a | NRW | Sydney (Central) to Moree",
+     "CTY_NW1b | NRW | Sydney (Central) to Armidale",
+     "CTY_NW1c | NRW | Sydney (Central) to Moree",
+     "CTY_NW1d | NRW | Sydney (Central) to Armidale",
+     "CTY_NW2a | NRW | Moree to Sydney (Central)",
+     "CTY_NW2b | NRW | Armidale to Sydney (Central)",
+     "CTY_S1a | STH | Sydney (Central) to Canberra",
+     "CTY_S1b | STH | Sydney (Central) to Canberra",
+     "CTY_S1c | STH | Sydney (Central) to Canberra",
+     "CTY_S1d | STH | Sydney (Central) to Griffith",
+     "CTY_S1e | STH | Sydney (Central) to Griffith",
+     "CTY_S1f | STH | Sydney (Central) to Griffith"
+    ]
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-12T11:42:36Z",
+    "at": "2026-10-12T11:44:29Z",
     "endpoint": "/v2/gtfs/realtime/sydneytrains",
-    "bytes": 212307,
-    "entities": 619,
-    "trips": 619,
-    "matched": 104,
-    "feedAgeS": -2,
+    "bytes": 210851,
+    "entities": 618,
+    "trips": 618,
+    "matched": 391,
+    "feedAgeS": 6,
     "unmatched": [
      [
       "RTTA_REV",
@@ -34,56 +56,36 @@
       62
      ],
      [
-      "NSN_1a",
-      32
+      "CTY_NC1a",
+      3
      ],
      [
-      "ESI_1a",
-      26
+      "CTY_W1b",
+      2
      ],
      [
-      "NTH_1a",
-      17
+      "CTY_NW1d",
+      2
      ],
      [
-      "NTH_2a",
-      17
+      "CTY_S1i",
+      2
      ],
      [
-      "WST_1a",
-      15
+      "CTY_S1c",
+      1
      ],
      [
-      "CMB_1a",
-      13
+      "CTY_W2a",
+      1
      ],
      [
-      "WST_2c",
-      12
+      "CTY_S2c",
+      1
      ],
      [
-      "APS_1a",
-      12
-     ],
-     [
-      "CMB_2b",
-      11
-     ],
-     [
-      "ESI_2a",
-      11
-     ],
-     [
-      "CMB_2a",
-      11
-     ],
-     [
-      "IWL_1a",
-      10
-     ],
-     [
-      "ESI_1d",
-      9
+      "CTY_W1a",
+      1
      ]
     ]
    }
@@ -101,13 +103,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-12T11:42:36Z",
+    "at": "2026-10-12T11:44:29Z",
     "endpoint": "/v2/gtfs/realtime/metro",
-    "bytes": 27990,
-    "entities": 31,
-    "trips": 31,
-    "matched": 31,
-    "feedAgeS": 3,
+    "bytes": 28952,
+    "entities": 32,
+    "trips": 32,
+    "matched": 32,
+    "feedAgeS": -4,
     "unmatched": []
    }
   },
@@ -124,13 +126,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-12T11:42:36Z",
+    "at": "2026-10-12T11:44:29Z",
     "endpoint": "/v2/gtfs/realtime/lightrail/innerwest",
-    "bytes": 15416,
+    "bytes": 15664,
     "entities": 14,
     "trips": 14,
     "matched": 14,
-    "feedAgeS": 2,
+    "feedAgeS": -5,
     "unmatched": []
    }
   },
@@ -149,13 +151,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-12T11:42:36Z",
+    "at": "2026-10-12T11:44:29Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/cbdandsoutheast",
-    "bytes": 36139,
-    "entities": 57,
-    "trips": 57,
-    "matched": 57,
-    "feedAgeS": 3,
+    "bytes": 37383,
+    "entities": 59,
+    "trips": 59,
+    "matched": 59,
+    "feedAgeS": 2,
     "unmatched": []
    }
   },
@@ -172,13 +174,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-12T11:42:36Z",
+    "at": "2026-10-12T11:44:29Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/parramatta",
-    "bytes": 13868,
+    "bytes": 13966,
     "entities": 21,
     "trips": 21,
     "matched": 21,
-    "feedAgeS": 3,
+    "feedAgeS": -4,
     "unmatched": []
    }
   },
@@ -195,17 +197,17 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-12T11:42:36Z",
+    "at": "2026-10-12T11:44:29Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/newcastle",
     "bytes": 4404,
     "entities": 15,
     "trips": 15,
     "matched": 15,
-    "feedAgeS": 5,
+    "feedAgeS": -3,
     "unmatched": []
    }
   }
  },
- "lastRunAt": "2026-10-12T11:42:36Z",
+ "lastRunAt": "2026-10-12T11:44:29Z",
  "lastRunErrors": []
 }
