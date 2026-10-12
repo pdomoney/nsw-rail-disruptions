@@ -7,7 +7,7 @@ import { tfnswGetFirst } from './http.js';
 import { readJson, writeJson } from './store.js';
 
 // Bump when the map format changes, so cached maps are rebuilt.
-export const MAP_VERSION = 2;
+export const MAP_VERSION = 3;
 
 // "Central Station, Platform 18" → "Central Station"
 function stationName(name) {
@@ -44,20 +44,21 @@ export function buildRouteMap(zipBuf, feed) {
     const stops = new Map();
     forEachCsvRow(files['stops.txt'], ['stop_id', 'stop_name', 'parent_station', 'location_type', 'stop_lat', 'stop_lon'],
       ([id, name, parent, type, lat, lon]) => stops.set(id, { name, parent, type, lat: +lat, lon: +lon }));
-    const servedBy = new Map(); // station id → Set(line)
+    // station id → line → number of trips stopping there (rare ones are trackwork or special events)
+    const servedBy = new Map();
     forEachCsvRow(files['stop_times.txt'], ['trip_id', 'stop_id'], ([tripId, stopId]) => {
       const line = tripLine.get(tripId);
       if (!line) return;
       const stop = stops.get(stopId);
       const station = stop?.parent && stops.has(stop.parent) ? stop.parent : stopId;
-      let set = servedBy.get(station);
-      if (!set) servedBy.set(station, (set = new Set()));
-      set.add(line);
+      let counts = servedBy.get(station);
+      if (!counts) servedBy.set(station, (counts = {}));
+      counts[line] = (counts[line] || 0) + 1;
     });
-    for (const [id, set] of servedBy) {
+    for (const [id, counts] of servedBy) {
       const st = stops.get(id) || {};
       const n = stationName(st.name) || id;
-      stations[id] = { n, l: [...set].sort() };
+      stations[id] = { n, l: Object.keys(counts).sort(), c: counts };
       if (Number.isFinite(st.lat) && st.lat) { stations[id].la = Math.round(st.lat * 1e5) / 1e5; stations[id].lo = Math.round(st.lon * 1e5) / 1e5; }
     }
   }

@@ -64,9 +64,9 @@ test('static GTFS route map', () => {
 
 test('stations and the lines that stop at them', () => {
   const { stations } = buildRouteMap(zip, feedCfg);
-  assert.deepEqual(stations['200060'], { n: 'Central Station', l: ['BMT', 'T1', 'T9'], la: -33.88, lo: 151.2 });
+  assert.deepEqual(stations['200060'], { n: 'Central Station', l: ['BMT', 'T1', 'T9'], c: { T1: 1, BMT: 1, T9: 1 }, la: -33.88, lo: 151.2 });
   assert.deepEqual(stations['213510'].l, ['BMT', 'T1']);
-  assert.deepEqual(stations['278010'], { n: 'Lithgow Station', l: ['BMT'], la: -33.48, lo: 150.15 });
+  assert.deepEqual(stations['278010'], { n: 'Lithgow Station', l: ['BMT'], c: { BMT: 1 }, la: -33.48, lo: 150.15 });
   assert.equal(stations['999999'], undefined); // only served by an untracked route
   assert.equal(stations['2000331'], undefined); // platforms fold into their station
 });
