@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 15
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy-retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -103,6 +103,14 @@ jobs:
         with:
           path: dist
       - id: deploy
+        uses: actions/deploy-pages@v4
+        # GitHub occasionally can't find the artifact uploaded a moment earlier; wait and try once more.
+        continue-on-error: true
+      - name: Wait before retrying the deploy
+        if: steps.deploy.outcome == 'failure'
+        run: sleep 30
+      - id: deploy-retry
+        if: steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@v4
 
   # Fallback for GitHub's scheduler, which is best-effort and on this repository has not fired at all.
