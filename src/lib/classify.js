@@ -26,7 +26,7 @@ export const CAUSES = [
   ['emergency', 'Emergency or medical', /emergency services|medical|injur|fatal|person (hit|struck|on|in)|unwell|ambulance/i],
   ['security', 'Police, security or trespass', /police|security|trespass|vandal|suspicious|unattended|graffiti/i],
   ['weather', 'Weather or environment', /flood|storm|severe weather|weather|heat|lightning|fallen tree|tree (on|across)|bushfire|\bfire\b|landslip|wind|animal/i],
-  ['vehicle', 'Train or tram fault', /freight train|train (fault|failure|breakdown)|broken.?down|breakdown|mechanical|disabled (train|tram)|(tram|fleet|vehicle|train) availability|faulty (train|tram)|derail|issue with (a|the) (train|tram)/i],
+  ['vehicle', 'Train or tram fault', /freight train|(train|tram) (fault|failure|breakdown|repairs?)|repairs? to (a|the) (train|tram)|broken.?down|breakdown|mechanical|disabled (train|tram)|(tram|fleet|vehicle|train) availability|faulty (train|tram)|derail|issue with (a|the) (train|tram)/i],
   ['infrastructure', 'Track, signals or power', /signal|track|overhead|wiring|power|points|equipment|infrastructure|rail (break|fracture)|level crossing|bridge|repairs|network (issue|outage)|communication|system/i],
   ['operational', 'Operational', /operational|crew|staff(ing)?|driver/i],
 ];
@@ -94,7 +94,11 @@ export function reclassify(rec) {
   const RANK = { incident: 3, planned: 2, advisory: 1, notice: 0 };
   const base = { editorial: /^ems-/.test(rec.id), text: rec.x || '', finite: !!rec.w?.some(w => w[1]) };
   const options = [...new Set([rec.t || '', rec.t0 || rec.t || ''])].map(title => classifyLineAlert({ ...base, title }));
-  const { kind, sub, cause } = options.sort((a, b) => RANK[b.kind] - RANK[a.kind])[0];
+  const best = options.sort((a, b) => RANK[b.kind] - RANK[a.kind])[0];
+  const { kind, sub } = best;
+  // An alert's wording often drops the cause as it is updated; keep the cause seen while it was live.
+  let cause = best.cause;
+  if (kind === 'incident' && (!cause || cause === 'unknown') && rec.c && rec.c !== 'unknown') cause = rec.c;
   if (kind === rec.k && (sub ?? undefined) === rec.s && (cause ?? undefined) === rec.c) return rec;
   const out = { ...rec, k: kind };
   if (sub) out.s = sub; else delete out.s;

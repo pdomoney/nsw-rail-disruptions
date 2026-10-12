@@ -239,6 +239,67 @@ function liveText(live, id) {
   return `Average delay ${(live.mean / 60).toFixed(1)} min, ${pct}% over ${thr} min`;
 }
 
+// Current unplanned incidents, one entry per alert with every line it affects (newest first).
+function currentDisruptions() {
+  const byId = new Map();
+  for (const l of D.meta.lines) {
+    for (const inc of D.status.lines[l.id]?.incidents || []) {
+      if (!byId.has(inc.id)) byId.set(inc.id, { inc, lines: [] });
+      byId.get(inc.id).lines.push(l.id);
+    }
+  }
+  return [...byId.values()].sort((a, b) => ms(b.inc.st) - ms(a.inc.st));
+}
+
+function liveSentence(lines) {
+  const parts = [];
+  for (const id of lines) {
+    const live = D.status.lines[id]?.live;
+    if (!live?.active) continue;
+    const thr = lineInfo(id).mode === 'intercity' ? 6 : 5;
+    const pct = Math.round((100 * live.late) / live.active);
+    parts.push(`${id} average delay ${(live.mean / 60).toFixed(1)} min, ${pct}% of services ${thr}+ min late`);
+  }
+  return parts.length ? `Live trip data: ${parts.join('; ')}.` : null;
+}
+
+const NOW_SHOWN = 4;
+let nowShowAll = false;
+
+function disruptionItem({ inc, lines }) {
+  const summary = inc.t || 'Service disruption';
+  let rest = inc.x || '';
+  if (!summary.endsWith('…') && rest.startsWith(summary)) rest = rest.slice(summary.length).trim();
+  else if (rest === summary) rest = '';
+  rest = rest.replace(/\n{2,}/g, '\n');
+  const start = ms(inc.st);
+  const startDay = sydKey(start) === sydKey(Date.now()) ? '' : ` ${F.dayShort.format(new Date(start))}`;
+  const live = liveSentence(lines);
+  const cause = inc.c && inc.c !== 'unknown' ? D.meta.causes[inc.c] : null;
+  return h('li', { class: 'now-alert' },
+    h('div', { class: 'now-alert-meta' },
+      h('span', { class: 'now-alert-lines' }, lines.map(id => badge(id))),
+      stateEl('disrupted', `Since ${time(inc.st)}${startDay}, ${duration(Date.now() - start)} so far`),
+      cause ? h('span', { class: 'muted' }, `Cause: ${cause}`) : null),
+    h('p', { class: 'now-alert-summary' }, summary),
+    rest ? (rest.length > 280 ? longText(rest) : h('p', { class: 'alert-text' }, rest)) : null,
+    h('p', { class: 'now-alert-foot' },
+      live ? h('span', {}, live) : null,
+      h('a', { href: `https://transportnsw.info/alerts/details#/${encodeURIComponent(inc.id)}`, rel: 'noopener' }, 'Full alert on transportnsw.info')));
+}
+
+function nowAlerts() {
+  const list = currentDisruptions();
+  if (!list.length) return null;
+  const shown = nowShowAll ? list : list.slice(0, NOW_SHOWN);
+  const wrap = h('div', {}, h('ul', { class: 'now-alerts', 'aria-label': 'Current unplanned disruptions' }, shown.map(disruptionItem)));
+  if (list.length > shown.length) {
+    wrap.append(h('button', { type: 'button', class: 'more', onclick: () => { nowShowAll = true; wrap.replaceWith(nowAlerts()); } },
+      `Show ${plural(list.length - shown.length, 'more disruption')}`));
+  }
+  return wrap;
+}
+
 function viewOverview(main) {
   const { meta, status } = D;
   const disrupted = meta.lines.filter(l => status.lines[l.id]?.incidents?.length);
@@ -289,7 +350,7 @@ function viewOverview(main) {
     modes.filter(m => !BOARD_LEFT.includes(m) && !BOARD_RIGHT.includes(m)).map(m => group(m, true)));
 
   main.replaceChildren(
-    h('section', { class: 'now', 'aria-labelledby': 'now-h' }, Object.assign(head, { id: 'now-h' }), sub, stale),
+    h('section', { class: 'now', 'aria-labelledby': 'now-h' }, Object.assign(head, { id: 'now-h' }), sub, stale, nowAlerts()),
     board,
     calendarSection(),
     rankingSection(),

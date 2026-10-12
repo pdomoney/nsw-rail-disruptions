@@ -59,6 +59,8 @@ test('causes and trip message types', () => {
   assert.equal(causeOf('due to an incident requiring emergency services at Burwood'), 'emergency');
   assert.equal(causeOf('due to urgent signal repairs at Wentworthville'), 'infrastructure');
   assert.equal(causeOf('due to an issue with a freight train at Hawkesbury River'), 'vehicle');
+  assert.equal(causeOf('Allow 5-10 minutes extra travel time due to urgent train repairs earlier.'), 'vehicle');
+  assert.equal(causeOf('due to urgent track repairs at Sydenham'), 'infrastructure');
   assert.equal(causeOf('due to flooding on the tracks'), 'weather');
   assert.equal(causeOf('due to protected industrial action'), 'industrial');
   assert.equal(causeOf('something happened'), 'unknown');
