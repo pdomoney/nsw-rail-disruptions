@@ -2,11 +2,12 @@
 // `id` is the stable key used everywhere in the data files.
 // Colours approximate the line colours used on NSW network maps; they are only used for small badges.
 
+// `order` sets the order of lines everywhere on the site (calendar, tables, filters).
 export const MODES = {
   train: { label: 'Sydney Trains', order: 1 },
-  intercity: { label: 'Intercity', order: 2 },
-  metro: { label: 'Metro', order: 3 },
-  lightrail: { label: 'Light rail', order: 4 },
+  metro: { label: 'Metro', order: 2 },
+  lightrail: { label: 'Light rail', order: 3 },
+  intercity: { label: 'Intercity', order: 4 },
 };
 
 export const LINES = [

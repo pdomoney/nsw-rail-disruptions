@@ -50,7 +50,11 @@ function h(tag, attrs = {}, ...kids) {
     if (v == null || v === false) continue;
     if (k === 'class') n.className = v;
     else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
-    else if (k === 'style' && typeof v === 'object') Object.assign(n.style, v);
+    else if (k === 'style' && typeof v === 'object') {
+      for (const [prop, val] of Object.entries(v)) {
+        if (prop.startsWith('--')) n.style.setProperty(prop, String(val)); else n.style[prop] = val;
+      }
+    }
     else n.setAttribute(k, v === true ? '' : v);
   }
   for (const c of kids.flat(Infinity)) if (c != null && c !== false) n.append(c instanceof Node ? c : String(c));
@@ -256,21 +260,29 @@ function viewOverview(main) {
     ? h('p', { class: 'stale-note' }, stateEl('unknown', ''), `The alerts were last collected ${ago(status.alertsAt)}, so this may be out of date. Check transportnsw.info for live information.`)
     : null;
 
-  const board = h('div', { class: 'board' });
-  for (const [mode, info] of Object.entries(meta.modes).sort((a, b) => a[1].order - b[1].order)) {
+  // Sydney Trains on the left, Metro and Light rail on the right, everything else (Intercity) below.
+  const BOARD_LEFT = ['train'], BOARD_RIGHT = ['metro', 'lightrail'];
+  const modes = Object.entries(meta.modes).sort((a, b) => a[1].order - b[1].order).map(([m]) => m);
+  const group = (mode, wide = false) => {
     const lines = meta.lines.filter(l => l.mode === mode);
-    if (!lines.length) continue;
-    const g = h('section', { class: 'board-group', 'aria-label': info.label }, h('h2', {}, info.label));
+    if (!lines.length) return null;
+    const label = meta.modes[mode]?.label || mode;
+    const rows = h('div', { class: 'board-rows', style: { '--rows': Math.ceil(lines.length / 2) } });
     for (const l of lines) {
       const st = lineStatus(l.id);
       const live = liveText(status.lines[l.id]?.live, l.id);
-      g.append(h('a', { class: 'board-row', href: `#/line/${l.id}` },
+      rows.append(h('a', { class: 'board-row', href: `#/line/${l.id}` },
         badge(l.id, { link: false }),
         h('span', { class: 'board-name' }, l.name, st.detail ? h('span', { class: 'board-detail' }, st.detail) : null),
         h('span', {}, stateEl(st.kind, st.label), live ? h('span', { class: 'live' }, live) : null)));
     }
-    board.append(g);
-  }
+    return h('section', { class: wide ? 'board-group board-wide' : 'board-group', 'aria-label': label }, h('h2', {}, label), rows);
+  };
+  const board = h('div', { class: 'board' },
+    h('div', { class: 'board-main' },
+      h('div', { class: 'board-col' }, BOARD_LEFT.map(m => group(m))),
+      h('div', { class: 'board-col' }, BOARD_RIGHT.map(m => group(m)))),
+    modes.filter(m => !BOARD_LEFT.includes(m) && !BOARD_RIGHT.includes(m)).map(m => group(m, true)));
 
   main.replaceChildren(
     h('section', { class: 'now', 'aria-labelledby': 'now-h' }, Object.assign(head, { id: 'now-h' }), sub, stale),
