@@ -54,6 +54,18 @@ export function currentDelay(tu, now) {
     if (t <= now) { if (!passed || t >= passed.t) passed = { t, d }; }
     else if (!upcoming || t < upcoming.t) upcoming = { t, d };
   }
+  if (!passed && !upcoming) {
+    // Sydney Trains publishes many running trips with delays but no times (the stops listed are the
+    // ones still to come). Count those as running if the trip was updated in the last 10 minutes.
+    const fresh = typeof tu.timestamp === 'number' && now - tu.timestamp <= 10 * 60;
+    if (!fresh) return null;
+    for (const s of stus) {
+      if (s.scheduleRelationship === STU_SKIPPED || s.scheduleRelationship === STU_NO_DATA) continue;
+      const d = s.departure?.delay ?? s.arrival?.delay;
+      if (typeof d === 'number') return d;
+    }
+    return typeof tu.delay === 'number' ? tu.delay : null;
+  }
   let candidates;
   if (passed && upcoming) candidates = [passed, upcoming];
   else if (upcoming) candidates = upcoming.t - now <= 15 * 60 ? [upcoming] : [];

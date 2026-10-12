@@ -25,7 +25,7 @@ test('protobuf decoder matches the reference protobuf runtime', () => {
     for (let j = 0; j < b.stop_time_update.length; j++) {
       const s = a.stopTimeUpdate[j], r = b.stop_time_update[j];
       const ev = s.departure ?? s.arrival, rev = r.departure ?? r.arrival;
-      assert.equal(ev.time, Number(rev.time));
+      assert.equal(ev.time, rev.time == null ? undefined : Number(rev.time));
       assert.equal(ev.delay, rev.delay);
       assert.equal(s.scheduleRelationship, r.schedule_relationship);
     }
@@ -62,15 +62,17 @@ test('per-line delay statistics', () => {
   const map = buildRouteMap(zip, feedCfg);
   const fm = decodeFeed(pb);
   const s = lineStats(fm, trip => resolveTripLine(trip, map, feedCfg));
-  // T1: e1 (+360 s, late), e2 (early → 0), e7 (trip-level 90 s); e3 not started, e8 finished, e4 cancelled.
-  assert.deepEqual(s.lines.T1, { active: 3, late: 1, sumDelay: 450, maxDelay: 360, cancelled: 1 });
+  // T1: e1 (+360 s, late), e2 (early → 0), e7 (trip-level 90 s), e10 (delay-only, fresh: 200 s);
+  // e3 not started, e8 finished, e11 delay-only but stale, e4 cancelled.
+  assert.deepEqual(s.lines.T1, { active: 4, late: 1, sumDelay: 650, maxDelay: 360, cancelled: 1 });
   assert.deepEqual(s.cancelled.T1, ['T1.trip.4|20261011']);
   // BMT found through trips.txt (no route_id); skipped stop ignored; intercity threshold is 6 min.
   assert.deepEqual(s.lines.BMT, { active: 1, late: 1, sumDelay: 720, maxDelay: 720, cancelled: 0 });
   assert.equal(s.lines.T9.active, 1);
   assert.equal(s.lines.T9.late, 0);
-  assert.equal(s.trips, 9);
-  assert.equal(s.matched, 8);
+  assert.equal(s.trips, 11);
+  assert.equal(s.matched, 10);
+  assert.equal(s.shape.delayOnly, 2);
   assert.deepEqual(s.unmatched, [['RTTA_DEF', 1]]);
 });
 

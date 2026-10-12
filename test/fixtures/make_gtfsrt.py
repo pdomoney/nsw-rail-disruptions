@@ -37,7 +37,7 @@ def main():
     fm = FeedMessage()
     fm.header.gtfs_realtime_version = '2.0'; fm.header.timestamp = NOW
 
-    def trip(eid, route, trip_id, stops, sr=None, start_date='20261011', tu_delay=None, extras=False):
+    def trip(eid, route, trip_id, stops, sr=None, start_date='20261011', tu_delay=None, extras=False, ts=None):
         e = fm.entity.add(id=eid)
         tu = e.trip_update
         tu.trip.trip_id = trip_id; tu.trip.start_date = start_date
@@ -47,12 +47,12 @@ def main():
         if extras:
             tu.vehicle.id = 'V1'; tu.vehicle.extra = 'tfnsw extension'
             tu.unknown_double = 3.25; tu.unknown_fixed32 = 7
-        tu.timestamp = NOW - 5
+        tu.timestamp = NOW - 5 if ts is None else ts
         for i, (t_off, delay, kind, rel) in enumerate(stops):
             s = tu.stop_time_update.add(stop_sequence=i+1, stop_id=f'S{i}')
             if rel is not None: s.schedule_relationship = rel
             ev = s.departure if kind == 'dep' else s.arrival
-            ev.time = NOW + t_off
+            if t_off is not None: ev.time = NOW + t_off
             if delay is not None: ev.delay = delay
         return e
 
@@ -74,6 +74,10 @@ def main():
     trip('e8', 'T1_route', 'T1.trip.6', [(-1800, 500, 'arr', None)])
     # Huge negative int32 and big int64 edge values survive decoding
     trip('e9', 'T9_route', 'T9.trip.1', [(-10, -2147483648, 'dep', None), (100, 2147483647, 'arr', None)])
+
+    # Delay-only trips (no times), as Sydney Trains publishes them: fresh → running, stale → ignored
+    trip('e10', 'T1_route', 'T1.trip.7', [(None, 200, 'dep', None), (None, 260, 'arr', None)], ts=NOW - 60)
+    trip('e11', 'T1_route', 'T1.trip.8', [(None, 900, 'dep', None)], ts=NOW - 3600)
 
     out = os.path.dirname(os.path.abspath(__file__))
     open(os.path.join(out, 'tripupdates.pb'), 'wb').write(fm.SerializeToString())
