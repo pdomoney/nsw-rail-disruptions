@@ -72,6 +72,8 @@ export function lineStats(feed, resolveLine, { now } = {}) {
   const cancelled = {};
   let trips = 0, matched = 0;
   const unmatched = new Map();
+  // What the trip updates contain, to diagnose feeds that publish delays without times.
+  const shape = { withTimes: 0, delayOnly: 0, noStops: 0, tripDelay: 0, active: 0, notStarted: 0, finished: 0, noDelay: 0, sample: [] };
   for (const e of feed.entity || []) {
     const tu = e.tripUpdate;
     if (!tu || e.isDeleted) continue;
@@ -92,8 +94,25 @@ export function lineStats(feed, resolveLine, { now } = {}) {
       (cancelled[line] ||= []).push(key);
       continue;
     }
+    const stus = tu.stopTimeUpdate || [];
+    const hasTime = stus.some(x => (x.departure?.time ?? x.arrival?.time) != null);
+    const hasDelay = stus.some(x => (x.departure?.delay ?? x.arrival?.delay) != null);
+    if (!stus.length) shape.noStops++; else if (hasTime) shape.withTimes++; else if (hasDelay) shape.delayOnly++;
+    if (typeof tu.delay === 'number') shape.tripDelay++;
+    if (shape.sample.length < 3 && (sr === 0) && stus.length) {
+      shape.sample.push({ route: trip.routeId, start: trip.startTime, date: trip.startDate, tsDelay: tu.delay ?? null, ts: tu.timestamp ?? null,
+        stops: stus.slice(0, 4).map(x => ({ seq: x.stopSequence, id: x.stopId, sr: x.scheduleRelationship, arr: x.arrival || null, dep: x.departure || null })), nStops: stus.length });
+    }
     const d = currentDelay(tu, ts);
-    if (d == null) continue;
+    if (d == null) {
+      if (!hasTime) shape.noDelay++;
+      else {
+        const times = stus.map(x => x.departure?.time ?? x.arrival?.time).filter(t => t != null);
+        if (Math.min(...times) > ts) shape.notStarted++; else shape.finished++;
+      }
+      continue;
+    }
+    shape.active++;
     L.active++;
     const pos = Math.max(0, d);
     L.sumDelay += pos;
@@ -104,6 +123,6 @@ export function lineStats(feed, resolveLine, { now } = {}) {
     feedTime: ts,
     trips, matched,
     unmatched: [...unmatched].sort((a, b) => b[1] - a[1]).slice(0, 15),
-    lines, cancelled,
+    lines, cancelled, shape,
   };
 }

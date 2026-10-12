@@ -54,7 +54,7 @@ async function collectRealtime(now, meta, run) {
       const fm = decodeFeed(buf);
       const stats = lineStats(fm, trip => resolveTripLine(trip, map, feed));
       const age = Math.round(now / 1000 - stats.feedTime);
-      d.last = { at: iso(now), endpoint: used, bytes: buf.length, entities: fm.entity?.length || 0, trips: stats.trips, matched: stats.matched, feedAgeS: age, unmatched: stats.unmatched };
+      d.last = { at: iso(now), endpoint: used, bytes: buf.length, entities: fm.entity?.length || 0, trips: stats.trips, matched: stats.matched, feedAgeS: age, unmatched: stats.unmatched, shape: stats.shape };
       trips += stats.trips;
       matched += stats.matched;
       // Ask for a fresh timetable map if most trips cannot be placed on a line.
