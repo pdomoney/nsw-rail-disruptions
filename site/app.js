@@ -213,6 +213,8 @@ function segmented(options, current, onChange, label) {
 }
 
 let resizeHandlers = [];
+// Listeners added by a view are removed when the view is replaced.
+let viewAbort = new AbortController();
 let resizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
@@ -252,11 +254,13 @@ function viewOverview(main) {
     });
     head.append(' right now.');
   }
-  const checked = status.alertsAt ? `Alerts checked at ${time(status.alertsAt)} on ${F.dayShort.format(new Date(ms(status.alertsAt)))}.` : 'Alerts have not been checked yet.';
+  const checked = status.alertsAt
+    ? `Alerts checked at ${time(status.alertsAt)} on ${F.dayShort.format(new Date(ms(status.alertsAt)))}. This page updates itself every few minutes.`
+    : 'Alerts have not been checked yet.';
   const sub = h('p', { class: 'now-sub' },
     plannedToday.length ? `Planned trackwork or closures affect ${plural(plannedToday.length, 'line')} today. ` : 'No planned closures today. ',
     checked);
-  const stale = status.alertsAt && Date.now() - ms(status.alertsAt) > 45 * 60000
+  const stale = isStale()
     ? h('p', { class: 'stale-note' }, stateEl('unknown', ''), `The alerts were last collected ${ago(status.alertsAt)}, so this may be out of date. Check transportnsw.info for live information.`)
     : null;
 
@@ -413,8 +417,8 @@ function rankingSection() {
   };
   requestAnimationFrame(draw);
   onResize(draw);
-  document.addEventListener('range', draw);
-  document.addEventListener('metric', draw);
+  document.addEventListener('range', draw, { signal: viewAbort.signal });
+  document.addEventListener('metric', draw, { signal: viewAbort.signal });
   return sec;
 }
 
@@ -728,9 +732,15 @@ function notFound(main, msg) {
 }
 
 // ---------- router ----------
-async function route() {
+function resetView() {
   hideTip();
   resizeHandlers = [];
+  viewAbort.abort();
+  viewAbort = new AbortController();
+}
+
+async function route() {
+  resetView();
   const main = document.getElementById('main');
   const hash = location.hash || '#/';
   const navKey = hash.startsWith('#/log') ? 'log' : hash.startsWith('#/about') ? 'about' : hash.startsWith('#/line') ? '' : 'overview';
@@ -756,6 +766,63 @@ window.addEventListener('hashchange', () => {
   route().then(() => { if (!location.hash.startsWith('#/log')) window.scrollTo(0, 0); document.getElementById('main').focus({ preventScroll: true }); });
 });
 
+// ---------- live updates ----------
+// New data is published about every five minutes. While the page is open and visible, check once a
+// minute and redraw the overview in place when a newer build is available. Other pages pick up the
+// new data the next time they are opened, so a reading position is never lost.
+const CHECK_EVERY_MS = 60_000;
+let checking = false;
+let redrawPending = false;
+
+function isStale() {
+  return !!D.status?.alertsAt && Date.now() - ms(D.status.alertsAt) > 45 * 60000;
+}
+function onOverview() {
+  const hash = location.hash || '#/';
+  return hash === '#/' || hash === '#' || !/^#\/(line|log|about)/.test(hash);
+}
+function userIsInteracting() {
+  const main = document.getElementById('main');
+  const active = document.activeElement;
+  const tooltipOpen = !document.getElementById('tooltip').hidden;
+  return tooltipOpen || (active && active !== main && main.contains(active));
+}
+
+function redrawOverview() {
+  if (!onOverview()) { redrawPending = false; return; }
+  if (userIsInteracting()) { redrawPending = true; return; }
+  redrawPending = false;
+  const main = document.getElementById('main');
+  const y = window.scrollY;
+  // Hold the page height while charts redraw so the scroll position doesn't jump.
+  main.style.minHeight = `${main.offsetHeight}px`;
+  resetView();
+  viewOverview(main);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    window.scrollTo(0, y);
+    main.style.minHeight = '';
+  }));
+}
+
+async function checkForUpdates() {
+  if (checking || document.hidden) return;
+  checking = true;
+  try {
+    const meta = await getJson(`data/meta.json?t=${Date.now()}`);
+    if (meta.generatedAt !== D.meta.generatedAt) {
+      const [daily, status, delays] = await Promise.all(['daily', 'status', 'delays'].map(n => getJson(`data/${n}.json?t=${Date.now()}`)));
+      Object.assign(D, { meta, daily, status, delays, line: {}, log: {} });
+      redrawOverview();
+    } else if (redrawPending || (onOverview() && !!document.querySelector('.stale-note') !== isStale())) {
+      redrawOverview();
+    }
+  } catch {
+    // Offline or a deploy in progress: try again at the next check.
+  } finally {
+    checking = false;
+  }
+}
+
 (async function init() {
   try {
     [D.meta, D.daily, D.status, D.delays] = await Promise.all(['meta', 'daily', 'status', 'delays'].map(n => getJson(`data/${n}.json`)));
@@ -766,4 +833,6 @@ window.addEventListener('hashchange', () => {
   }
   lastHashPath = location.hash.split('?')[0];
   route();
+  setInterval(checkForUpdates, CHECK_EVERY_MS);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdates(); });
 })();
