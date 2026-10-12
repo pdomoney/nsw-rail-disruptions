@@ -1,0 +1,20 @@
+{
+  "name": "nsw-rail-disruptions",
+  "version": "1.0.0",
+  "description": "Open tracker of delays, outages and service interruptions on NSW trains, metro and light rail.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "collect": "node src/collect.js",
+    "build": "node src/build.js",
+    "import-archive": "node src/import-archive.js",
+    "serve": "node src/serve.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "gtfs-realtime-bindings": "^1.1.1"
+  }
+}
