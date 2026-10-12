@@ -50,6 +50,10 @@ async function collectRealtime(now, meta, run) {
       const map = await ensureRouteMap(feed, CACHE_DIR, { force: forceMap, now });
       d.map = { builtAt: map.builtAt, source: map.source, stats: map.stats, error: map.error || map.refreshError, unmatchedRoutes: map.unmatched?.slice(0, 15) };
       d.rebuildMap = false;
+      // Station list for the trip page (rewritten only when the timetable changes).
+      if (map.stations && Object.keys(map.stations).length) {
+        writeJson(p('stations', `${feed.key}.json`), { builtAt: map.builtAt, source: map.source, stations: map.stations });
+      }
       const { buf, path: used } = await tfnswGetFirst(feed.realtime, { timeoutMs: 45_000 });
       const fm = decodeFeed(buf);
       const stats = lineStats(fm, trip => resolveTripLine(trip, map, feed));

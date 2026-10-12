@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { decodeFeed, lineStats, currentDelay } from '../src/lib/gtfs-rt.js';
 import { buildRouteMap, resolveTripLine } from '../src/lib/gtfs-static.js';
 import { readZip } from '../src/lib/zip.js';
-import { parseCsv } from '../src/lib/csv.js';
+import { parseCsv, forEachCsvRow } from '../src/lib/csv.js';
 
 const pb = fs.readFileSync(new URL('./fixtures/tripupdates.pb', import.meta.url));
 const ref = JSON.parse(fs.readFileSync(new URL('./fixtures/tripupdates.json', import.meta.url), 'utf8'));
@@ -41,10 +41,14 @@ test('extreme int32 values decode correctly', () => {
 
 test('zip and csv readers handle deflate, stored entries and quoted fields', () => {
   const files = readZip(zip);
-  assert.deepEqual(Object.keys(files).sort(), ['agency.txt', 'routes.txt', 'stops.txt', 'trips.txt']);
+  assert.deepEqual(Object.keys(files).sort(), ['agency.txt', 'routes.txt', 'stop_times.txt', 'stops.txt', 'trips.txt']);
   const routes = parseCsv(files['routes.txt'].toString());
   assert.equal(routes[0].route_long_name, 'North Shore & Western Line, City to Emu Plains');
   assert.equal(routes.length, 4);
+  const rows = [];
+  forEachCsvRow(files['stop_times.txt'], ['stop_id', 'trip_id'], r => rows.push(r));
+  assert.deepEqual(rows[0], ['2000331', 'T1.trip.1']); // byte-order mark at the start is ignored
+  assert.equal(rows.length, 7);
   const trips = parseCsv(files['trips.txt'].toString(), ['trip_id', 'trip_headsign']);
   assert.deepEqual(trips[0], { trip_id: 'T1.trip.1', trip_headsign: 'Emu Plains, via Strathfield' });
 });
@@ -56,6 +60,15 @@ test('static GTFS route map', () => {
   assert.equal(map.routes.RTTA_DEF, null);
   assert.equal(map.trips['BMT.trip.9'], 'BMT');
   assert.equal(map.colors.T9, '#D11F2F');
+});
+
+test('stations and the lines that stop at them', () => {
+  const { stations } = buildRouteMap(zip, feedCfg);
+  assert.deepEqual(stations['200060'], { n: 'Central Station', l: ['BMT', 'T1', 'T9'], la: -33.88, lo: 151.2 });
+  assert.deepEqual(stations['213510'].l, ['BMT', 'T1']);
+  assert.deepEqual(stations['278010'], { n: 'Lithgow Station', l: ['BMT'], la: -33.48, lo: 150.15 });
+  assert.equal(stations['999999'], undefined); // only served by an untracked route
+  assert.equal(stations['2000331'], undefined); // platforms fold into their station
 });
 
 test('per-line delay statistics', () => {

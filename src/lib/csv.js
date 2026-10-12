@@ -41,3 +41,41 @@ export function toCsvLine(values) {
     return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }).join(',');
 }
+
+// Streaming reader for large CSV files (e.g. GTFS stop_times.txt) held in a Buffer.
+// Calls fn(values) with the requested columns for each row, without building every row in memory.
+export function forEachCsvRow(buf, columns, fn) {
+  let pos = 0;
+  if (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) pos = 3;
+  const nextLine = () => {
+    if (pos >= buf.length) return null;
+    let end = buf.indexOf(10, pos);
+    if (end < 0) end = buf.length;
+    let line = buf.toString('utf8', pos, end);
+    pos = end + 1;
+    if (line.endsWith('\r')) line = line.slice(0, -1);
+    return line;
+  };
+  const split = line => {
+    if (!line.includes('"')) return line.split(',');
+    const out = [];
+    let field = '', q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (q) {
+        if (c === '"') { if (line[i + 1] === '"') { field += '"'; i++; } else q = false; } else field += c;
+      } else if (c === '"') q = true;
+      else if (c === ',') { out.push(field); field = ''; } else field += c;
+    }
+    out.push(field);
+    return out;
+  };
+  const header = split(nextLine() || '').map(h => h.trim());
+  const idx = columns.map(c => header.indexOf(c));
+  let line;
+  while ((line = nextLine()) !== null) {
+    if (!line) continue;
+    const cells = split(line);
+    fn(idx.map(i => (i < 0 ? '' : cells[i] ?? '')));
+  }
+}
