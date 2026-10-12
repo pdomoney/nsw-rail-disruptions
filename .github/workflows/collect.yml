@@ -43,6 +43,7 @@ jobs:
           fi
 
       - name: Restore timetable lookups
+        id: restore
         uses: actions/cache/restore@v4
         with:
           path: .cache
@@ -62,7 +63,8 @@ jobs:
           node src/collect.js
 
       - name: Save timetable lookups
-        if: always() && hashFiles('.cache/gtfs/*.json') != ''
+        # Only when the lookups changed (cache keys can't be overwritten).
+        if: always() && hashFiles('.cache/gtfs/*.json') != '' && steps.restore.outputs.cache-matched-key != format('gtfs-{0}', hashFiles('.cache/gtfs/*.json'))
         uses: actions/cache/save@v4
         continue-on-error: true
         with:
