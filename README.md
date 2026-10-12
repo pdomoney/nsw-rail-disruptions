@@ -14,7 +14,7 @@ It is an independent project and is not affiliated with Transport for NSW. For l
 
 Everything runs on GitHub. There is no server or database.
 
-1. **Collect.** Every 5 minutes, a GitHub Actions workflow (`.github/workflows/collect.yml`) runs `src/collect.js`, which reads:
+1. **Collect.** About every 5 minutes, a GitHub Actions workflow (`.github/workflows/collect.yml`) runs `src/collect.js`, which reads:
    - the TfNSW Trip Planner **service alerts** feed (`/v1/tp/add_info`), the same alerts shown on transportnsw.info, and
    - the **GTFS-realtime trip updates** for Sydney Trains, Metro and the four light rail networks. It works out how far behind the timetable each running service is and records a per-line average, the share of late services, and cancelled trips.
 2. **Track.** Each alert is followed from the moment it appears until it disappears from the feed, which gives it a start and an end. Alerts are sorted into *unplanned* incidents (with a cause read from the wording), *planned* trackwork and closures, *advisories*, *station* updates, and messages about *individual trips*.
@@ -31,7 +31,7 @@ History before collection started comes from the community archive [jxeeno/nsw-s
 4. Run the **Collect and publish** workflow once from the **Actions** tab, or wait for the schedule. It creates the `data` branch if it does not exist.
 
 Notes:
-- GitHub runs scheduled workflows on a best-effort basis. Gaps of 10–15 minutes between runs are normal.
+- GitHub runs scheduled workflows on a best-effort basis. Gaps of 10–15 minutes between runs are normal, and on some repositories the schedule never fires. As a fallback, each run starts the next one about five minutes after it began, as long as no scheduled run has happened in the last 30 minutes. This keeps one GitHub-hosted runner busy (mostly waiting) around the clock while the fallback is active. It stops by itself once scheduled runs arrive. To turn it off, add a repository variable `SELF_SCHEDULE` with the value `off` (**Settings → Secrets and variables → Actions → Variables**).
 - GitHub disables scheduled workflows in public repositories after 60 days without repository activity. The workflow's own data commits normally count as activity. If collection stops, re-enable the workflow from the Actions tab.
 - Each run makes about 7 API calls (one alerts call and six realtime feeds), plus a once-a-day download of the static timetables. That is roughly 2,000 calls a day, well within TfNSW's limit of 60,000 a day.
 
