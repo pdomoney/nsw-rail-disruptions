@@ -61,7 +61,7 @@ export function resolveTripLine(trip, map, feed) {
   if (rid && Object.prototype.hasOwnProperty.call(map.routes, rid)) return map.routes[rid];
   if (trip.tripId && map.trips && map.trips[trip.tripId]) return map.trips[trip.tripId];
   if (rid) {
-    const guess = matchGtfsRoute({ route_id: rid, route_short_name: rid }, null);
+    const guess = matchGtfsRoute({ route_id: rid }, null);
     if (guess) return guess;
   }
   return feed.defaultLine;

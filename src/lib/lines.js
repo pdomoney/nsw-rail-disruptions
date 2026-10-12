@@ -10,6 +10,9 @@ const INTERCITY = [
 
 const INTERCITY_CODES = { BMT: 'BMT', CCN: 'CCN', HUN: 'HUN', SCO: 'SCO', SHL: 'SHL' };
 
+// Sydney Trains GTFS route_id prefixes (e.g. "NSN_1a"). Only used when the static timetable is unavailable.
+const SYDNEY_TRAINS_CODES = { NSN: 'T1', WST: 'T1', NTH: 'T9', ESI: 'T4', APS: 'T8', CMB: 'T5', OLY: 'T7', IWL: 'T2' };
+
 // Trip Planner add_info `affected.lines[]` entry → line id, or null when not tracked.
 // product.class: 1 = train, 2 = metro, 4 = light rail (others are buses, coaches, ferries, ...).
 export function matchAffectedLine(l) {
@@ -65,6 +68,7 @@ export function matchGtfsRoute(route, feedDefault = null) {
   const ridPrefix = rid.split(/[_\-.\s]/)[0].toUpperCase();
   if (INTERCITY_CODES[ridPrefix]) return INTERCITY_CODES[ridPrefix];
   if ((m = ridPrefix.match(/^([TML])(\d+)$/))) return m[1] + m[2];
+  if (!short && SYDNEY_TRAINS_CODES[ridPrefix]) return SYDNEY_TRAINS_CODES[ridPrefix];
   if (ridPrefix === 'NLR') return 'NLR';
   const text = `${short} ${long} ${desc}`;
   for (const [re, id] of INTERCITY) if (re.test(text)) return id;
