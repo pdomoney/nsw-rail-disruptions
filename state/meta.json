@@ -1,5 +1,5 @@
 {
- "alertsLastOkAt": "2026-10-12T10:50:44Z",
+ "alertsLastOkAt": "2026-10-12T11:42:36Z",
  "archiveImport": {
   "at": "2026-10-12T11:37:13Z",
   "since": "2023-07-01",
@@ -8,5 +8,204 @@
   "unreadable": 0,
   "events": 45012,
   "lastSnapshot": "2026-10-12T10:50:44Z"
- }
+ },
+ "realtime": {
+  "sydneytrains": {
+   "map": {
+    "builtAt": null,
+    "error": "HTTP 404 for /v2/gtfs/schedule/sydneytrains ({ \"ErrorDetails\":{ \n\"TransactionId\":\"000001a1197736ef-26f428e\", \"ErrorDateTime\":\"2026-10-12T22:42:39.063+11:00\", \n\"Message\":\"The requested resource could not be)"
+   },
+   "rebuildMap": false,
+   "last": {
+    "at": "2026-10-12T11:42:36Z",
+    "endpoint": "/v2/gtfs/realtime/sydneytrains",
+    "bytes": 212307,
+    "entities": 619,
+    "trips": 619,
+    "matched": 104,
+    "feedAgeS": -2,
+    "unmatched": [
+     [
+      "RTTA_REV",
+      152
+     ],
+     [
+      "RTTA_DEF",
+      62
+     ],
+     [
+      "NSN_1a",
+      32
+     ],
+     [
+      "ESI_1a",
+      26
+     ],
+     [
+      "NTH_1a",
+      17
+     ],
+     [
+      "NTH_2a",
+      17
+     ],
+     [
+      "WST_1a",
+      15
+     ],
+     [
+      "CMB_1a",
+      13
+     ],
+     [
+      "WST_2c",
+      12
+     ],
+     [
+      "APS_1a",
+      12
+     ],
+     [
+      "CMB_2b",
+      11
+     ],
+     [
+      "ESI_2a",
+      11
+     ],
+     [
+      "CMB_2a",
+      11
+     ],
+     [
+      "IWL_1a",
+      10
+     ],
+     [
+      "ESI_1d",
+      9
+     ]
+    ]
+   }
+  },
+  "metro": {
+   "map": {
+    "builtAt": "2026-10-12T11:42:36.915Z",
+    "source": "/v2/gtfs/schedule/metro",
+    "stats": {
+     "routes": 1,
+     "matchedRoutes": 1,
+     "trips": 1824
+    },
+    "unmatchedRoutes": []
+   },
+   "rebuildMap": false,
+   "last": {
+    "at": "2026-10-12T11:42:36Z",
+    "endpoint": "/v2/gtfs/realtime/metro",
+    "bytes": 27990,
+    "entities": 31,
+    "trips": 31,
+    "matched": 31,
+    "feedAgeS": 3,
+    "unmatched": []
+   }
+  },
+  "lr-innerwest": {
+   "map": {
+    "builtAt": "2026-10-12T11:42:36.915Z",
+    "source": "/v1/gtfs/schedule/lightrail/innerwest",
+    "stats": {
+     "routes": 1,
+     "matchedRoutes": 1,
+     "trips": 0
+    },
+    "unmatchedRoutes": []
+   },
+   "rebuildMap": false,
+   "last": {
+    "at": "2026-10-12T11:42:36Z",
+    "endpoint": "/v2/gtfs/realtime/lightrail/innerwest",
+    "bytes": 15416,
+    "entities": 14,
+    "trips": 14,
+    "matched": 14,
+    "feedAgeS": 2,
+    "unmatched": []
+   }
+  },
+  "lr-cbdandsoutheast": {
+   "map": {
+    "builtAt": "2026-10-12T11:42:36.915Z",
+    "source": "/v1/gtfs/schedule/lightrail/cbdandsoutheast",
+    "stats": {
+     "routes": 3,
+     "matchedRoutes": 2,
+     "trips": 7930
+    },
+    "unmatchedRoutes": [
+     "1001_LX | LX | Special Event Service"
+    ]
+   },
+   "rebuildMap": false,
+   "last": {
+    "at": "2026-10-12T11:42:36Z",
+    "endpoint": "/v1/gtfs/realtime/lightrail/cbdandsoutheast",
+    "bytes": 36139,
+    "entities": 57,
+    "trips": 57,
+    "matched": 57,
+    "feedAgeS": 3,
+    "unmatched": []
+   }
+  },
+  "lr-parramatta": {
+   "map": {
+    "builtAt": "2026-10-12T11:42:36.915Z",
+    "source": "/v1/gtfs/schedule/lightrail/parramatta",
+    "stats": {
+     "routes": 1,
+     "matchedRoutes": 1,
+     "trips": 0
+    },
+    "unmatchedRoutes": []
+   },
+   "rebuildMap": false,
+   "last": {
+    "at": "2026-10-12T11:42:36Z",
+    "endpoint": "/v1/gtfs/realtime/lightrail/parramatta",
+    "bytes": 13868,
+    "entities": 21,
+    "trips": 21,
+    "matched": 21,
+    "feedAgeS": 3,
+    "unmatched": []
+   }
+  },
+  "lr-newcastle": {
+   "map": {
+    "builtAt": "2026-10-12T11:42:36.915Z",
+    "source": "/v1/gtfs/schedule/lightrail/newcastle",
+    "stats": {
+     "routes": 1,
+     "matchedRoutes": 1,
+     "trips": 0
+    },
+    "unmatchedRoutes": []
+   },
+   "rebuildMap": false,
+   "last": {
+    "at": "2026-10-12T11:42:36Z",
+    "endpoint": "/v1/gtfs/realtime/lightrail/newcastle",
+    "bytes": 4404,
+    "entities": 15,
+    "trips": 15,
+    "matched": 15,
+    "feedAgeS": 5,
+    "unmatched": []
+   }
+  }
+ },
+ "lastRunAt": "2026-10-12T11:42:36Z",
+ "lastRunErrors": []
 }
