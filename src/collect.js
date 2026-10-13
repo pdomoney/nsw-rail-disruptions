@@ -8,7 +8,7 @@ import { ADD_INFO, FEEDS } from './config/feeds.js';
 import { tfnswGet, tfnswGetFirst } from './lib/http.js';
 import { normalizeInfo } from './lib/classify.js';
 import { applySnapshot } from './lib/tracker.js';
-import { decodeFeed, lineStats, fieldCensus } from './lib/gtfs-rt.js';
+import { decodeFeed, lineStats, fieldCensus, vehicleLoads } from './lib/gtfs-rt.js';
 import { ensureRouteMap, resolveTripLine } from './lib/gtfs-static.js';
 import { readJson, writeJson, appendLines } from './lib/store.js';
 import { appendEvents } from './lib/events.js';
@@ -57,7 +57,8 @@ async function collectRealtime(now, meta, run) {
   const loadRows = [];
   const cancellations = {};
   const service = new ServiceRecorder(DATA_DIR, now);
-  // Vehicle positions are only fetched about once an hour, to see what they contain.
+  // Vehicle positions are fetched every run where they carry measured occupancy, and about once an
+  // hour elsewhere to see what they contain.
   const probeVehicles = new Date(now).getUTCMinutes() < 5;
   const diag = (meta.realtime ||= {});
   let ok = 0, trips = 0, matched = 0;
@@ -73,9 +74,21 @@ async function collectRealtime(now, meta, run) {
       if (map.stations && Object.keys(map.stations).length) {
         writeJson(p('stations', `${feed.key}.json`), { builtAt: map.builtAt, source: map.source, stations: map.stations });
       }
+      let vehicles = null;
+      if (feed.vehiclePositions && (feed.vehicleOccupancy || probeVehicles || !d.vehicles)) {
+        try {
+          const vp = await tfnswGetFirst(feed.vehiclePositions, { timeoutMs: 30_000, retries: 1 });
+          const vfm = decodeFeed(vp.buf);
+          vehicles = vehicleLoads(vfm);
+          d.vehicles = { at: iso(now), endpoint: vp.path, bytes: vp.buf.length, ...vehicleSummary(vfm),
+            fields: probeVehicles || !d.vehicles?.fields ? fieldCensus(vp.buf) : d.vehicles.fields };
+        } catch (e) {
+          d.vehicles = { ...(d.vehicles || {}), at: iso(now), error: e.message };
+        }
+      }
       const { buf, path: used } = await tfnswGetFirst(feed.realtime, { timeoutMs: 45_000 });
       const fm = decodeFeed(buf);
-      const stats = lineStats(fm, trip => resolveTripLine(trip, map, feed));
+      const stats = lineStats(fm, trip => resolveTripLine(trip, map, feed), { vehicles });
       const feedTime = fm.header?.timestamp ?? stats.feedTime;
       const age = Math.round(now / 1000 - feedTime);
       d.last = { at: iso(now), endpoint: used, bytes: buf.length, entities: fm.entity?.length || 0, trips: stats.trips, matched: stats.matched, feedAgeS: age, unmatched: stats.unmatched, shape: stats.shape, occupancy: stats.occ };
@@ -94,7 +107,7 @@ async function collectRealtime(now, meta, run) {
         if (!w.withOcc) continue;
         loadRows.push(toCsvLine([iso(feedTime * 1000), line, w.running, w.withOcc, w.cars.join(' '), w.carDelay.join(' '), w.trains.join(' '), w.trainDelay.join(' '), feed.key]));
       }
-      d.last.ids = service.record(feed.key, stats.tripList, feedTime * 1000);
+      d.last.ids = service.record(feed.key, stats.tripList, feedTime * 1000, id => !!map.sched?.trips[id]);
       service.covered(feed.key, feedTime * 1000);
       for (const [line, keys] of Object.entries(stats.cancelled)) {
         for (const key of keys) {
@@ -106,14 +119,6 @@ async function collectRealtime(now, meta, run) {
     } catch (e) {
       d.lastError = { at: iso(now), message: e.message };
       run.errors.push(`${feed.key}: ${e.message}`);
-    }
-    if ((probeVehicles || !d.vehicles) && feed.vehiclePositions) {
-      try {
-        const { buf, path: used } = await tfnswGetFirst(feed.vehiclePositions, { timeoutMs: 30_000, retries: 1 });
-        d.vehicles = { at: iso(now), endpoint: used, bytes: buf.length, ...vehicleSummary(decodeFeed(buf)), fields: fieldCensus(buf) };
-      } catch (e) {
-        d.vehicles = { at: iso(now), error: e.message };
-      }
     }
   }
   const finalised = service.finalise();

@@ -21,9 +21,10 @@ export const FLAG = {
   RAN: 2,              // seen running (with a current delay) at least once
   CANCELLED: 4,        // marked cancelled at some point
   CANCELLED_LAST: 8,   // still marked cancelled the last time it was seen
-  ADDED: 16,           // published as an extra, replacement or duplicated trip
+  ADDED: 16,           // published as an extra or duplicated trip
   DELAY_ONLY: 32,      // the feed gave delays but no stop times for it
   UNSCHEDULED: 64,     // not in the day's timetable
+  REPLACED: 128,       // ran with a changed stopping pattern (schedule_relationship REPLACEMENT)
 };
 
 export const TRIP_COLUMNS = ['feed', 'trip', 'line', 'dir', 'start', 'end', 'flags', 'first_seen', 'last_seen',
@@ -45,7 +46,7 @@ export class ServiceRecorder {
     this.state = readJson(this.file, { days: {} });
     this.state.days ||= {};
     this.schedCache = new Map(); // date → { feeds: { key: { trips: [...] } } }
-    this.schedSets = new Map();  // `${date}|${feed}` → Set of trip IDs
+    this.schedSets = new Map();  // `${date}|${feed}` → Map of trip ID → [start, end]
     this.dirty = new Set();      // dates whose schedule file changed
     const today = sydDate(nowMs);
     this.day(today);
@@ -72,7 +73,7 @@ export class ServiceRecorder {
 
   schedSet(date, feed) {
     const k = `${date}|${feed}`;
-    if (!this.schedSets.has(k)) this.schedSets.set(k, new Set((this.schedule(date).feeds[feed]?.trips || []).map(t => t[0])));
+    if (!this.schedSets.has(k)) this.schedSets.set(k, new Map((this.schedule(date).feeds[feed]?.trips || []).map(t => [t[0], [t[3], t[4]]])));
     return this.schedSets.get(k);
   }
 
@@ -92,14 +93,22 @@ export class ServiceRecorder {
     }
   }
 
-  // Service date of a realtime trip: its start_date, else the open day whose timetable has it.
-  dateOf(feedKey, t) {
+  // Service date of a realtime trip: its start_date if given (Sydney Trains leaves it out), else the
+  // open day whose timetable has the trip at about this time (the same trip ID usually runs on
+  // many days), else the day starting before 4 am.
+  dateOf(feedKey, t, atMs = this.now) {
     const d = ymdToDate(t.startDate);
     if (d) return d;
+    let fallback = null;
     for (const date of Object.keys(this.state.days).sort().reverse()) {
-      if (t.tripId && this.schedSet(date, feedKey).has(t.tripId)) return date;
+      const times = t.tripId && this.schedSet(date, feedKey).get(t.tripId);
+      if (!times) continue;
+      fallback ||= date;
+      const s = (atMs - this.state.days[date].base) / 1000;
+      const [start, end] = times;
+      if (start != null && s >= start - 3 * 3600 && s <= (end ?? start) + 3 * 3600) return date;
     }
-    return sydDate(this.now - 4 * HOUR);
+    return fallback || sydDate(atMs - 4 * HOUR);
   }
 
   // A successful fetch of a feed: extend the time it has been watched on each open day.
@@ -115,13 +124,14 @@ export class ServiceRecorder {
 
   // Record one feed's trips (from lineStats().tripList). Returns diagnostics on how the realtime
   // trip IDs match the timetable.
-  record(feedKey, tripList, atMs = this.now) {
-    const diag = { trips: 0, noId: 0, dated: 0, other: 0, inTimetable: 0, notInTimetable: 0, bySr: {}, missing: [], example: null };
+  // inStatic(tripId) says whether the trip is anywhere in the static timetable (any date).
+  record(feedKey, tripList, atMs = this.now, inStatic = null) {
+    const diag = { trips: 0, noId: 0, dated: 0, other: 0, inTimetable: 0, notInTimetable: 0, notInStatic: 0, bySr: {}, missing: [], example: null };
     for (const t of tripList) {
       diag.trips++;
       diag.bySr[t.sr] = (diag.bySr[t.sr] || 0) + 1;
       if (!t.tripId) { diag.noId++; continue; }
-      const date = this.dateOf(feedKey, t);
+      const date = this.dateOf(feedKey, t, atMs);
       if (t.startDate) diag.dated++;
       const d = this.day(date);
       if (!d) { diag.other++; continue; }
@@ -131,9 +141,11 @@ export class ServiceRecorder {
         if (set.has(t.tripId)) diag.inTimetable++;
         else {
           diag.notInTimetable++;
-          if (diag.missing.length < 4 && t.sr === TRIP_SR.SCHEDULED) diag.missing.push(t.tripId);
+          const known = inStatic ? inStatic(t.tripId) : null;
+          if (known === false) diag.notInStatic++;
+          if (diag.missing.length < 6 && t.sr === TRIP_SR.SCHEDULED) diag.missing.push([t.tripId, t.line, t.startTime, known]);
         }
-        if (!diag.example) diag.example = [...set][0];
+        if (!diag.example) diag.example = set.keys().next().value;
       }
       const obs = (d.obs[feedKey] ||= {});
       let o = obs[t.tripId];
@@ -144,6 +156,7 @@ export class ServiceRecorder {
       else {
         f &= ~FLAG.CANCELLED_LAST;
         if (t.sr === TRIP_SR.SCHEDULED) f |= FLAG.SEEN;
+        else if (t.sr === TRIP_SR.REPLACEMENT) f = (f & ~FLAG.ADDED) | FLAG.SEEN | FLAG.REPLACED; // (early records counted these as added)
         else f |= FLAG.ADDED;
         if (sum.running) {
           f |= FLAG.RAN;

@@ -16,9 +16,10 @@ def msg(name, fields):
 
 OPT, REP = F.LABEL_OPTIONAL, F.LABEL_REPEATED
 msg('StopTimeEvent', [('delay',1,F.TYPE_INT32,OPT,None),('time',2,F.TYPE_INT64,OPT,None),('uncertainty',3,F.TYPE_INT32,OPT,None)])
-# TfNSW extensions: a carriage list on stop time updates (1007) and a vehicle descriptor (1999).
+# TfNSW extensions: carriage lists on stop time updates and vehicle positions (1007) and a vehicle
+# descriptor (1007 as Sydney Trains publishes it; TfNSW's documentation says 1999).
 msg('CarriageDescriptor', [('name',1,F.TYPE_STRING,OPT,None),('position_in_consist',2,F.TYPE_INT32,OPT,None),
-    ('departure_occupancy_status',7,F.TYPE_INT32,OPT,None)])
+    ('occupancy_status',3,F.TYPE_INT32,OPT,None),('departure_occupancy_status',7,F.TYPE_INT32,OPT,None)])
 msg('StopTimeProperties', [('assigned_stop_id',1,F.TYPE_STRING,OPT,None)])
 msg('StopTimeUpdate', [('stop_sequence',1,F.TYPE_UINT32,OPT,None),('arrival',2,F.TYPE_MESSAGE,OPT,'.transit_realtime.StopTimeEvent'),
     ('departure',3,F.TYPE_MESSAGE,OPT,'.transit_realtime.StopTimeEvent'),('stop_id',4,F.TYPE_STRING,OPT,None),('schedule_relationship',5,F.TYPE_INT32,OPT,None),
@@ -27,13 +28,17 @@ msg('StopTimeUpdate', [('stop_sequence',1,F.TYPE_UINT32,OPT,None),('arrival',2,F
 msg('TfnswVehicleDescriptor', [('air_conditioned',1,F.TYPE_BOOL,OPT,None),('vehicle_model',3,F.TYPE_STRING,OPT,None)])
 msg('TripDescriptor', [('trip_id',1,F.TYPE_STRING,OPT,None),('start_time',2,F.TYPE_STRING,OPT,None),('start_date',3,F.TYPE_STRING,OPT,None),
     ('schedule_relationship',4,F.TYPE_INT32,OPT,None),('route_id',5,F.TYPE_STRING,OPT,None),('direction_id',6,F.TYPE_UINT32,OPT,None)])
-msg('VehicleDescriptor', [('id',1,F.TYPE_STRING,OPT,None),('label',2,F.TYPE_STRING,OPT,None),('extra',1007,F.TYPE_STRING,OPT,None),
-    ('tfnsw',1999,F.TYPE_MESSAGE,OPT,'.transit_realtime.TfnswVehicleDescriptor')])
+msg('VehicleDescriptor', [('id',1,F.TYPE_STRING,OPT,None),('label',2,F.TYPE_STRING,OPT,None),
+    ('tfnsw',1007,F.TYPE_MESSAGE,OPT,'.transit_realtime.TfnswVehicleDescriptor')])
+msg('VehiclePosition', [('trip',1,F.TYPE_MESSAGE,OPT,'.transit_realtime.TripDescriptor'),('timestamp',5,F.TYPE_UINT64,OPT,None),
+    ('vehicle',8,F.TYPE_MESSAGE,OPT,'.transit_realtime.VehicleDescriptor'),('occupancy_status',9,F.TYPE_INT32,OPT,None),
+    ('consist',1007,F.TYPE_MESSAGE,REP,'.transit_realtime.CarriageDescriptor')])
 msg('TripUpdate', [('trip',1,F.TYPE_MESSAGE,OPT,'.transit_realtime.TripDescriptor'),('stop_time_update',2,F.TYPE_MESSAGE,REP,'.transit_realtime.StopTimeUpdate'),
     ('vehicle',3,F.TYPE_MESSAGE,OPT,'.transit_realtime.VehicleDescriptor'),('timestamp',4,F.TYPE_UINT64,OPT,None),('delay',5,F.TYPE_INT32,OPT,None),
     ('unknown_double',900,F.TYPE_DOUBLE,OPT,None),('unknown_fixed32',901,F.TYPE_FIXED32,OPT,None)])
 msg('FeedHeader', [('gtfs_realtime_version',1,F.TYPE_STRING,OPT,None),('incrementality',2,F.TYPE_INT32,OPT,None),('timestamp',3,F.TYPE_UINT64,OPT,None)])
-msg('FeedEntity', [('id',1,F.TYPE_STRING,OPT,None),('is_deleted',2,F.TYPE_BOOL,OPT,None),('trip_update',3,F.TYPE_MESSAGE,OPT,'.transit_realtime.TripUpdate')])
+msg('FeedEntity', [('id',1,F.TYPE_STRING,OPT,None),('is_deleted',2,F.TYPE_BOOL,OPT,None),('trip_update',3,F.TYPE_MESSAGE,OPT,'.transit_realtime.TripUpdate'),
+    ('vehicle',4,F.TYPE_MESSAGE,OPT,'.transit_realtime.VehiclePosition')])
 msg('FeedMessage', [('header',1,F.TYPE_MESSAGE,OPT,'.transit_realtime.FeedHeader'),('entity',2,F.TYPE_MESSAGE,REP,'.transit_realtime.FeedEntity')])
 
 pool = descriptor_pool.DescriptorPool(); pool.Add(fd)
@@ -53,7 +58,7 @@ def main():
         if sr is not None: tu.trip.schedule_relationship = sr
         if tu_delay is not None: tu.delay = tu_delay
         if extras:
-            tu.vehicle.id = 'V1'; tu.vehicle.extra = 'tfnsw extension'
+            tu.vehicle.id = 'V1'
             tu.vehicle.tfnsw.vehicle_model = 'A'; tu.vehicle.tfnsw.air_conditioned = True
             tu.unknown_double = 3.25; tu.unknown_fixed32 = 7
         tu.timestamp = NOW - 5 if ts is None else ts
@@ -101,6 +106,19 @@ def main():
     trip('e11', 'T1_route', 'T1.trip.8', [(None, 900, 'dep', None)], ts=NOW - 3600)
 
     out = os.path.dirname(os.path.abspath(__file__))
+
+    # Vehicle positions: T9.trip.1 with a measured two-carriage consist (listed out of order) and a
+    # vehicle not on a trip.
+    vp = FeedMessage()
+    vp.header.gtfs_realtime_version = '2.0'; vp.header.timestamp = NOW
+    v = vp.entity.add(id='v1').vehicle
+    v.trip.trip_id = 'T9.trip.1'; v.timestamp = NOW - 20; v.occupancy_status = 2
+    v.vehicle.id = 'set-1'; v.vehicle.tfnsw.vehicle_model = 'M'
+    for pos, level in [(2, 2), (1, 1)]:
+        c = v.consist.add(position_in_consist=pos, name=f'C{pos}'); c.occupancy_status = level
+    vp.entity.add(id='v2').vehicle.vehicle.id = 'set-2'
+    open(os.path.join(out, 'vehiclepositions.pb'), 'wb').write(vp.SerializeToString())
+
     open(os.path.join(out, 'tripupdates.pb'), 'wb').write(fm.SerializeToString())
     json.dump(MessageToDict(fm, preserving_proto_field_name=True), open(os.path.join(out, 'tripupdates.json'), 'w'), indent=1)
     print('wrote', len(fm.SerializeToString()), 'bytes')

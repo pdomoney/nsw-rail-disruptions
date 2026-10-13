@@ -7,7 +7,7 @@ import { tfnswGetFirst } from './http.js';
 import { readJson, writeJson } from './store.js';
 
 // Bump when the map format changes, so cached maps are rebuilt.
-export const MAP_VERSION = 4;
+export const MAP_VERSION = 5;
 
 // "25:13:00" → 90780 (seconds after the start of the service day; may pass 24 hours)
 export function gtfsTime(t) {
@@ -15,13 +15,16 @@ export function gtfsTime(t) {
   return m ? +m[1] * 3600 + +m[2] * 60 + +m[3] : null;
 }
 
+// Extra files in TfNSW bundles (occupancy forecasts, train consists) that are sampled for diagnostics.
+const SAMPLED = ['occupancies.txt', 'vehicle_categories.txt', 'vehicle_couplings.txt', 'vehicle_boardings.txt', 'notes.txt'];
+
 // "Central Station, Platform 18" → "Central Station"
 function stationName(name) {
   return String(name || '').replace(/,\s*(Platform|Stand|Side|Wharf)\b.*$/i, '').trim();
 }
 
 export function buildRouteMap(zipBuf, feed) {
-  const files = readZip(zipBuf, ['routes.txt', 'trips.txt', 'stops.txt', 'stop_times.txt', 'calendar.txt', 'calendar_dates.txt']);
+  const files = readZip(zipBuf, ['routes.txt', 'trips.txt', 'stops.txt', 'stop_times.txt', 'calendar.txt', 'calendar_dates.txt', ...SAMPLED]);
   if (!files['routes.txt']) throw new Error('routes.txt missing from bundle');
   const routes = parseCsv(files['routes.txt'].toString('utf8'),
     ['route_id', 'route_short_name', 'route_long_name', 'route_desc', 'route_color']);
@@ -108,6 +111,12 @@ export function buildRouteMap(zipBuf, feed) {
   }
   let listing = [];
   try { listing = zipEntries(zipBuf).map(x => [x.name, x.size]); } catch { /* already read above */ }
+  // The first lines of files this project does not use yet, to see what they hold.
+  const samples = {};
+  for (const name of ['trips.txt', ...SAMPLED]) {
+    if (!files[name]) continue;
+    samples[name] = files[name].subarray(0, 4096).toString('utf8').replace(/^\ufeff/, '').split(/\r?\n/).slice(0, 5).map(l => l.slice(0, 300));
+  }
   return {
     version: MAP_VERSION,
     routes: routeMap,
@@ -116,7 +125,7 @@ export function buildRouteMap(zipBuf, feed) {
     sched: { services, trips },
     stats: {
       routes: routes.length, matchedRoutes: routes.length - unmatched.length, trips: Object.keys(trips).length,
-      stations: Object.keys(stations).length, services: Object.keys(services).length, calendarDates, from, to, files: listing,
+      stations: Object.keys(stations).length, services: Object.keys(services).length, calendarDates, from, to, files: listing, samples,
     },
     unmatched: unmatched.slice(0, 40),
   };

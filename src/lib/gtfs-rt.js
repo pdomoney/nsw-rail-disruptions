@@ -33,7 +33,8 @@ const Carriage = {
   5: ['toilet', xEnum], 6: ['luggage', xBool], 7: ['departureOccupancy', xEnum],
 };
 const TfnswVehicle = { 1: ['airConditioned', xBool], 2: ['wheelchairs', xInt], 3: ['model', xStr], 4: ['performingPriorTrip', xBool], 5: ['special', xInt] };
-const VehicleDescriptor = { 1: ['id', xStr], 2: ['label', xStr], 1999: ['tfnsw', xMsg(TfnswVehicle)] };
+// TfNSW documents the vehicle extension as 1999, but Sydney Trains publishes it as 1007.
+const VehicleDescriptor = { 1: ['id', xStr], 2: ['label', xStr], 1007: ['tfnsw', xMsg(TfnswVehicle)], 1999: ['tfnsw', xMsg(TfnswVehicle)] };
 
 const StopTimeEvent = { 1: ['delay', i32], 2: ['time', i64], 3: ['uncertainty', i32] };
 const StopTimeUpdate = {
@@ -190,6 +191,22 @@ export function tripSummary(tu, now) {
   };
 }
 
+// Occupancy measured on board, from a vehicle positions feed: tripId → { levels (per carriage, in
+// consist order), level (whole vehicle), cars }.
+export function vehicleLoads(feed) {
+  const out = new Map();
+  for (const e of feed.entity || []) {
+    const v = e.vehicle;
+    const tripId = v?.trip?.tripId;
+    if (!tripId) continue;
+    const consist = (v.consist || []).filter(Boolean).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    const levels = consist.map(c => c.occupancy ?? c.departureOccupancy).filter(l => l != null && l <= 5);
+    const level = v.occupancy != null && v.occupancy <= 5 ? v.occupancy : null;
+    out.set(tripId, { levels: levels.length === consist.length ? levels : [], level, cars: consist.length, model: v.vehicle?.tfnsw?.model || null });
+  }
+  return out;
+}
+
 // Counts which protobuf fields (by path, number and wire type) a feed actually contains, so
 // diagnostics show what TfNSW publishes, including extensions this decoder does not know about.
 const CENSUS_TREE = {
@@ -197,10 +214,11 @@ const CENSUS_TREE = {
     3: { name: 'tu', kids: {
       1: { name: 'trip' },
       2: { name: 'stu', kids: { 2: { name: 'arr' }, 3: { name: 'dep' }, 6: { name: 'f6' }, 1007: { name: 'car' } } },
-      3: { name: 'veh', kids: { 1999: { name: 'tfnsw' } } },
+      3: { name: 'veh', kids: { 1007: { name: 'x7' }, 1999: { name: 'tfnsw' } } },
+      1007: { name: 'x7' },
     } },
     4: { name: 'vp', kids: {
-      1: { name: 'trip' }, 8: { name: 'veh', kids: { 1999: { name: 'tfnsw' } } },
+      1: { name: 'trip' }, 8: { name: 'veh', kids: { 1007: { name: 'x7' }, 1999: { name: 'tfnsw' } } },
       11: { name: 'mcd' }, 1006: { name: 'car' }, 1007: { name: 'car7' },
     } },
   } },
@@ -230,7 +248,7 @@ const levels6 = () => [0, 0, 0, 0, 0, 0];
 // resolveLine(trip) → lineId | null.
 // Returns per-line delay figures, cancelled trips, the load of running trips by occupancy level,
 // one summary per trip (for the daily service record) and diagnostics.
-export function lineStats(feed, resolveLine, { now } = {}) {
+export function lineStats(feed, resolveLine, { now, vehicles = null } = {}) {
   const ts = now ?? feed.header?.timestamp ?? Math.floor(Date.now() / 1000);
   const lines = {};
   const cancelled = {};
@@ -243,7 +261,7 @@ export function lineStats(feed, resolveLine, { now } = {}) {
   // What the trip updates contain, to diagnose feeds that publish delays without times.
   const shape = { withTimes: 0, delayOnly: 0, noStops: 0, tripDelay: 0, active: 0, notStarted: 0, finished: 0, noDelay: 0 };
   // Occupancy coverage, to see what each feed publishes.
-  const occ = { stops: 0, stopLevel: 0, stopCars: 0, trips: 0, tripsWithLevel: 0, tripsWithCars: 0, runningWithLevel: 0, levels: levels6(), cars: {}, models: {} };
+  const occ = { stops: 0, stopLevel: 0, stopCars: 0, trips: 0, tripsWithLevel: 0, tripsWithCars: 0, fromVehicles: 0, runningWithLevel: 0, levels: levels6(), cars: {}, models: {} };
   for (const e of feed.entity || []) {
     const tu = e.tripUpdate;
     if (!tu || e.isDeleted) continue;
@@ -259,6 +277,16 @@ export function lineStats(feed, resolveLine, { now } = {}) {
     const L = (lines[line] ||= { active: 0, late: 0, sumDelay: 0, maxDelay: 0, cancelled: 0 });
     const sr = trip.scheduleRelationship ?? 0;
     const sum = tripSummary(tu, ts);
+    // Measured load from the vehicle positions feed, where the trip update has no prediction.
+    const v = vehicles && trip.tripId ? vehicles.get(trip.tripId) : null;
+    if (v && sum.occMax == null && (v.levels.length || v.level != null)) {
+      sum.occSource = 'vehicle';
+      sum.nowLevels = v.levels.length ? v.levels : null;
+      sum.nowLevel = v.level ?? (v.levels.length ? Math.max(...v.levels) : null);
+      sum.occMax = sum.nowLevel;
+      if (v.cars > sum.cars) sum.cars = v.cars;
+      occ.fromVehicles++;
+    }
     tripList.push({ tripId: trip.tripId || null, startDate: trip.startDate || null, startTime: trip.startTime || null, line, sr, sum });
     if (sr === TRIP_SR.CANCELED || sr === TRIP_SR.DELETED) {
       L.cancelled++;

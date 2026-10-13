@@ -71,6 +71,25 @@ test('daily service record: timetable, observations, coverage and the final file
   fs.rmSync(dir, { recursive: true });
 });
 
+test('trips without a start date are placed on the right service day', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nrd-service-'));
+  // 00:40 on Monday 12 October in Sydney; Sunday 11 October is still open.
+  const sunday = new ServiceRecorder(dir, Date.parse('2026-10-11T00:00:00Z'));
+  sunday.freeze(feed, map);
+  sunday.save();
+  const t = Date.parse('2026-10-11T13:40:00Z');
+  const rec = new ServiceRecorder(dir, t);
+  rec.freeze(feed, map);
+  // T1.trip.2 runs at 24:31 on Sunday's timetable.
+  assert.equal(rec.dateOf('sydneytrains', { tripId: 'T1.trip.2' }, t), '2026-10-11');
+  assert.equal(rec.dateOf('sydneytrains', { tripId: 'T1.trip.2', startDate: '20261012' }, t), '2026-10-12');
+  assert.equal(rec.dateOf('sydneytrains', { tripId: 'unknown' }, t), '2026-10-11'); // before 4 am
+  rec.record('sydneytrains', [{ tripId: 'T1.trip.2', line: 'T1', sr: 5, sum: sum({ running: true, delay: 60 }) }], t);
+  const o = rec.state.days['2026-10-11'].obs.sydneytrains['T1.trip.2'];
+  assert.equal(o[0], FLAG.SEEN | FLAG.REPLACED | FLAG.RAN);
+  fs.rmSync(dir, { recursive: true });
+});
+
 test('a timetable that does not cover the day is not frozen', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nrd-service-'));
   const rec = new ServiceRecorder(dir, Date.parse('2026-11-03T00:00:00Z'));

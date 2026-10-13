@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { decodeFeed, lineStats, currentDelay, tripSummary, fieldCensus } from '../src/lib/gtfs-rt.js';
+import { decodeFeed, lineStats, currentDelay, tripSummary, fieldCensus, vehicleLoads } from '../src/lib/gtfs-rt.js';
 import { buildRouteMap, resolveTripLine, scheduledTrips, gtfsTime } from '../src/lib/gtfs-static.js';
 import { readZip, zipEntries } from '../src/lib/zip.js';
 import { parseCsv, forEachCsvRow } from '../src/lib/csv.js';
 
 const pb = fs.readFileSync(new URL('./fixtures/tripupdates.pb', import.meta.url));
+const vpb = fs.readFileSync(new URL('./fixtures/vehiclepositions.pb', import.meta.url));
 const ref = JSON.parse(fs.readFileSync(new URL('./fixtures/tripupdates.json', import.meta.url), 'utf8'));
 const zip = fs.readFileSync(new URL('./fixtures/gtfs-static.zip', import.meta.url));
 const feedCfg = { key: 'sydneytrains', defaultLine: null };
@@ -156,7 +157,23 @@ test('occupancy in field 6 (TfNSW numbering) is read; field census counts what i
   const full = fieldCensus(pb);
   assert.equal(full['entity.tu.stu.1007:2'], 2);
   assert.equal(full['entity.tu.stu.f6.1:2'], 1);
-  assert.equal(full['entity.tu.veh.tfnsw.3:2'], 1);
+  assert.equal(full['entity.tu.veh.x7.3:2'], 1);
+});
+
+test('measured load from vehicle positions fills in where there is no prediction', () => {
+  const vehicles = vehicleLoads(decodeFeed(vpb));
+  assert.deepEqual(vehicles.get('T9.trip.1'), { levels: [1, 2], level: 2, cars: 2, model: 'M' });
+  assert.equal(vehicles.size, 1);
+  const map = buildRouteMap(zip, feedCfg);
+  const s = lineStats(decodeFeed(pb), trip => resolveTripLine(trip, map, feedCfg), { vehicles });
+  assert.deepEqual(s.load.T9.cars, [0, 1, 1, 0, 0, 0]);
+  assert.equal(s.occ.fromVehicles, 1);
+  const t9 = s.tripList.find(t => t.tripId === 'T9.trip.1');
+  assert.equal(t9.sum.occSource, 'vehicle');
+  assert.equal(t9.sum.occMax, 2);
+  assert.equal(t9.sum.cars, 2);
+  // A trip with its own prediction keeps it.
+  assert.equal(s.tripList.find(t => t.tripId === 'T1.trip.1').sum.occSource, undefined);
 });
 
 test('currentDelay picks the most recent passed stop', () => {

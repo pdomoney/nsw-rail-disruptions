@@ -16,7 +16,8 @@ export const ADD_INFO = {
 };
 
 // GTFS-realtime trip updates, the matching static timetables (used to map trips to lines and to
-// know which trips were scheduled each day) and vehicle positions (checked hourly for diagnostics).
+// know which trips were scheduled each day) and vehicle positions (measured occupancy where
+// published; elsewhere checked hourly for diagnostics).
 export const FEEDS = [
   {
     key: 'sydneytrains',
@@ -24,6 +25,7 @@ export const FEEDS = [
     realtime: ['/v2/gtfs/realtime/sydneytrains'],
     schedule: ['/v2/gtfs/schedule/sydneytrains', '/v1/gtfs/schedule/sydneytrains'],
     vehiclePositions: ['/v2/gtfs/vehiclepos/sydneytrains', '/v1/gtfs/vehiclepos/sydneytrains'],
+    vehicleOccupancy: true, // vehicle positions carry measured occupancy: fetched every run
     defaultLine: null,
   },
   {
@@ -32,6 +34,7 @@ export const FEEDS = [
     realtime: ['/v2/gtfs/realtime/metro'],
     schedule: ['/v2/gtfs/schedule/metro', '/v1/gtfs/schedule/metro'],
     vehiclePositions: ['/v2/gtfs/vehiclepos/metro', '/v1/gtfs/vehiclepos/metro'],
+    vehicleOccupancy: true, // vehicle positions carry measured occupancy: fetched every run
     defaultLine: 'M1',
   },
   {
@@ -56,6 +59,7 @@ export const FEEDS = [
     realtime: ['/v1/gtfs/realtime/lightrail/parramatta'],
     schedule: ['/v1/gtfs/schedule/lightrail/parramatta'],
     vehiclePositions: ['/v1/gtfs/vehiclepos/lightrail/parramatta'],
+    vehicleOccupancy: true, // vehicle positions carry measured occupancy: fetched every run
     defaultLine: 'L4',
   },
   {
@@ -64,6 +68,7 @@ export const FEEDS = [
     realtime: ['/v1/gtfs/realtime/lightrail/newcastle'],
     schedule: ['/v1/gtfs/schedule/lightrail/newcastle'],
     vehiclePositions: ['/v1/gtfs/vehiclepos/lightrail/newcastle'],
+    vehicleOccupancy: true, // vehicle positions carry measured occupancy: fetched every run
     defaultLine: 'NLR',
   },
 ];
