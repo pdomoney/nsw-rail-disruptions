@@ -1,4 +1,4 @@
-import { heatmap, hbars, columns, line as lineChart, onColor, hideTip, compact } from './charts.js';
+import { heatmap, hbars, columns, line as lineChart, onColor, showTip, hideTip, compact } from './charts.js';
 
 // ---------- formatting (always Sydney time) ----------
 const TZ = 'Australia/Sydney';
@@ -12,6 +12,7 @@ const F = {
   time: new Intl.DateTimeFormat('en-AU', { timeZone: TZ, hour: 'numeric', minute: '2-digit' }),
   dayKey: new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }),
   hour: new Intl.DateTimeFormat('en-AU', { timeZone: TZ, hour: 'numeric', hourCycle: 'h23' }),
+  dayNoYear: new Intl.DateTimeFormat('en-AU', { timeZone: TZ, weekday: 'short', day: 'numeric', month: 'short' }),
 };
 const ms = s => Date.parse(s);
 const time = s => F.time.format(new Date(ms(s))).replace(' ', ' ');
@@ -75,7 +76,7 @@ function stateEl(kind, label) {
 }
 
 // ---------- data ----------
-const D = { meta: null, daily: null, status: null, delays: null, clock: null, line: {}, log: {}, service: null, serviceDay: {} };
+const D = { meta: null, daily: null, status: null, delays: null, clock: null, line: {}, log: {}, service: null, serviceDay: {}, trackwork: null };
 async function getJson(p) {
   const r = await fetch(p, { cache: 'no-cache' });
   if (!r.ok) throw new Error(`Could not load ${p} (HTTP ${r.status})`);
@@ -355,6 +356,7 @@ function viewOverview(main) {
     : 'Alerts have not been checked yet.';
   const sub = h('p', { class: 'now-sub' },
     plannedToday.length ? `Planned trackwork or closures affect ${plural(plannedToday.length, 'line')} today. ` : 'No planned closures today. ',
+    h('a', { href: '#/trackwork' }, 'See trackwork ahead'), '. ',
     checked);
   const stale = isStale()
     ? h('p', { class: 'stale-note' }, stateEl('unknown', ''), `The alerts were last collected ${ago(status.alertsAt)}, so this may be out of date. Check transportnsw.info for live information.`)
@@ -725,11 +727,14 @@ async function viewLine(main, id) {
   const delaySection = h('div', { class: 'chart-grid' });
   const svcSection = h('div');
   lineService(svcSection, id);
+  const twHolder = h('div');
+  lineTrackwork(twHolder, id);
 
   mount(main,
     h('div', { class: 'line-head' }, badge(id, { link: false, size: 'lg' }), h('div', {}, h('h1', {}, l.name), h('div', { class: 'line-mode' }, D.meta.modes[l.mode]?.label || ''))),
     l.note ? h('p', { class: 'line-note' }, l.note) : null,
     h('section', { 'aria-labelledby': 'ln-now' }, h('h2', { id: 'ln-now', style: { marginTop: '18px', fontSize: '1.25rem' } }, 'Right now'), nowList),
+    h('section', { class: 'section', 'aria-labelledby': 'ln-tw' }, h('h2', { id: 'ln-tw' }, 'Trackwork ahead'), twHolder),
     h('section', { class: 'section', 'aria-labelledby': 'ln-hist' },
       h('h2', { id: 'ln-hist' }, 'History'),
       filters, kpis,
@@ -1294,6 +1299,272 @@ function serviceTable(lines, K) {
     }))));
 }
 
+// ---------- trackwork ahead ----------
+// Planned work from the published trackwork alerts: a timeline with one track per line and a block
+// wherever work is planned, then the details week by week.
+async function loadTrackwork() {
+  if (!D.trackwork) D.trackwork = await getJson(`data/trackwork.json?t=${Date.now()}`);
+  return D.trackwork;
+}
+const TW_SEV = [
+  { cls: 'tw-s0', label: 'Extra services' },
+  { cls: 'tw-s1', label: 'Changed timetable or stops' },
+  { cls: 'tw-s2', label: 'Some trains replaced, or trains cut short' },
+  { cls: 'tw-s3', label: 'Part of the line closed, buses replace trains' },
+];
+const hourOf = t => Number(F.hour.format(new Date(t)));
+// "Sat 17 Oct"
+const dayLabel = t => {
+  const p = Object.fromEntries(F.dayNoYear.formatToParts(new Date(t)).map(x => [x.type, x.value]));
+  return `${p.weekday} ${p.day} ${p.month}`;
+};
+
+// Plain-language "when" for a list of [from, to] windows.
+function twWhen(w) {
+  const ws = w.map(([f, t]) => [ms(f), ms(t)]);
+  const one = ([f, t]) => {
+    if (hourOf(f) <= 5 && hourOf(t) <= 5 && t - f >= 20 * 3600e3) {
+      const d1 = f, d2 = t - 6 * 3600e3;
+      return sydKey(d1) === sydKey(d2) ? `All day ${dayLabel(d1)}` : `All day ${dayLabel(d1)} to ${dayLabel(d2)}`;
+    }
+    const svc = x => sydKey(x - 4 * 3600e3);
+    if (svc(f) === svc(t - 1) || sydKey(f) === sydKey(t - 1)) return `${dayLabel(f)}, ${F.time.format(new Date(f))} to ${F.time.format(new Date(t))}`;
+    return `${dayLabel(f)} ${F.time.format(new Date(f))} to ${dayLabel(t)} ${F.time.format(new Date(t))}`;
+  };
+  if (ws.length > 1) {
+    const st = new Set(ws.map(([f]) => F.time.format(new Date(f)))), en = new Set(ws.map(([, t]) => F.time.format(new Date(t))));
+    if (st.size === 1 && en.size === 1) {
+      const h0 = hourOf(ws[0][0]);
+      const word = h0 >= 18 || h0 < 4 ? 'Nightly' : 'Daily';
+      return `${word} ${[...st][0]} to ${[...en][0]}, ${dayLabel(ws[0][0])} to ${dayLabel(ws[ws.length - 1][0])}`;
+    }
+    return ws.slice(0, 3).map(one).join('; ') + (ws.length > 3 ? `; and ${ws.length - 3} more` : '');
+  }
+  return one(ws[0]);
+}
+
+// The coming weekend (or this one, on a Saturday or Sunday): [Saturday 00:00, Monday 04:00] in ms.
+function weekendRange(days) {
+  const i = days.findIndex(([d]) => dateFromKey(d).getUTCDay() === 6);
+  const today = days[0][0];
+  const sunToday = dateFromKey(today).getUTCDay() === 0;
+  if (sunToday) return [ms(days[0][1]) - 864e5, ms(days[1]?.[1] ?? days[0][1]) + 4 * 3600e3];
+  if (i < 0 || !days[i + 2]) return null;
+  return [ms(days[i][1]), ms(days[i + 2][1]) + 4 * 3600e3];
+}
+const overlaps = (w, a, b) => w.some(([f, t]) => ms(f) < b && ms(t) > a);
+const orderOf = id => D.meta.lines.findIndex(l => l.id === id);
+
+function badgeList(ids) {
+  const out = [];
+  ids.forEach((id, i) => {
+    out.push(h('span', { class: 'nowrap' }, badge(id), i < ids.length - 2 ? ',' : ''));
+    if (i < ids.length - 1) out.push(i === ids.length - 2 ? ' and ' : ' ');
+  });
+  return out;
+}
+
+async function viewTrackwork(main) {
+  document.title = 'Trackwork ahead | NSW Rail Disruptions';
+  const tw = await loadTrackwork();
+  const q = new URLSearchParams(location.hash.split('?')[1] || '');
+  let lineFilter = q.get('line') || '';
+  const items = tw.items.filter(it => it.l.some(trackedLine));
+  const lines = [...new Set(items.flatMap(it => it.l))].filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
+  const now = Date.now();
+
+  // Headline: this weekend's closures, and what is on today.
+  const wk = weekendRange(tw.days);
+  const head = h('div', { class: 'tw-head' });
+  if (wk) {
+    const closed = [...new Set(items.filter(it => it.sev >= 3 && overlaps(it.w, wk[0], wk[1])).flatMap(it => it.l))].filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
+    const other = [...new Set(items.filter(it => it.sev >= 1 && overlaps(it.w, wk[0], wk[1])).flatMap(it => it.l))].filter(id => trackedLine(id) && !closed.includes(id));
+    head.append(h('p', { class: 'tw-headline' }, closed.length
+      ? ['This weekend, trackwork closes parts of ', ...badgeList(closed), '.']
+      : 'No line is closed for trackwork this weekend.'));
+    head.append(h('p', { class: 'tw-sub' }, `${dayLabel(wk[0])} and ${dayLabel(wk[1] - 6 * 3600e3)}.`,
+      other.length ? ` Trains also run to a changed timetable on ${plural(other.length, 'other line')}.` : ''));
+  }
+  const todayEnd = ms(tw.days[1][1]) + 4 * 3600e3;
+  const tonight = [...new Set(items.filter(it => it.sev >= 2 && overlaps(it.w, now, todayEnd)).flatMap(it => it.l))].filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
+  if (tonight.length) head.append(h('p', { class: 'tw-sub' }, 'Today and tonight: work on ', ...badgeList(tonight), '.'));
+
+  const chart = h('div', { class: 'tw-chart' });
+  const listHead = h('div', { class: 'filters' });
+  const list = h('div', { class: 'tw-list' });
+  const last = tw.days[tw.days.length - 1][0];
+  mount(main,
+    h('div', { class: 'line-head' }, h('h1', {}, 'Trackwork ahead')),
+    h('p', { class: 'section-intro' }, `Planned trackwork from the alerts TfNSW publishes, usually about three weeks ahead. Published so far up to ${F.dateUTC.format(dateFromKey(addDays(last, -1)))}.`),
+    head,
+    h('section', { class: 'section tw-timeline', 'aria-labelledby': 'tw-time-h' },
+      h('h2', { id: 'tw-time-h' }, 'Line by line'),
+      h('p', { class: 'chart-note' }, 'Each line is a track and each block is planned work. Stronger blocks change journeys more. Weekends are shaded. Select a block to read about it, or a line to list only its work.'),
+      chart,
+      h('div', { class: 'key tw-key' }, [3, 2, 1].map(s => h('span', {}, h('i', { class: `tw-sw ${TW_SEV[s].cls}` }), TW_SEV[s].label)))),
+    h('section', { class: 'section', 'aria-labelledby': 'tw-list-h' }, h('h2', { id: 'tw-list-h' }, 'What changes, week by week'), listHead, list));
+
+  const setLine = v => {
+    lineFilter = v;
+    history.replaceState(null, '', `#/trackwork${v ? `?line=${v}` : ''}`);
+    drawList();
+    drawChart();
+  };
+  const drawList = () => {
+    listHead.replaceChildren(h('label', { class: 'field inline' }, 'Line ',
+      h('select', { onchange: ev => setLine(ev.target.value) },
+        h('option', { value: '' }, 'All lines'),
+        lines.map(id => { const o = h('option', { value: id }, `${id} ${lineInfo(id).name}`); if (id === lineFilter) o.selected = true; return o; }))));
+    const shown = items.filter(it => !lineFilter || it.l.includes(lineFilter));
+    list.replaceChildren(...trackworkGroups(shown, tw.days));
+  };
+  const drawChart = () => trackworkChart(chart, { items, lines, days: tw.days, selected: lineFilter, onLine: id => { setLine(id === lineFilter ? '' : id); document.getElementById('tw-list-h')?.scrollIntoView({ behavior: 'smooth' }); } });
+  drawList();
+  requestAnimationFrame(drawChart);
+  onResize(drawChart);
+  pageRefresh = async () => { D.trackwork = null; await loadTrackwork(); viewTrackwork(main); };
+}
+
+// Line page: this line's planned trackwork.
+async function lineTrackwork(holder, id) {
+  let tw;
+  try { tw = await loadTrackwork(); } catch { holder.replaceChildren(h('p', { class: 'section-intro' }, 'Not available right now.')); return; }
+  const mine = tw.items.filter(it => it.l.includes(id));
+  holder.replaceChildren(
+    h('p', { class: 'section-intro' }, mine.length ? `${plural(mine.length, 'piece')} of planned work published so far. ` : 'No planned work has been published for this line yet. ',
+      h('a', { href: `#/trackwork${mine.length ? `?line=${id}` : ''}` }, 'See trackwork on all lines')),
+    ...(mine.length ? trackworkGroups(mine, tw.days) : []));
+}
+
+// Items grouped as "On now", "This week", "Next week", "Week of …".
+function trackworkGroups(items, days) {
+  if (!items.length) return [h('p', { class: 'empty-chart' }, 'No planned trackwork has been published for this line yet.')];
+  const now = Date.now();
+  const today = days[0][0];
+  const monday = k => addDays(k, -((dateFromKey(k).getUTCDay() + 6) % 7));
+  const thisMon = monday(today);
+  const groups = new Map();
+  for (const it of items) {
+    const live = it.w.some(([f, t]) => ms(f) <= now && ms(t) > now);
+    const next = it.w.find(([, t]) => ms(t) > now);
+    const startKey = sydKey(Math.max(ms(next[0]), now) + (hourOf(ms(next[0])) < 4 ? -4 * 3600e3 : 0));
+    const mon = monday(startKey);
+    const key = live ? '0' : mon;
+    const label = live ? 'On now' : mon === thisMon ? 'This week' : mon === addDays(thisMon, 7) ? 'Next week' : `Week of ${F.dateUTCShort.format(dateFromKey(mon))}`;
+    if (!groups.has(key)) groups.set(key, { label, items: [] });
+    groups.get(key).items.push(it);
+  }
+  return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, g]) =>
+    h('section', { class: 'tw-group' }, h('h3', {}, g.label), h('ul', { class: 'tw-items' }, g.items.map(trackworkItem))));
+}
+
+const TW_BOILERPLATE = /^(plan your trip|bus routes|replacement buses|most replacement buses|bikes aren|services may be delay|allow extra travel time\.?$)/i;
+function trackworkItem(it) {
+  // The first bullet worth showing: skip ones that only repeat the title with times.
+  const core = it.title.toLowerCase().replace(/\.$/, '').split('. ')[0];
+  const useful = it.bullets.filter(b => !TW_BOILERPLATE.test(b) && !b.toLowerCase().includes(core) && b.length > 20 && !b.endsWith(':'));
+  const first = useful[0];
+  const rest = it.bullets.filter(b => b !== first);
+  return h('li', { class: `tw-item ${TW_SEV[it.sev].cls}`, id: `tw-${it.id}` },
+    h('div', { class: 'tw-item-lines' }, it.l.filter(trackedLine).map(id => badge(id)), it.branch ? h('span', { class: 'muted' }, it.branch) : null),
+    h('p', { class: 'tw-item-title' }, it.title),
+    h('p', { class: 'tw-item-when' }, twWhen(it.w)),
+    first ? h('p', { class: 'tw-item-text' }, first) : null,
+    h('div', { class: 'tw-item-foot' },
+      rest.length ? h('details', {}, h('summary', {}, 'More details'), h('ul', {}, rest.map(b => h('li', {}, b)))) : null,
+      h('a', { href: `https://transportnsw.info/alerts/details#/${encodeURIComponent(it.id)}`, rel: 'noopener' }, 'Full alert on transportnsw.info')));
+}
+
+// The timeline: one row per line, a block for each window of planned work.
+function trackworkChart(container, { items, lines, days, selected, onLine }) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const S = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
+  const W = Math.max(300, container.clientWidth);
+  const narrow = W < 640;
+  const labelW = 54, padR = 6, headH = narrow ? 40 : 52, rowH = narrow ? 30 : 34;
+  const t0 = ms(days[0][1]), t1 = ms(days[days.length - 1][1]);
+  const plotW = W - labelW - padR;
+  const x = t => labelW + ((Math.min(Math.max(t, t0), t1) - t0) / (t1 - t0)) * plotW;
+  const H = headH + lines.length * rowH + 6;
+  const svg = S('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'group', 'aria-label': 'Planned trackwork by line and day' });
+  const dayW = plotW / (days.length - 1);
+  // Days: weekend shading and labels.
+  for (let i = 0; i < days.length - 1; i++) {
+    const [key, start] = days[i];
+    const a = x(ms(start)), b = x(ms(days[i + 1][1]));
+    const dow = dateFromKey(key).getUTCDay();
+    if (dow === 0 || dow === 6) svg.append(S('rect', { x: a, y: headH - 6, width: b - a, height: H - headH + 6, class: 'tw-weekend' }));
+    const d = dateFromKey(key).getUTCDate();
+    const showNum = dayW >= 18 || dow === 1 || i === 0;
+    if (showNum) {
+      const tx = S('text', { x: (a + b) / 2, y: headH - 10, 'text-anchor': 'middle', class: dow === 0 || dow === 6 ? 'tw-day tw-day-we' : 'tw-day' });
+      tx.textContent = String(d);
+      svg.append(tx);
+    }
+    if (dayW >= 18) {
+      const wd = S('text', { x: (a + b) / 2, y: headH - 24, 'text-anchor': 'middle', class: 'tw-wd' });
+      wd.textContent = 'SMTWTFS'[dow];
+      svg.append(wd);
+    }
+    // Month names on their own row, at the first day shown and each 1st.
+    if (i === 0 || d === 1) {
+      const m = S('text', { x: a + (dayW >= 18 ? dayW / 2 : 0), y: 11, 'text-anchor': dayW >= 18 ? 'middle' : 'start', class: 'tw-month' });
+      m.textContent = F.monthShort.format(dateFromKey(key));
+      svg.append(m);
+    }
+  }
+  // Rows.
+  lines.forEach((id, r) => {
+    const y = headH + r * rowH;
+    const cy = y + rowH / 2;
+    const l = lineInfo(id);
+    const g = S('g', { class: `tw-row${selected && selected !== id ? ' tw-dim' : ''}` });
+    g.append(S('line', { x1: labelW, x2: W - padR, y1: cy, y2: cy, class: 'tw-rail' }));
+    const a = S('a', { href: `#/trackwork?line=${id}`, 'aria-label': `Show trackwork on ${fullName(l)}` });
+    a.addEventListener('click', ev => { ev.preventDefault(); onLine(id); });
+    a.append(S('rect', { x: 2, y: cy - 10, width: 44, height: 20, rx: 5, fill: l.color }));
+    const tx = S('text', { x: 24, y: cy + 4.5, 'text-anchor': 'middle', class: 'cal-label', style: `fill:${onColor(l.color)};font-weight:700;font-family:var(--font-narrow)` });
+    tx.textContent = id;
+    a.append(tx);
+    g.append(a);
+    const mine = items.filter(it => it.l.includes(id)).sort((p, q) => p.sev - q.sev);
+    for (const it of mine) {
+      for (const [f, t] of it.w) {
+        const bx = x(ms(f)), bw = Math.max(3, x(ms(t)) - bx);
+        if (ms(t) <= t0 || ms(f) >= t1) continue;
+        const blk = S('rect', { x: bx, y: cy - 8, width: bw, height: 16, rx: Math.min(3, bw / 2), class: `tw-block ${TW_SEV[it.sev].cls}`, tabindex: 0, role: 'button',
+          'aria-label': `${id}: ${it.title}. ${twWhen([[f, t]])}` });
+        const tip = [{ value: it.title }, { label: `${id}${it.branch ? ` ${it.branch}` : ''}` }, { label: twWhen(it.w), muted: true }];
+        blk.addEventListener('pointermove', ev => showTip(tip, ev.clientX, ev.clientY));
+        blk.addEventListener('pointerleave', hideTip);
+        blk.addEventListener('focus', () => { const r2 = blk.getBoundingClientRect(); showTip(tip, r2.left + r2.width / 2, r2.top); });
+        blk.addEventListener('blur', hideTip);
+        const go = () => {
+          hideTip();
+          const card = document.getElementById(`tw-${it.id}`);
+          if (!card) { onLine(''); requestAnimationFrame(() => document.getElementById(`tw-${it.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return; }
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.classList.remove('tw-flash'); void card.offsetWidth; card.classList.add('tw-flash');
+        };
+        blk.addEventListener('click', go);
+        blk.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(); } });
+        g.append(blk);
+      }
+    }
+    svg.append(g);
+  });
+  // Now marker.
+  const now = Date.now();
+  if (now > t0 && now < t1) {
+    const nx = x(now);
+    svg.append(S('line', { x1: nx, x2: nx, y1: headH - 4, y2: H - 2, class: 'tw-now' }));
+    const nl = S('text', { x: nx - 4, y: H - 4, 'text-anchor': 'end', class: 'tw-now-label' });
+    nl.textContent = 'Now';
+    if (!narrow) svg.append(nl);
+  }
+  container.replaceChildren(svg);
+}
+
 // ---------- trip page ----------
 // Pick two stations, see what is happening on the lines between them, then open the official
 // transportnsw.info planner with the trip filled in (this site has no journey planner of its own).
@@ -1542,7 +1813,7 @@ async function route() {
   const main = document.getElementById('main');
   const hash = location.hash || '#/';
   const navKey = hash.startsWith('#/log') ? 'log' : hash.startsWith('#/about') ? 'about' : hash.startsWith('#/trip') ? 'trip'
-    : hash.startsWith('#/service') ? 'service' : hash.startsWith('#/line') ? '' : 'overview';
+    : hash.startsWith('#/service') ? 'service' : hash.startsWith('#/trackwork') ? 'trackwork' : hash.startsWith('#/line') ? '' : 'overview';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === navKey) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let m;
@@ -1551,6 +1822,7 @@ async function route() {
     else if (hash.startsWith('#/about')) viewAbout(main);
     else if (hash.startsWith('#/trip')) await viewTrip(main);
     else if (hash.startsWith('#/service')) await viewService(main);
+    else if (hash.startsWith('#/trackwork')) await viewTrackwork(main);
     else { document.title = 'NSW Rail Disruptions'; viewOverview(main); }
   } catch (e) {
     console.error(e);
@@ -1562,7 +1834,7 @@ let lastHashPath = null;
 window.addEventListener('hashchange', () => {
   const pathOnly = location.hash.split('?')[0];
   // Filter changes on the log and service pages update the query string without re-rendering.
-  if ((pathOnly === '#/log' || pathOnly === '#/service') && lastHashPath === pathOnly) return;
+  if ((pathOnly === '#/log' || pathOnly === '#/service' || pathOnly === '#/trackwork') && lastHashPath === pathOnly) return;
   lastHashPath = pathOnly;
   route().then(() => { if (!location.hash.startsWith('#/log')) window.scrollTo(0, 0); document.getElementById('main').focus({ preventScroll: true }); });
 });
@@ -1580,7 +1852,7 @@ function isStale() {
 }
 function onOverview() {
   const hash = location.hash || '#/';
-  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip|service)/.test(hash);
+  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip|service|trackwork)/.test(hash);
 }
 function userIsInteracting() {
   const main = document.getElementById('main');
@@ -1620,7 +1892,7 @@ async function checkForUpdates() {
       const [daily, status, delays] = await Promise.all(['daily', 'status', 'delays'].map(n => getJson(`data/${n}.json?t=${Date.now()}`)));
       const clock = await getJson(`data/clock.json?t=${Date.now()}`).catch(() => null);
       attachService(daily);
-      Object.assign(D, { meta, daily, status, delays, clock, line: {}, log: {}, service: null, serviceDay: {} });
+      Object.assign(D, { meta, daily, status, delays, clock, line: {}, log: {}, service: null, serviceDay: {}, trackwork: null });
       liveRedraw();
     } else if (redrawPending || (onOverview() && !!document.querySelector('.stale-note') !== isStale())) {
       liveRedraw();

@@ -415,3 +415,50 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .stat + .stat { border-left: 0; border-top: 1px solid var(--rule); }
 }
 .nowrap { white-space: nowrap; }
+
+/* Trackwork ahead: one track per line, blocks where work is planned */
+.tw-head { margin: 4px 0 8px; }
+.tw-headline { font-family: var(--font-narrow); font-weight: 600; font-size: clamp(1.6rem, 3.4vw, 2.3rem); line-height: 1.18; max-width: 30ch; margin: 0 0 8px; }
+.tw-headline .badge { font-size: 0.72em; margin: 0 0.04em; }
+.tw-sub { color: var(--ink-2); font-size: 1.02rem; margin: 0 0 4px; max-width: 72ch; }
+.tw-sub .badge { font-size: 0.85rem; }
+.tw-timeline .chart-note { font-size: 0.88rem; color: var(--muted); margin: 4px 0 10px; max-width: 80ch; }
+.tw-chart { position: relative; }
+.tw-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tw-weekend { fill: var(--surface-2); }
+.tw-day { font: 600 11px var(--font-narrow); fill: var(--ink-2); }
+.tw-day-we { fill: var(--ink); }
+.tw-wd { font: 500 10px var(--font); fill: var(--muted); }
+.tw-month { font: 600 11px var(--font); fill: var(--muted); }
+.tw-rail { stroke: var(--rule-strong); stroke-width: 2; }
+.tw-row.tw-dim { opacity: 0.35; }
+.tw-block { cursor: pointer; }
+.tw-block:focus { outline: none; }
+.tw-block:focus-visible { stroke: var(--focus); stroke-width: 2; }
+.tw-s3 { fill: var(--plan-5); --tw: var(--plan-5); }
+.tw-s2 { fill: var(--plan-3); --tw: var(--plan-3); }
+.tw-s1 { fill: var(--plan-1); --tw: var(--plan-1); }
+.tw-s0 { fill: transparent; stroke: var(--plan-3); stroke-dasharray: 3 2; --tw: var(--rule-strong); }
+.tw-now { stroke: var(--heat-4); stroke-width: 2; }
+.tw-now-label { font: 600 10px var(--font); fill: var(--heat-5); }
+.tw-key { margin-top: 10px; }
+.tw-sw { background: var(--tw); }
+.tw-group h3 { font-size: 1.05rem; margin: 22px 0 6px; }
+.tw-items { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 0 48px; }
+.tw-item { position: relative; padding: 12px 0 12px 16px; border-top: 1px solid var(--rule); }
+.tw-item::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 2px; background: var(--tw); }
+.tw-item.tw-s0::before { background: none; border: 1px dashed var(--plan-3); width: 2px; }
+.tw-item-lines { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 0.88rem; }
+.tw-item-lines .badge { font-size: 0.85rem; }
+.tw-item-title { font-weight: 600; font-size: 1.08rem; line-height: 1.35; margin: 6px 0 2px; }
+.tw-item-when { font-family: var(--font-narrow); font-weight: 600; font-size: 1rem; color: var(--ink); margin: 0 0 4px; }
+.tw-item-text { color: var(--ink-2); font-size: 0.95rem; margin: 0 0 6px; max-width: 70ch; }
+.tw-item-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; font-size: 0.9rem; }
+.tw-item-foot details { flex: 1 1 100%; color: var(--ink-2); }
+.tw-item-foot details summary { cursor: pointer; color: var(--ink); }
+.tw-item-foot details ul { margin: 6px 0 4px; padding-left: 1.1em; }
+.tw-item-foot details li { margin-bottom: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .tw-flash { animation: tw-flash 1.6s ease-out; }
+  @keyframes tw-flash { from { background: color-mix(in srgb, var(--plan-2) 35%, transparent); } to { background: transparent; } }
+}

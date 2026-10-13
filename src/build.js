@@ -13,6 +13,7 @@ import { parseCsv } from './lib/csv.js';
 import { readServiceDays } from './lib/service.js';
 import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from './lib/service-stats.js';
 import { delayClock, CAR_LOAD } from './lib/clock.js';
+import { trackworkItems } from './lib/trackwork.js';
 import { addDays, daysBetween, iso, splitByDay, sydDate, sydMidnight, sydHour, toMs, HOUR, DAY, MIN } from './lib/time.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
@@ -263,6 +264,9 @@ function build() {
   // ---------- delay clock ----------
   writeJson(out('data', 'clock.json'), buildClock(service));
 
+  // ---------- trackwork ahead ----------
+  writeJson(out('data', 'trackwork.json'), buildTrackwork(new Set(lines.map(l => l.id))));
+
   // ---------- status (right now) ----------
   const meta = readJson(path.join(DATA_DIR, 'state', 'meta.json'), {});
   const ongoing = events.filter(e => e.ongoing);
@@ -454,6 +458,18 @@ function buildClock(service) {
     hours,
     assumptions: { rideMinutes: RIDE_MINUTES, carLoad: CAR_LOAD },
   };
+}
+
+// ---------- trackwork ahead ----------
+// trackwork.json: planned alerts still to come, with the Sydney days the page's timeline covers
+// (from today until the last published closure, at least two weeks and at most five).
+function buildTrackwork(lineIds) {
+  const open = Object.values(readJson(path.join(DATA_DIR, 'alerts', 'open.json'), { open: {} }).open || {});
+  const items = trackworkItems(open, now).map(it => ({ ...it, l: it.l.filter(l => lineIds.has(l)) })).filter(it => it.l.length);
+  const lastEnd = Math.max(0, ...items.flatMap(it => it.w.map(([, t]) => Date.parse(t))));
+  const n = Math.max(14, Math.min(35, daysBetween(today, sydDate(lastEnd || now)) + 1));
+  const days = Array.from({ length: n + 1 }, (_, i) => { const d = addDays(today, i); return [d, iso(sydMidnight(d))]; });
+  return { generatedAt: iso(now), days, items };
 }
 
 // Station id → short name ("Central"), from the timetable station lists.
