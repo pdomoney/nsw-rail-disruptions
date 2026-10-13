@@ -370,18 +370,21 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .key-late { background: var(--heat-4); }
 .key-wait { background: var(--heat-6); }
 
-/* Hero layout. Wide: headline and current disruptions on the left; delay clock, today's trips and lines
-   running late in a narrow column on the right. With no disruptions, the clock stays on the right and the
-   other two sit under the headline. Narrow: one column, disruptions first. */
+/* Hero layout. Wide: headline with the delay clock beside it; current disruptions across the full width,
+   two to a row; then today's trips and the lines running late. Narrow: one column, disruptions first. */
 .now {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 290px); column-gap: 56px; align-items: start;
-  grid-template-areas: "head side" "list side"; grid-template-rows: auto 1fr;
+  grid-template-areas: "head side" "list list" "extra extra";
 }
-.now-quiet { grid-template-areas: "head side" "extra side"; }
 .now-head { grid-area: head; }
 .now-side { grid-area: side; display: grid; gap: 24px; margin-top: 10px; }
 .now-list-wrap { grid-area: list; }
-.now-extra { grid-area: extra; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px 40px; margin-top: 22px; align-items: start; }
+.now-extra { grid-area: extra; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px 56px; margin-top: 28px; align-items: start; }
+.now .now-alerts { max-width: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); column-gap: 56px; border-top: 0; border-bottom: 1px solid var(--rule); }
+.now .now-alert { border-bottom: 0; border-top: 1px solid var(--rule-strong); }
+/* A single disruption gets the whole row, with longer lines. */
+.now .now-alert:only-child .now-alert-summary { max-width: 90ch; }
+.now .now-alert:only-child .alert-text { max-width: 100ch; }
 .clock, .side-block { padding: 2px 0 2px 16px; border-left: 2px solid var(--rule-strong); }
 .clock { border-left-color: var(--heat-4); }
 .clock-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
@@ -399,7 +402,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .late-text { line-height: 1.3; }
 .late-text strong { color: var(--ink); font-weight: 600; }
 @media (max-width: 900px) {
-  .now, .now-quiet { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "list" "side" "extra"; grid-template-rows: none; }
-  .now-side { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px 40px; margin-top: 22px; align-items: start; }
+  .now { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "list" "side" "extra"; }
+  .now-side { margin-top: 26px; }
+  .now-extra { margin-top: 22px; }
 }
 .nowrap { white-space: nowrap; }

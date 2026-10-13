@@ -410,19 +410,16 @@ function clockDay(date) {
 }
 const hoursLabel = minutes => Math.round(minutes / 60).toLocaleString('en-AU');
 let clockTimer = null;
-// The hero: headline, then the current disruptions on the left; on the right, the delay clock, today's
-// trips and the lines running late now. With no disruptions, the last two sit under the headline.
+// The hero: headline with the delay clock beside it, the current disruptions across the full width, then
+// today's trips and the lines running late now.
 function nowSection(head, sub, stale) {
   const alerts = nowAlerts();
   const clock = clockBand();
   const extra = [tripsTodayBlock(), lateNowBlock()].filter(Boolean);
-  const headEl = h('div', { class: 'now-head' }, Object.assign(head, { id: 'now-h' }), sub, stale);
-  if (alerts) {
-    return h('section', { class: 'now', 'aria-labelledby': 'now-h' }, headEl,
-      h('div', { class: 'now-side' }, clock, extra), h('div', { class: 'now-list-wrap' }, alerts));
-  }
-  return h('section', { class: 'now now-quiet', 'aria-labelledby': 'now-h' }, headEl,
+  return h('section', { class: 'now', 'aria-labelledby': 'now-h' },
+    h('div', { class: 'now-head' }, Object.assign(head, { id: 'now-h' }), sub, stale),
     clock ? h('div', { class: 'now-side' }, clock) : null,
+    alerts ? h('div', { class: 'now-list-wrap' }, alerts) : null,
     extra.length ? h('div', { class: 'now-extra' }, extra) : null);
 }
 
