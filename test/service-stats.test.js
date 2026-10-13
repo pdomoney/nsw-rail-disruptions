@@ -45,6 +45,8 @@ test('a day of trips is summarised per line', () => {
   assert.deepEqual(get('T1'), {
     sched: 6, due: 5, counted: 5, ran: 2, late: 1, part: 1, cancelled: 1, missing: 1, unclear: 1, untracked: 0, added: 1,
     paxCounted: 1632 + 4 * 1360, paxLost: 2 * 1360, // A runs for an hour
+    // B's passengers wait for C (1000 s), C's for D (1000 s).
+    lostWaitMin: Math.round(2 * 1360 * (1000 / 60)),
   });
   // The South Coast railcars never appear in the feed, so they are not judged.
   assert.equal(get('SCO').untracked, 2);

@@ -11,6 +11,7 @@ const F = {
   dateUTCShort: new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', day: 'numeric', month: 'short' }),
   time: new Intl.DateTimeFormat('en-AU', { timeZone: TZ, hour: 'numeric', minute: '2-digit' }),
   dayKey: new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }),
+  hour: new Intl.DateTimeFormat('en-AU', { timeZone: TZ, hour: 'numeric', hourCycle: 'h23' }),
 };
 const ms = s => Date.parse(s);
 const time = s => F.time.format(new Date(ms(s))).replace(' ', ' ');
@@ -74,7 +75,7 @@ function stateEl(kind, label) {
 }
 
 // ---------- data ----------
-const D = { meta: null, daily: null, status: null, delays: null, line: {}, log: {}, service: null, serviceDay: {} };
+const D = { meta: null, daily: null, status: null, delays: null, clock: null, line: {}, log: {}, service: null, serviceDay: {} };
 async function getJson(p) {
   const r = await fetch(p, { cache: 'no-cache' });
   if (!r.ok) throw new Error(`Could not load ${p} (HTTP ${r.status})`);
@@ -383,10 +384,59 @@ function viewOverview(main) {
 
   main.replaceChildren(
     h('section', { class: 'now', 'aria-labelledby': 'now-h' }, Object.assign(head, { id: 'now-h' }), sub, stale, nowAlerts()),
+    clockBand(),
     board,
     calendarSection(),
     rankingSection(),
   );
+}
+
+// ---------- delay clock ----------
+// Passenger-hours lost to lateness and to waiting after cancelled trips, per line and day.
+function clockDay(date) {
+  const c = D.clock;
+  const j = c?.days.indexOf(date) ?? -1;
+  const byLine = {};
+  let late = 0, wait = 0;
+  if (j < 0) return { late, wait, byLine, found: false };
+  for (const [id, perDay] of Object.entries(c.lines)) {
+    const v = perDay[j];
+    if (!v || !D.meta.lines.some(l => l.id === id)) continue;
+    byLine[id] = v;
+    late += v[0]; wait += v[1];
+  }
+  return { late, wait, byLine, found: true };
+}
+const hoursLabel = minutes => Math.round(minutes / 60).toLocaleString('en-AU');
+let clockTimer = null;
+function clockBand() {
+  const c = D.clock;
+  const today = sydKey(Date.now());
+  const day = clockDay(today);
+  if (!c || !day.found || !(day.late + day.wait > 0)) return null;
+  const num = h('span', { class: 'clock-num' });
+  const base = day.late + day.wait;
+  // Between data updates the clock keeps counting at the latest rate (for up to 15 minutes).
+  const tick = () => {
+    const since = c.asOf ? Math.min(15, Math.max(0, (Date.now() - ms(c.asOf)) / 60000)) : 0;
+    num.textContent = hoursLabel(base + (c.perMin || 0) * since);
+  };
+  tick();
+  clearInterval(clockTimer);
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  clockTimer = setInterval(tick, reduce ? 60000 : 2000);
+  const yesterday = clockDay(addDays(today, -1));
+  // Say so when today's readings started late (the first day, or after an outage).
+  const firstAt = c.firstAt?.[c.days.indexOf(today)];
+  const lateStart = !!firstAt && Number(F.hour.format(new Date(ms(firstAt)))) >= 5;
+  return h('section', { class: 'clock', 'aria-labelledby': 'clock-h' },
+    h('h2', { id: 'clock-h', class: 'clock-label' }, 'Delay clock'),
+    h('p', { class: 'clock-main' }, num, h('span', { class: 'clock-unit' }, lateStart ? ` passenger-hours lost since ${time(firstAt)}` : ' passenger-hours lost today'),
+      h('span', { class: 'clock-sub' }, ' to late trains and metros, and to waiting after cancelled trains.')),
+    h('p', { class: 'clock-meta' },
+      c.perMin && c.asOf ? `At ${time(c.asOf)}, about ${compact(c.aboard)} people were on board, together losing ${plural(Math.round(c.perMin), 'minute')} every minute. ` : '',
+      yesterday.found && yesterday.late + yesterday.wait > 0 ? `Yesterday: ${hoursLabel(yesterday.late + yesterday.wait)} hours. ` : '',
+      'A rough estimate from TfNSW occupancy and live trip data. ', h('a', { href: '#/service' }, 'How it is worked out')));
 }
 
 function calendarSection() {
@@ -897,6 +947,17 @@ async function viewService(main) {
   const listHead = h('div', { class: 'filters' });
   const listHolder = h('div');
   const listSection = h('section', { class: 'section', 'aria-labelledby': 'svc-list-h' }, h('h2', { id: 'svc-list-h' }, 'Trips that did not run'), listHead, listHolder);
+  const clockHead = h('div', { class: 'svc-headline' });
+  const cClockLines = h('div', { class: 'chart' }), cClockTime = h('div', { class: 'chart' });
+  const nClockTime = h('p', { class: 'chart-note' }), hClockTime = h('h3', {});
+  const clockSection = h('section', { class: 'section', id: 'clock', 'aria-labelledby': 'svc-clock-h' },
+    h('h2', { id: 'svc-clock-h' }, 'Delay clock'),
+    h('p', { class: 'section-intro' }, 'A rough count of the time passengers lose: minutes late arriving, for everyone on a late train or metro, plus the wait for the next train for everyone whose train was cancelled or never turned up. Sydney Trains, Intercity and Metro only.'),
+    clockHead,
+    h('div', { class: 'chart-grid' },
+      h('div', { class: 'chart-block' }, h('h3', {}, 'Passenger-hours lost, by line'), h('p', { class: 'chart-note' }, 'For the period selected above.'), cClockLines,
+        h('div', { class: 'key' }, h('span', {}, h('i', { class: 'key-late' }), 'Arriving late'), h('span', {}, h('i', { class: 'key-wait' }), 'Waiting after a lost trip'))),
+      h('div', { class: 'chart-block' }, hClockTime, nClockTime, cClockTime)));
 
   mount(main,
     h('div', { class: 'line-head' }, h('h1', {}, 'Service delivered')),
@@ -908,6 +969,7 @@ async function viewService(main) {
       h('div', { class: 'chart-block' }, h('h3', {}, 'When trips were lost'), nHour, cHour),
       daysBlock),
     h('p', {}, toggle), tableHolder,
+    clockSection,
     listSection,
     h('details', { class: 'method' }, h('summary', {}, 'How this is worked out'),
       h('ul', {},
@@ -916,6 +978,7 @@ async function viewService(main) {
         h('li', {}, 'Only trips that were due while the live data was being collected are judged. Some train types hardly ever appear in the live data (the Hunter Line’s diesel railcars, for example), so their trips are not judged either.'),
         h('li', {}, 'Late means arriving at the last stop 5 or more minutes behind the timetable (6 for Intercity), using the last delay the feed gave for that stop.'),
         h('li', {}, 'People on lost trips is a rough estimate for Sydney Trains and Intercity, where TfNSW forecasts how full each trip will be: carriages × an assumed load for the forecast level × the trip’s length in average 25-minute journeys. Treat it as an order of magnitude.'),
+        h('li', {}, 'The delay clock uses the occupancy TfNSW publishes for each carriage (predicted for Sydney Trains and Intercity, measured on board for Metro), turned into people with assumed loads: from 5 people in an empty carriage to 180 in a full one. At each reading, a train carrying L people D minutes late is taken to drop off L ÷ 25 people a minute, each D minutes late. Services with no occupancy figure are assumed to be like those with one. People on a lost trip wait until the next timetabled train on the line in the same direction, up to an hour.'),
         h('li', {}, 'This is not TfNSW’s official on-time running measure, which uses peak-hour arrivals at key stations.'))));
 
   const dayIndexes = () => {
@@ -1032,6 +1095,8 @@ async function viewService(main) {
         ticks: dayCols.map((d, i) => ({ i, label: F.dateUTCShort.format(dateFromKey(d.date)) })).filter((t, i) => i % Math.max(1, Math.ceil(dayCols.length / 6)) === 0), yUnit: '%', ariaLabel: 'Share of trips lost per day' });
     }
 
+    drawClock(idxs, date);
+
     // Table
     toggle.textContent = showTable ? 'Hide the table' : 'Show all lines as a table';
     tableHolder.replaceChildren(showTable ? serviceTable(lines, K) : '');
@@ -1054,6 +1119,53 @@ async function viewService(main) {
           lineIds.map(id => { const o = h('option', { value: id }, `${id} ${lineInfo(id).name}`); if (id === lineFilter) o.selected = true; return o; }))),
       h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: showAll || null, onchange: ev => { showAll = ev.target.checked; draw(); } }), 'Also show late trips and trips that skipped stops'));
     listHolder.replaceChildren(tripList(detail, lineIds.filter(id => !lineFilter || id === lineFilter), showAll));
+  };
+  // Delay clock for the same period.
+  const drawClock = (idxs, date) => {
+    const c = D.clock;
+    clockSection.hidden = !c || !c.days.length;
+    if (clockSection.hidden) return;
+    const dates = idxs.map(j => days[j].date);
+    const perDate = dates.map(d => [d, clockDay(d)]).filter(([, x]) => x.found);
+    const tot = { late: 0, wait: 0 }, byLine = {};
+    for (const [, x] of perDate) {
+      tot.late += x.late; tot.wait += x.wait;
+      for (const [id, [l, w]] of Object.entries(x.byLine)) { const b = (byLine[id] ||= [0, 0]); b[0] += l; b[1] += w; }
+    }
+    const when = period === 'today' ? 'Today so far' : period === 'yesterday' ? 'Yesterday' : period === '7d' ? 'Over the last 7 days' : period === '30d' ? 'Over the last 30 days' : `On ${F.dateUTC.format(dateFromKey(period))}`;
+    if (!(tot.late + tot.wait > 0)) {
+      clockHead.replaceChildren(h('p', {}, 'No delay clock figures for this period yet.'));
+      cClockLines.replaceChildren(); cClockTime.replaceChildren(); hClockTime.textContent = ''; nClockTime.textContent = '';
+      return;
+    }
+    clockHead.replaceChildren(h('h2', {}, `${when}, about ${hoursLabel(tot.late + tot.wait)} passenger-hours were lost.`),
+      h('p', {}, `${hoursLabel(tot.late)} hours arriving late and ${hoursLabel(tot.wait)} hours waiting after cancelled or missing trains.`));
+    const order = id => D.meta.lines.findIndex(l => l.id === id);
+    const items = Object.entries(byLine).filter(([, [l, w]]) => l + w >= 30).map(([id, [l, w]]) => {
+      const li = lineInfo(id);
+      return { id, label: li.name, short: id, color: li.color, href: `#/line/${id}`, value: (l + w) / 60, valueLabel: `${hoursLabel(l + w)} h`,
+        segments: [{ value: l / 60, fillClass: 'mark-late' }, { value: w / 60, fillClass: 'mark-wait' }],
+        tip: [{ value: `${hoursLabel(l + w)} passenger-hours` }, { label: fullName(li) }, { label: `${hoursLabel(l)} h late, ${hoursLabel(w)} h waiting`, muted: true }] };
+    }).sort((x, y) => y.value - x.value || order(x.id) - order(y.id));
+    if (items.length) hbars(cClockLines, { items, badges: true, ariaLabel: 'Passenger-hours lost by line' });
+    else cClockLines.replaceChildren(h('p', { class: 'empty-chart' }, 'Less than an hour lost on every line.'));
+    const hourLabel = i => (i === 0 ? '12 am' : i < 12 ? `${i} am` : i === 12 ? '12 pm' : `${i - 12} pm`);
+    if (date) {
+      hClockTime.textContent = 'Lateness through the day';
+      nClockTime.textContent = 'Passenger-hours lost arriving late, by hour (waiting after lost trips is not included here).';
+      const hrs = c.hours?.[date];
+      if (hrs?.some(v => v > 0)) {
+        columns(cClockTime, { items: hrs.map((v, i) => ({ value: v / 60, tip: [{ value: `${hoursLabel(v)} passenger-hours` }, { label: `${hourLabel(i)} to ${hourLabel((i + 1) % 24)}` }] })),
+          ticks: [0, 6, 12, 18].map(i => ({ i, label: hourLabel(i) })), yUnit: ' h', ariaLabel: 'Passenger-hours lost by hour' });
+      } else cClockTime.replaceChildren(h('p', { class: 'empty-chart' }, 'No hourly figures for this day.'));
+    } else {
+      hClockTime.textContent = 'Each day';
+      nClockTime.textContent = 'Passenger-hours lost per day, all lines.';
+      if (perDate.length >= 2) {
+        columns(cClockTime, { items: perDate.map(([d, x]) => ({ value: (x.late + x.wait) / 60, tip: [{ value: `${hoursLabel(x.late + x.wait)} passenger-hours` }, { label: F.dateUTC.format(dateFromKey(d)) }] })),
+          ticks: perDate.map(([d], i) => ({ i, label: F.dateUTCShort.format(dateFromKey(d)) })).filter((t, i) => i % Math.max(1, Math.ceil(perDate.length / 6)) === 0), yUnit: ' h', ariaLabel: 'Passenger-hours lost per day' });
+      } else cClockTime.replaceChildren(h('p', { class: 'empty-chart' }, 'Not enough days recorded yet.'));
+    }
   };
   pageRefresh = async () => { D.service = null; D.serviceDay = {}; await loadService(); draw(); };
   draw();
@@ -1359,6 +1471,7 @@ function notFound(main, msg) {
 // ---------- router ----------
 function resetView() {
   hideTip();
+  clearInterval(clockTimer);
   resizeHandlers = [];
   viewAbort.abort();
   viewAbort = new AbortController();
@@ -1446,8 +1559,9 @@ async function checkForUpdates() {
     const meta = await getJson(`data/meta.json?t=${Date.now()}`);
     if (meta.generatedAt !== D.meta.generatedAt) {
       const [daily, status, delays] = await Promise.all(['daily', 'status', 'delays'].map(n => getJson(`data/${n}.json?t=${Date.now()}`)));
+      const clock = await getJson(`data/clock.json?t=${Date.now()}`).catch(() => null);
       attachService(daily);
-      Object.assign(D, { meta, daily, status, delays, line: {}, log: {}, service: null, serviceDay: {} });
+      Object.assign(D, { meta, daily, status, delays, clock, line: {}, log: {}, service: null, serviceDay: {} });
       liveRedraw();
     } else if (redrawPending || (onOverview() && !!document.querySelector('.stale-note') !== isStale())) {
       liveRedraw();
@@ -1463,6 +1577,7 @@ async function checkForUpdates() {
   try {
     [D.meta, D.daily, D.status, D.delays] = await Promise.all(['meta', 'daily', 'status', 'delays'].map(n => getJson(`data/${n}.json`)));
     attachService(D.daily);
+    D.clock = await getJson('data/clock.json').catch(() => null);
   } catch (e) {
     document.getElementById('main').replaceChildren(h('div', { class: 'error-box' }, h('h1', {}, 'The data could not be loaded'), h('p', {}, e.message),
       h('p', {}, 'If this site was just set up, the first collection run may not have finished yet. Try again in a few minutes.')));

@@ -8,6 +8,7 @@ An open, read-only record of delays, outages and service interruptions on Sydney
 - **Line pages:** history of unplanned disruption and planned closures, causes, the time of day incidents start, live delay trends, and every alert for the line.
 - **Alert log:** every recorded alert since July 2023, searchable by line, type, cause and text.
 - **Service delivered:** how many timetabled trips actually ran, per line and day: trips cancelled, trips that never appeared in the live data, trips late at the end of the line, when in the day trips were lost, and a rough estimate of the people on lost trips. Each day's timetable is frozen in the morning and every trip in it is followed through the live trip data.
+- **Delay clock:** a running estimate of the passenger-hours lost to late trains and metros, and to waiting after cancelled trains, today and per line and day.
 - **Plan a trip:** pick two stations to see the lines between them, their current disruptions, today's trackwork, live delays and the last 30 days' reliability, then open the official [transportnsw.info](https://transportnsw.info) trip planner with the trip filled in. This site does not plan journeys itself: the TfNSW planner API cannot be called from a browser without exposing the API key.
 
 It is an independent project and is not affiliated with Transport for NSW. For live travel information use [transportnsw.info](https://transportnsw.info/alerts).
@@ -104,6 +105,8 @@ The bulk download is about 4 GB and the replay takes about 25 minutes.
 - **Causes** are read from the alert text with keyword rules (`src/lib/classify.js`), so they are only as good as the wording.
 - **Delays** come from GTFS-realtime trip updates. For each running service the collector takes the delay at the most recent stop it has passed. A service counts as late at 5 minutes or more (6 for Intercity), the thresholds TfNSW uses for punctuality.
 - An incident that affects several lines is counted on each of them.
+- **Service delivered** compares each day's timetable (frozen in the morning) with the live trip data. Trips marked cancelled in the feed, and trips that never appear in it, count as lost; everything else counts as run. Trips are only judged if they were due while the feed was being read, and only for train types that appear in the live data at least half the time (the Hunter Line's diesel railcars never do). "Empty Train" runs are left out. Late means 5 minutes or more behind at the last stop (6 for Intercity).
+- **The delay clock** turns TfNSW's per-carriage occupancy levels (predicted for Sydney Trains and Intercity, measured for Metro) into people with assumed loads, from 5 people in an empty carriage to 180 in a full one (`src/lib/clock.js`). At each reading, a service carrying L people that is D minutes late is taken to drop off L ÷ 25 people a minute, each D minutes late. Services without an occupancy figure are assumed to be like those with one. People on a cancelled or missing trip wait for the next timetabled train on the line in the same direction (up to an hour), with the trip's load taken from TfNSW's occupancy forecast. Light rail is not included. All of this is an order-of-magnitude estimate.
 
 ## Licence and attribution
 

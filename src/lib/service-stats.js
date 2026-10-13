@@ -21,7 +21,9 @@ const C = Object.fromEntries(TRIP_COLUMNS.map((c, i) => [c, i]));
 //   added      extra trips that ran (not in the timetable)
 //   paxCounted, paxLost  estimated passengers on counted trips and on cancelled or missing ones
 //                        (Sydney Trains and Intercity only, where TfNSW forecasts occupancy)
-export const COUNTERS = ['sched', 'due', 'counted', 'ran', 'late', 'part', 'cancelled', 'missing', 'unclear', 'untracked', 'added', 'paxCounted', 'paxLost'];
+//   lostWaitMin  passenger-minutes spent waiting for the next train by people on lost trips: each
+//                waits until the next timetabled trip on the line in the same direction (at most an hour)
+export const COUNTERS = ['sched', 'due', 'counted', 'ran', 'late', 'part', 'cancelled', 'missing', 'unclear', 'untracked', 'added', 'paxCounted', 'paxLost', 'lostWaitMin'];
 const K = Object.fromEntries(COUNTERS.map((c, i) => [c, i]));
 
 // Rough passengers aboard one carriage at each TfNSW occupancy level (empty, many seats, few seats,
@@ -111,6 +113,19 @@ export function summariseDay(record, { nowSec = null, tracked = null } = {}) {
   for (const [feedKey, feed] of Object.entries(record.feeds || {})) {
     const cov = feed.coverage || [];
     const rows = feed.trips || [];
+    // Timetabled departures by line and direction, to find the next train after a lost one.
+    const starts = new Map();
+    for (const r of rows) {
+      if (r[C.start] == null || (r[C.flags] & FLAG.UNSCHEDULED) || isEmptyRun(r)) continue;
+      const k = `${r[C.line]}|${r[C.dir]}`;
+      if (!starts.has(k)) starts.set(k, []);
+      starts.get(k).push(r[C.start]);
+    }
+    for (const list of starts.values()) list.sort((a, b) => a - b);
+    const gapAfter = r => {
+      const next = (starts.get(`${r[C.line]}|${r[C.dir]}`) || []).find(t => t > r[C.start]);
+      return next == null ? 30 : Math.min(60, (next - r[C.start]) / 60);
+    };
     for (const r of rows) {
       const line = r[C.line];
       if (!line) continue;
@@ -146,13 +161,13 @@ export function summariseDay(record, { nowSec = null, tracked = null } = {}) {
         c[K[o]]++;
         if (o === 'cancelled' || o === 'missing') {
           h[hr][1]++;
-          if (pax != null) c[K.paxLost] += pax;
+          if (pax != null) { c[K.paxLost] += pax; c[K.lostWaitMin] += pax * gapAfter(r); }
         }
       }
       (trips[line] ||= []).push([start, r[C.headsign], r[C.origin], o === 'ran' ? (r[C.skipped] > 0 ? 'part' : 'late') : o, delay, r[C.cars], r[C.forecast]]);
     }
   }
-  for (const c of Object.values(lines)) { c[K.paxCounted] = Math.round(c[K.paxCounted]); c[K.paxLost] = Math.round(c[K.paxLost]); }
+  for (const c of Object.values(lines)) for (const k of [K.paxCounted, K.paxLost, K.lostWaitMin]) c[k] = Math.round(c[k]);
   for (const list of Object.values(trips)) list.sort((a, b) => a[0] - b[0]);
   return { lines, trips, hours };
 }

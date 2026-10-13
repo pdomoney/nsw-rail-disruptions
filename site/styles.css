@@ -365,3 +365,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .method { margin: 36px 0 12px; max-width: 80ch; color: var(--ink-2); }
 .method summary { cursor: pointer; font-weight: 600; color: var(--ink); }
 .method li { margin-bottom: 0.4em; }
+.mark-late { fill: var(--heat-4); }
+.mark-wait { fill: var(--heat-6); }
+.key-late { background: var(--heat-4); }
+.key-wait { background: var(--heat-6); }
+
+/* Delay clock band on the overview */
+.clock { margin: 26px 0 8px; padding: 16px 20px 14px; background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--heat-5); border-radius: 8px; }
+.clock-label { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
+.clock-main { margin: 0; font-size: 1.05rem; color: var(--ink-2); }
+.clock-num { font-family: var(--font-narrow); font-weight: 700; font-size: clamp(2.2rem, 5vw, 3rem); line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.clock-unit { font-family: var(--font-narrow); font-weight: 600; font-size: 1.3rem; color: var(--ink); }
+.clock-meta { margin: 6px 0 0; font-size: 0.9rem; color: var(--muted); max-width: 90ch; }

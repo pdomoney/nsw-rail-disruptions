@@ -11,7 +11,8 @@ import { readAllEvents } from './lib/events.js';
 import { readJson, writeJson, listFiles, readLines, ensureDir } from './lib/store.js';
 import { parseCsv } from './lib/csv.js';
 import { readServiceDays } from './lib/service.js';
-import { summariseDay, pairStats, trackedPairs, COUNTERS } from './lib/service-stats.js';
+import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from './lib/service-stats.js';
+import { delayClock, CAR_LOAD } from './lib/clock.js';
 import { addDays, daysBetween, iso, splitByDay, sydDate, sydMidnight, sydHour, toMs, HOUR, DAY, MIN } from './lib/time.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
@@ -259,6 +260,9 @@ function build() {
     }
   }
 
+  // ---------- delay clock ----------
+  writeJson(out('data', 'clock.json'), buildClock(service));
+
   // ---------- status (right now) ----------
   const meta = readJson(path.join(DATA_DIR, 'state', 'meta.json'), {});
   const ongoing = events.filter(e => e.ongoing);
@@ -393,6 +397,51 @@ function buildService() {
     for (let j = 0; j < service.days.length; j++) if (!service.lines[l][j]) service.lines[l][j] = null;
   }
   return service;
+}
+
+// ---------- delay clock ----------
+// clock.json: passenger-minutes lost per line and day, to lateness (from load/*.csv) and to waiting
+// after a cancelled or missing trip (from the service record), the network rate at the latest run,
+// and lateness by hour for the last 7 days.
+function buildClock(service) {
+  const rows = [];
+  for (const f of listFiles(path.join(DATA_DIR, 'load'), /\.csv$/)) rows.push(...parseCsv(fs.readFileSync(f, 'utf8')));
+  const modeOf = id => LINE_BY_ID[id]?.mode || modeOfLineId(id) || 'train';
+  const { days: byDay, latest, first } = delayClock(rows, modeOf);
+  const K = Object.fromEntries(COUNTERS.map((c, i) => [c, i]));
+  const svcIdx = new Map(service.days.map((d, j) => [d.date, j]));
+  const dates = [...new Set([...Object.keys(byDay), ...service.days.map(d => d.date)])].sort();
+  const lineIds = new Set([...Object.values(byDay).flatMap(o => Object.keys(o)), ...Object.keys(service.lines)]);
+  const lines = {};
+  for (const id of lineIds) {
+    const perDay = dates.map(d => {
+      const late = byDay[d]?.[id]?.min ?? null;
+      const j = svcIdx.get(d);
+      const wait = j != null ? service.lines[id]?.[j]?.[K.lostWaitMin] ?? null : null;
+      return late == null && !wait ? null : [Math.round(late || 0), wait || 0];
+    });
+    if (perDay.some(Boolean)) lines[id] = perDay;
+  }
+  const fresh = Object.values(latest).filter(x => now - x.at < 15 * MIN);
+  const hours = {};
+  for (const d of dates.filter(d => daysBetween(d, today) < 7)) {
+    const hrs = new Array(24).fill(0);
+    for (const L of Object.values(byDay[d] || {})) L.hours.forEach((v, i) => { hrs[i] += v; });
+    hours[d] = hrs.map(Math.round);
+  }
+  return {
+    generatedAt: iso(now),
+    asOf: fresh.length ? iso(Math.max(...fresh.map(x => x.at))) : null,
+    perMin: Math.round(fresh.reduce((a, x) => a + x.perMin, 0)),
+    aboard: Math.round(fresh.reduce((a, x) => a + x.pax, 0)),
+    days: dates,
+    // First reading of each day, so a day that started part-way can say so.
+    firstAt: dates.map(d => (first[d] ? iso(first[d]) : null)),
+    cols: ['late', 'wait'],
+    lines,
+    hours,
+    assumptions: { rideMinutes: RIDE_MINUTES, carLoad: CAR_LOAD },
+  };
 }
 
 // Station id → short name ("Central"), from the timetable station lists.
