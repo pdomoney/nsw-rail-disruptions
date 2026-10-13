@@ -1,5 +1,5 @@
 {
- "alertsLastOkAt": "2026-10-13T02:23:54Z",
+ "alertsLastOkAt": "2026-10-13T02:28:42Z",
  "archiveImport": {
   "at": "2026-10-12T11:37:13Z",
   "since": "2023-07-01",
@@ -40,17 +40,17 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-13T02:23:54Z",
+    "at": "2026-10-13T02:28:42Z",
     "endpoint": "/v2/gtfs/realtime/sydneytrains",
-    "bytes": 247828,
-    "entities": 547,
-    "trips": 547,
-    "matched": 391,
-    "feedAgeS": -1,
+    "bytes": 246443,
+    "entities": 541,
+    "trips": 541,
+    "matched": 386,
+    "feedAgeS": 2,
     "unmatched": [
      [
       "RTTA_REV",
-      102
+      101
      ],
      [
       "RTTA_DEF",
@@ -86,67 +86,67 @@
      ]
     ],
     "shape": {
-     "withTimes": 98,
-     "delayOnly": 239,
+     "withTimes": 97,
+     "delayOnly": 235,
      "noStops": 39,
      "tripDelay": 0,
-     "active": 203,
-     "notStarted": 57,
+     "active": 200,
+     "notStarted": 55,
      "finished": 23,
      "noDelay": 93,
      "sample": [
       {
        "route": "ESI_2a",
        "tsDelay": null,
-       "ts": 1791857283,
+       "ts": 1791858503,
        "stops": [
-        {
-         "id": "2233292",
-         "sr": 0,
-         "arr": {
-          "delay": 302
-         },
-         "dep": {
-          "delay": 0
-         }
-        },
         {
          "id": "2233281",
          "sr": 0,
          "arr": {
-          "delay": 0
+          "delay": 150
          },
          "dep": {
-          "delay": 0
+          "delay": 150
          }
         },
         {
          "id": "2233271",
          "sr": 0,
          "arr": {
-          "delay": 0
+          "delay": 150
          },
          "dep": {
-          "delay": 0
+          "delay": 150
          }
         },
         {
          "id": "2232281",
          "sr": 0,
          "arr": {
-          "delay": 0
+          "delay": 150
          },
          "dep": {
-          "delay": 0
+          "delay": 150
+         }
+        },
+        {
+         "id": "2232291",
+         "sr": 0,
+         "arr": {
+          "delay": 150
+         },
+         "dep": {
+          "delay": 120
          }
         }
        ],
-       "nStops": 24
+       "nStops": 23
       },
       {
        "route": "CCN_2a",
        "tsDelay": null,
-       "ts": 1791858202,
+       "ts": 1791858502,
        "stops": [
         {
          "id": "2250791",
@@ -192,48 +192,48 @@
        "nStops": 6
       },
       {
-       "route": "CCN_1c",
+       "route": "IWL_2a",
        "tsDelay": null,
-       "ts": 1791852590,
+       "ts": 1791858521,
        "stops": [
         {
-         "id": "2264202",
+         "id": "214076",
          "sr": 0,
          "arr": {
-          "delay": 224
+          "delay": 7
          },
          "dep": {
-          "delay": 224
+          "delay": 0
          }
         },
         {
-         "id": "2264192",
+         "id": "2135237",
          "sr": 0,
          "arr": {
-          "delay": 224
+          "delay": 0
          },
          "dep": {
-          "delay": 224
+          "delay": 0
          }
         },
         {
-         "id": "2283222",
+         "id": "213495",
          "sr": 0,
          "arr": {
-          "delay": 224
+          "delay": 0
          },
          "dep": {
-          "delay": 224
+          "delay": 0
          }
         },
         {
-         "id": "2283232",
+         "id": "213284",
          "sr": 0,
          "arr": {
-          "delay": 224
+          "delay": 0
          },
          "dep": {
-          "delay": 224
+          "delay": 0
          }
         }
        ],
@@ -257,13 +257,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-13T02:23:54Z",
+    "at": "2026-10-13T02:28:42Z",
     "endpoint": "/v2/gtfs/realtime/metro",
-    "bytes": 54289,
+    "bytes": 54379,
     "entities": 61,
     "trips": 61,
     "matched": 61,
-    "feedAgeS": 7,
+    "feedAgeS": 6,
     "unmatched": [],
     "shape": {
      "withTimes": 61,
@@ -280,7 +280,7 @@
        "start": "13:03:00",
        "date": "20261013",
        "tsDelay": null,
-       "ts": 1791858183,
+       "ts": 1791858453,
        "stops": [
         {
          "seq": 1,
@@ -329,6 +329,65 @@
          "dep": {
           "delay": -8,
           "time": 1791857460
+         }
+        }
+       ],
+       "nStops": 21
+      },
+      {
+       "route": "SMNW_M1",
+       "start": "14:28:00",
+       "date": "20261013",
+       "tsDelay": null,
+       "ts": 1791858468,
+       "stops": [
+        {
+         "seq": 1,
+         "id": "2155269",
+         "sr": 0,
+         "arr": null,
+         "dep": {
+          "delay": 0,
+          "time": 1791862080
+         }
+        },
+        {
+         "seq": 2,
+         "id": "2155267",
+         "sr": 0,
+         "arr": {
+          "delay": 0,
+          "time": 1791862203
+         },
+         "dep": {
+          "delay": 0,
+          "time": 1791862233
+         }
+        },
+        {
+         "seq": 3,
+         "id": "2155265",
+         "sr": 0,
+         "arr": {
+          "delay": 0,
+          "time": 1791862372
+         },
+         "dep": {
+          "delay": 0,
+          "time": 1791862402
+         }
+        },
+        {
+         "seq": 4,
+         "id": "2153402",
+         "sr": 0,
+         "arr": {
+          "delay": 0,
+          "time": 1791862522
+         },
+         "dep": {
+          "delay": 0,
+          "time": 1791862552
          }
         }
        ],
@@ -392,65 +451,6 @@
         }
        ],
        "nStops": 21
-      },
-      {
-       "route": "SMNW_M1",
-       "start": "13:58:00",
-       "date": "20261013",
-       "tsDelay": null,
-       "ts": 1791856667,
-       "stops": [
-        {
-         "seq": 1,
-         "id": "2155269",
-         "sr": 0,
-         "arr": null,
-         "dep": {
-          "delay": 0,
-          "time": 1791860280
-         }
-        },
-        {
-         "seq": 2,
-         "id": "2155267",
-         "sr": 0,
-         "arr": {
-          "delay": 0,
-          "time": 1791860403
-         },
-         "dep": {
-          "delay": 0,
-          "time": 1791860433
-         }
-        },
-        {
-         "seq": 3,
-         "id": "2155265",
-         "sr": 0,
-         "arr": {
-          "delay": 0,
-          "time": 1791860572
-         },
-         "dep": {
-          "delay": 0,
-          "time": 1791860602
-         }
-        },
-        {
-         "seq": 4,
-         "id": "2153402",
-         "sr": 0,
-         "arr": {
-          "delay": 0,
-          "time": 1791860722
-         },
-         "dep": {
-          "delay": 0,
-          "time": 1791860752
-         }
-        }
-       ],
-       "nStops": 21
       }
      ]
     }
@@ -470,30 +470,84 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-13T02:23:54Z",
+    "at": "2026-10-13T02:28:42Z",
     "endpoint": "/v2/gtfs/realtime/lightrail/innerwest",
-    "bytes": 24264,
-    "entities": 23,
-    "trips": 23,
-    "matched": 23,
-    "feedAgeS": 5,
+    "bytes": 24933,
+    "entities": 24,
+    "trips": 24,
+    "matched": 24,
+    "feedAgeS": 8,
     "unmatched": [],
     "shape": {
-     "withTimes": 23,
+     "withTimes": 24,
      "delayOnly": 0,
      "noStops": 0,
-     "tripDelay": 19,
+     "tripDelay": 20,
      "active": 14,
      "notStarted": 9,
-     "finished": 0,
+     "finished": 1,
      "noDelay": 0,
      "sample": [
+      {
+       "route": "IWLR-191",
+       "start": "14:28:00",
+       "date": "20261013",
+       "tsDelay": null,
+       "ts": 1791858515,
+       "stops": [
+        {
+         "seq": 1,
+         "id": "2000257",
+         "sr": 0,
+         "arr": {
+          "time": 1791862080
+         },
+         "dep": {
+          "time": 1791862080
+         }
+        },
+        {
+         "seq": 2,
+         "id": "2000256",
+         "sr": 0,
+         "arr": {
+          "time": 1791862268
+         },
+         "dep": {
+          "time": 1791862268
+         }
+        },
+        {
+         "seq": 3,
+         "id": "2000254",
+         "sr": 0,
+         "arr": {
+          "time": 1791862386
+         },
+         "dep": {
+          "time": 1791862386
+         }
+        },
+        {
+         "seq": 4,
+         "id": "2000265",
+         "sr": 0,
+         "arr": {
+          "time": 1791862560
+         },
+         "dep": {
+          "time": 1791862560
+         }
+        }
+       ],
+       "nStops": 23
+      },
       {
        "route": "IWLR-191",
        "start": "14:23:00",
        "date": "20261013",
        "tsDelay": null,
-       "ts": 1791858230,
+       "ts": 1791858515,
        "stops": [
         {
          "seq": 1,
@@ -547,7 +601,7 @@
        "start": "14:18:00",
        "date": "20261013",
        "tsDelay": null,
-       "ts": 1791858230,
+       "ts": 1791858515,
        "stops": [
         {
          "seq": 1,
@@ -595,60 +649,6 @@
         }
        ],
        "nStops": 23
-      },
-      {
-       "route": "IWLR-191",
-       "start": "14:13:00",
-       "date": "20261013",
-       "tsDelay": null,
-       "ts": 1791858230,
-       "stops": [
-        {
-         "seq": 1,
-         "id": "220363",
-         "sr": 0,
-         "arr": {
-          "time": 1791861180
-         },
-         "dep": {
-          "time": 1791861180
-         }
-        },
-        {
-         "seq": 2,
-         "id": "220364",
-         "sr": 0,
-         "arr": {
-          "time": 1791861271
-         },
-         "dep": {
-          "time": 1791861271
-         }
-        },
-        {
-         "seq": 3,
-         "id": "220366",
-         "sr": 0,
-         "arr": {
-          "time": 1791861324
-         },
-         "dep": {
-          "time": 1791861324
-         }
-        },
-        {
-         "seq": 4,
-         "id": "220368",
-         "sr": 0,
-         "arr": {
-          "time": 1791861382
-         },
-         "dep": {
-          "time": 1791861382
-         }
-        }
-       ],
-       "nStops": 23
       }
      ]
     }
@@ -670,21 +670,21 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-13T02:23:54Z",
+    "at": "2026-10-13T02:28:42Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/cbdandsoutheast",
-    "bytes": 39672,
-    "entities": 62,
-    "trips": 62,
-    "matched": 62,
-    "feedAgeS": 7,
+    "bytes": 39062,
+    "entities": 61,
+    "trips": 61,
+    "matched": 61,
+    "feedAgeS": 0,
     "unmatched": [],
     "shape": {
-     "withTimes": 62,
+     "withTimes": 61,
      "delayOnly": 0,
      "noStops": 0,
      "tripDelay": 0,
      "active": 29,
-     "notStarted": 23,
+     "notStarted": 22,
      "finished": 10,
      "noDelay": 0,
      "sample": [
@@ -693,7 +693,7 @@
        "start": "13:13:00",
        "date": "20261013",
        "tsDelay": null,
-       "ts": 1791858146,
+       "ts": 1791858438,
        "stops": [
         {
          "seq": 1,
@@ -807,20 +807,20 @@
        "nStops": 14
       },
       {
-       "route": "1001_L3",
-       "start": "12:26:00",
+       "route": "1001_L2",
+       "start": "13:42:00",
        "date": "20261013",
        "tsDelay": null,
-       "ts": 1791856628,
+       "ts": 1791858513,
        "stops": [
         {
          "seq": 1,
-         "id": "2000450",
+         "id": "2000449",
          "sr": 0,
          "arr": null,
          "dep": {
-          "delay": 8,
-          "time": 1791854768
+          "delay": 78,
+          "time": 1791859398
          }
         },
         {
@@ -828,12 +828,12 @@
          "id": "2000453",
          "sr": 0,
          "arr": {
-          "delay": 2,
-          "time": 1791854892
+          "delay": 70,
+          "time": 1791859520
          },
          "dep": {
-          "delay": 19,
-          "time": 1791854914
+          "delay": 70,
+          "time": 1791859525
          }
         },
         {
@@ -841,12 +841,12 @@
          "id": "2000454",
          "sr": 0,
          "arr": {
-          "delay": 21,
-          "time": 1791854976
+          "delay": 94,
+          "time": 1791859609
          },
          "dep": {
-          "delay": 26,
-          "time": 1791854986
+          "delay": 94,
+          "time": 1791859614
          }
         },
         {
@@ -854,16 +854,16 @@
          "id": "2000456",
          "sr": 0,
          "arr": {
-          "delay": 51,
-          "time": 1791855116
+          "delay": 131,
+          "time": 1791859756
          },
          "dep": {
-          "delay": 57,
-          "time": 1791855127
+          "delay": 131,
+          "time": 1791859761
          }
         }
        ],
-       "nStops": 15
+       "nStops": 14
       }
      ]
     }
@@ -883,20 +883,20 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-13T02:23:54Z",
+    "at": "2026-10-13T02:28:42Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/parramatta",
-    "bytes": 20085,
-    "entities": 30,
-    "trips": 30,
-    "matched": 30,
-    "feedAgeS": 7,
+    "bytes": 18729,
+    "entities": 28,
+    "trips": 28,
+    "matched": 28,
+    "feedAgeS": 0,
     "unmatched": [],
     "shape": {
-     "withTimes": 30,
+     "withTimes": 28,
      "delayOnly": 0,
      "noStops": 0,
      "tripDelay": 0,
-     "active": 14,
+     "active": 12,
      "notStarted": 10,
      "finished": 6,
      "noDelay": 0,
@@ -906,7 +906,7 @@
        "start": "13:32:30",
        "date": "20261013",
        "tsDelay": null,
-       "ts": 1791857853,
+       "ts": 1791857883,
        "stops": [
         {
          "seq": 1,
@@ -914,8 +914,8 @@
          "sr": 0,
          "arr": null,
          "dep": {
-          "delay": 115,
-          "time": 1791858865
+          "delay": 0,
+          "time": 1791858750
          }
         },
         {
@@ -923,12 +923,12 @@
          "id": "211752",
          "sr": 0,
          "arr": {
-          "delay": 95,
-          "time": 1791858975
+          "delay": 0,
+          "time": 1791858880
          },
          "dep": {
-          "delay": 95,
-          "time": 1791858990
+          "delay": 0,
+          "time": 1791858895
          }
         },
         {
@@ -936,12 +936,12 @@
          "id": "211769",
          "sr": 0,
          "arr": {
-          "delay": 95,
-          "time": 1791859100
+          "delay": 0,
+          "time": 1791859005
          },
          "dep": {
-          "delay": 95,
-          "time": 1791859115
+          "delay": 0,
+          "time": 1791859020
          }
         },
         {
@@ -949,12 +949,12 @@
          "id": "211658",
          "sr": 0,
          "arr": {
-          "delay": 95,
-          "time": 1791859190
+          "delay": 0,
+          "time": 1791859095
          },
          "dep": {
-          "delay": 95,
-          "time": 1791859205
+          "delay": 0,
+          "time": 1791859110
          }
         }
        ],
@@ -965,7 +965,7 @@
        "start": "13:37:30",
        "date": "20261013",
        "tsDelay": null,
-       "ts": 1791857743,
+       "ts": 1791857883,
        "stops": [
         {
          "seq": 1,
@@ -973,8 +973,8 @@
          "sr": 0,
          "arr": null,
          "dep": {
-          "delay": 63,
-          "time": 1791859113
+          "delay": 87,
+          "time": 1791859137
          }
         },
         {
@@ -982,12 +982,12 @@
          "id": "2145585",
          "sr": 0,
          "arr": {
-          "delay": 43,
-          "time": 1791859163
+          "delay": 62,
+          "time": 1791859182
          },
          "dep": {
-          "delay": 43,
-          "time": 1791859178
+          "delay": 62,
+          "time": 1791859197
          }
         },
         {
@@ -995,12 +995,12 @@
          "id": "2145576",
          "sr": 0,
          "arr": {
-          "delay": 43,
-          "time": 1791859248
+          "delay": 62,
+          "time": 1791859267
          },
          "dep": {
-          "delay": 43,
-          "time": 1791859263
+          "delay": 62,
+          "time": 1791859282
          }
         },
         {
@@ -1008,12 +1008,12 @@
          "id": "2151159",
          "sr": 0,
          "arr": {
-          "delay": 43,
-          "time": 1791859413
+          "delay": 67,
+          "time": 1791859437
          },
          "dep": {
-          "delay": 43,
-          "time": 1791859428
+          "delay": 67,
+          "time": 1791859452
          }
         }
        ],
@@ -1024,7 +1024,7 @@
        "start": "14:10:00",
        "date": "20261013",
        "tsDelay": null,
-       "ts": 1791857813,
+       "ts": 1791857863,
        "stops": [
         {
          "seq": 1,
@@ -1032,8 +1032,8 @@
          "sr": 0,
          "arr": null,
          "dep": {
-          "delay": 95,
-          "time": 1791861095
+          "delay": 119,
+          "time": 1791861119
          }
         },
         {
@@ -1041,12 +1041,12 @@
          "id": "211752",
          "sr": 0,
          "arr": {
-          "delay": 71,
-          "time": 1791861201
+          "delay": 87,
+          "time": 1791861217
          },
          "dep": {
-          "delay": 71,
-          "time": 1791861216
+          "delay": 87,
+          "time": 1791861232
          }
         },
         {
@@ -1054,12 +1054,12 @@
          "id": "211769",
          "sr": 0,
          "arr": {
-          "delay": 71,
-          "time": 1791861326
+          "delay": 87,
+          "time": 1791861342
          },
          "dep": {
-          "delay": 71,
-          "time": 1791861341
+          "delay": 87,
+          "time": 1791861357
          }
         },
         {
@@ -1067,12 +1067,12 @@
          "id": "211658",
          "sr": 0,
          "arr": {
-          "delay": 71,
-          "time": 1791861416
+          "delay": 87,
+          "time": 1791861432
          },
          "dep": {
-          "delay": 71,
-          "time": 1791861431
+          "delay": 87,
+          "time": 1791861447
          }
         }
        ],
@@ -1096,17 +1096,17 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-13T02:23:54Z",
+    "at": "2026-10-13T02:28:42Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/newcastle",
-    "bytes": 9489,
+    "bytes": 9460,
     "entities": 32,
     "trips": 32,
     "matched": 32,
-    "feedAgeS": 1,
+    "feedAgeS": 2,
     "unmatched": [],
     "shape": {
-     "withTimes": 16,
-     "delayOnly": 16,
+     "withTimes": 15,
+     "delayOnly": 17,
      "noStops": 0,
      "tripDelay": 0,
      "active": 6,
@@ -1119,7 +1119,7 @@
        "start": "13:20:00",
        "date": "20261013",
        "tsDelay": null,
-       "ts": 1791858231,
+       "ts": 1791858516,
        "stops": [
         {
          "seq": 1,
@@ -1149,10 +1149,12 @@
          "id": "2300123",
          "sr": 0,
          "arr": {
-          "delay": -18
+          "delay": -32,
+          "time": 1791858267
          },
          "dep": {
-          "delay": 2
+          "delay": 26,
+          "time": 1791858326
          }
         },
         {
@@ -1160,69 +1162,12 @@
          "id": "2300125",
          "sr": 0,
          "arr": {
-          "delay": -18
+          "delay": -39,
+          "time": 1791858380
          },
          "dep": {
-          "delay": 2
-         }
-        }
-       ],
-       "nStops": 6
-      },
-      {
-       "route": "NT_NLR",
-       "start": "13:13:00",
-       "date": "20261013",
-       "tsDelay": null,
-       "ts": 1791858231,
-       "stops": [
-        {
-         "seq": 1,
-         "id": "2300129",
-         "sr": 0,
-         "arr": null,
-         "dep": {
-          "delay": 42,
-          "time": 1791857622
-         }
-        },
-        {
-         "seq": 2,
-         "id": "2300128",
-         "sr": 0,
-         "arr": {
-          "delay": 38,
-          "time": 1791857678
-         },
-         "dep": {
-          "delay": 101,
-          "time": 1791857741
-         }
-        },
-        {
-         "seq": 3,
-         "id": "2300126",
-         "sr": 0,
-         "arr": {
-          "delay": 29,
-          "time": 1791857789
-         },
-         "dep": {
-          "delay": 87,
-          "time": 1791857847
-         }
-        },
-        {
-         "seq": 4,
-         "id": "2300124",
-         "sr": 0,
-         "arr": {
-          "delay": 44,
-          "time": 1791857924
-         },
-         "dep": {
-          "delay": 99,
-          "time": 1791857979
+          "delay": 11,
+          "time": 1791858431
          }
         }
        ],
@@ -1233,7 +1178,7 @@
        "start": "13:20:00",
        "date": "20261013",
        "tsDelay": null,
-       "ts": 1791858226,
+       "ts": 1791858516,
        "stops": [
         {
          "seq": 1,
@@ -1263,10 +1208,12 @@
          "id": "2300126",
          "sr": 0,
          "arr": {
-          "delay": 79
+          "delay": 64,
+          "time": 1791858244
          },
          "dep": {
-          "delay": 99
+          "delay": 123,
+          "time": 1791858303
          }
         },
         {
@@ -1274,10 +1221,65 @@
          "id": "2300124",
          "sr": 0,
          "arr": {
-          "delay": 79
+          "delay": 93,
+          "time": 1791858393
          },
          "dep": {
-          "delay": 99
+          "delay": 152,
+          "time": 1791858452
+         }
+        }
+       ],
+       "nStops": 6
+      },
+      {
+       "route": "NT_NLR",
+       "start": "13:28:00",
+       "date": "20261013",
+       "tsDelay": null,
+       "ts": 1791858516,
+       "stops": [
+        {
+         "seq": 1,
+         "id": "2300129",
+         "sr": 0,
+         "arr": null,
+         "dep": {
+          "delay": 16,
+          "time": 1791858496
+         }
+        },
+        {
+         "seq": 2,
+         "id": "2300128",
+         "sr": 0,
+         "arr": {
+          "delay": 3
+         },
+         "dep": {
+          "delay": 23
+         }
+        },
+        {
+         "seq": 3,
+         "id": "2300126",
+         "sr": 0,
+         "arr": {
+          "delay": 3
+         },
+         "dep": {
+          "delay": 23
+         }
+        },
+        {
+         "seq": 4,
+         "id": "2300124",
+         "sr": 0,
+         "arr": {
+          "delay": 3
+         },
+         "dep": {
+          "delay": 23
          }
         }
        ],
@@ -1288,6 +1290,6 @@
    }
   }
  },
- "lastRunAt": "2026-10-13T02:23:54Z",
+ "lastRunAt": "2026-10-13T02:28:42Z",
  "lastRunErrors": []
 }
