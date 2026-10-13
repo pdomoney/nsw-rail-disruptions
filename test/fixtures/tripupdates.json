@@ -19,7 +19,8 @@
        "delay": 300,
        "time": "1791699400"
       },
-      "stop_id": "S0"
+      "stop_id": "S0",
+      "departure_occupancy_status": 1
      },
      {
       "stop_sequence": 2,
@@ -27,7 +28,23 @@
        "delay": 360,
        "time": "1791699880"
       },
-      "stop_id": "S1"
+      "stop_id": "S1",
+      "stop_time_properties": {
+       "assigned_stop_id": "S1b"
+      },
+      "departure_occupancy_status": 3,
+      "carriage_seq_predictive_occupancy": [
+       {
+        "name": "C2",
+        "position_in_consist": 2,
+        "departure_occupancy_status": 4
+       },
+       {
+        "name": "C1",
+        "position_in_consist": 1,
+        "departure_occupancy_status": 3
+       }
+      ]
      },
      {
       "stop_sequence": 3,
@@ -35,12 +52,17 @@
        "delay": 360,
        "time": "1791700300"
       },
-      "stop_id": "S2"
+      "stop_id": "S2",
+      "departure_occupancy_status": 2
      }
     ],
     "vehicle": {
      "id": "V1",
-     "extra": "tfnsw extension"
+     "extra": "tfnsw extension",
+     "tfnsw": {
+      "air_conditioned": true,
+      "vehicle_model": "A"
+     }
     },
     "timestamp": "1791699995",
     "unknown_double": 3.25,
@@ -141,7 +163,8 @@
        "delay": 720,
        "time": "1791699800"
       },
-      "stop_id": "S1"
+      "stop_id": "S1",
+      "departure_occupancy_status": 2
      },
      {
       "stop_sequence": 3,
@@ -149,7 +172,8 @@
        "delay": 700,
        "time": "1791700500"
       },
-      "stop_id": "S2"
+      "stop_id": "S2",
+      "departure_occupancy_status": 1
      }
     ],
     "timestamp": "1791699995"

@@ -110,6 +110,7 @@ export function decodeMessage(r, fields) {
     if (!f) { r.skip(wt); continue; }
     const [name, fn, repeated] = f;
     const val = fn(r, wt);
+    if (val === undefined) continue; // the decoder skipped a field of an unexpected type
     if (repeated) (out[name] ||= []).push(val);
     else out[name] = val;
   }

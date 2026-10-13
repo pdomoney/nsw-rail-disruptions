@@ -8,11 +8,12 @@ import { ADD_INFO, FEEDS } from './config/feeds.js';
 import { tfnswGet, tfnswGetFirst } from './lib/http.js';
 import { normalizeInfo } from './lib/classify.js';
 import { applySnapshot } from './lib/tracker.js';
-import { decodeFeed, lineStats } from './lib/gtfs-rt.js';
+import { decodeFeed, lineStats, fieldCensus } from './lib/gtfs-rt.js';
 import { ensureRouteMap, resolveTripLine } from './lib/gtfs-static.js';
 import { readJson, writeJson, appendLines } from './lib/store.js';
 import { appendEvents } from './lib/events.js';
 import { toCsvLine } from './lib/csv.js';
+import { ServiceRecorder } from './lib/service.js';
 import { iso, sydDate } from './lib/time.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
@@ -20,6 +21,11 @@ const CACHE_DIR = process.env.CACHE_DIR || '.cache';
 const p = (...a) => path.join(DATA_DIR, ...a);
 
 export const DELAY_HEADER = 'ts,line,active,late,mean_delay_s,max_delay_s,cancelled,feed';
+// Running trips by occupancy level, per line and run. Each histogram field holds six numbers
+// separated by spaces, for levels 0–5 (empty, many seats, few seats, standing, crowded, full):
+// cars = carriages at each level, car_delay_s = sum of their delays; trains / train_delay_s the
+// same for trips with only a level for the whole train.
+export const LOAD_HEADER = 'ts,line,running,with_occ,cars,car_delay_s,trains,train_delay_s,feed';
 export const RUN_HEADER = 'ts,alerts_ok,alerts_total,alerts_rail,alerts_closed,rt_ok,rt_total,rt_trips,rt_matched,errors';
 
 async function collectAlerts(now, meta, run) {
@@ -27,6 +33,14 @@ async function collectAlerts(now, meta, run) {
   const data = JSON.parse(buf.toString('utf8'));
   const items = data?.infos?.current;
   if (!Array.isArray(items)) throw new Error('add_info response has no infos.current array');
+  // The feed sometimes returns a partial list for one run (once, a single alert instead of ~390).
+  // Applying it would end every missing alert, so a sudden drop is only accepted when the next
+  // run confirms it.
+  const prevTotal = meta.alertsLastTotal;
+  meta.alertsLastTotal = items.length;
+  if (prevTotal > 50 && items.length < prevTotal * 0.8) {
+    throw new Error(`alerts feed returned ${items.length} alerts after ${prevTotal}; waiting for the next run to confirm`);
+  }
   const records = items.map(normalizeInfo).filter(Boolean);
   const openFile = p('alerts', 'open.json');
   const prev = readJson(openFile, { open: {} });
@@ -40,7 +54,11 @@ async function collectAlerts(now, meta, run) {
 
 async function collectRealtime(now, meta, run) {
   const delayRows = [];
+  const loadRows = [];
   const cancellations = {};
+  const service = new ServiceRecorder(DATA_DIR, now);
+  // Vehicle positions are only fetched about once an hour, to see what they contain.
+  const probeVehicles = new Date(now).getUTCMinutes() < 5;
   const diag = (meta.realtime ||= {});
   let ok = 0, trips = 0, matched = 0;
   for (const feed of FEEDS) {
@@ -50,6 +68,7 @@ async function collectRealtime(now, meta, run) {
       const map = await ensureRouteMap(feed, CACHE_DIR, { force: forceMap, now });
       d.map = { builtAt: map.builtAt, source: map.source, stats: map.stats, error: map.error || map.refreshError, unmatchedRoutes: map.unmatched?.slice(0, 15) };
       d.rebuildMap = false;
+      service.freeze(feed, map);
       // Station list for the trip page (rewritten only when the timetable changes).
       if (map.stations && Object.keys(map.stations).length) {
         writeJson(p('stations', `${feed.key}.json`), { builtAt: map.builtAt, source: map.source, stations: map.stations });
@@ -57,8 +76,10 @@ async function collectRealtime(now, meta, run) {
       const { buf, path: used } = await tfnswGetFirst(feed.realtime, { timeoutMs: 45_000 });
       const fm = decodeFeed(buf);
       const stats = lineStats(fm, trip => resolveTripLine(trip, map, feed));
-      const age = Math.round(now / 1000 - stats.feedTime);
-      d.last = { at: iso(now), endpoint: used, bytes: buf.length, entities: fm.entity?.length || 0, trips: stats.trips, matched: stats.matched, feedAgeS: age, unmatched: stats.unmatched, shape: stats.shape };
+      const feedTime = fm.header?.timestamp ?? stats.feedTime;
+      const age = Math.round(now / 1000 - feedTime);
+      d.last = { at: iso(now), endpoint: used, bytes: buf.length, entities: fm.entity?.length || 0, trips: stats.trips, matched: stats.matched, feedAgeS: age, unmatched: stats.unmatched, shape: stats.shape, occupancy: stats.occ };
+      if (!d.census || probeVehicles) d.census = { at: iso(now), fields: fieldCensus(buf) };
       trips += stats.trips;
       matched += stats.matched;
       // Ask for a fresh timetable map if most trips cannot be placed on a line.
@@ -67,8 +88,14 @@ async function collectRealtime(now, meta, run) {
       ok++;
       for (const [line, s] of Object.entries(stats.lines)) {
         const mean = s.active ? Math.round(s.sumDelay / s.active) : '';
-        delayRows.push(toCsvLine([iso(stats.feedTime * 1000), line, s.active, s.late, mean, s.active ? s.maxDelay : '', s.cancelled, feed.key]));
+        delayRows.push(toCsvLine([iso(feedTime * 1000), line, s.active, s.late, mean, s.active ? s.maxDelay : '', s.cancelled, feed.key]));
       }
+      for (const [line, w] of Object.entries(stats.load)) {
+        if (!w.withOcc) continue;
+        loadRows.push(toCsvLine([iso(feedTime * 1000), line, w.running, w.withOcc, w.cars.join(' '), w.carDelay.join(' '), w.trains.join(' '), w.trainDelay.join(' '), feed.key]));
+      }
+      d.last.ids = service.record(feed.key, stats.tripList, feedTime * 1000);
+      service.covered(feed.key, feedTime * 1000);
       for (const [line, keys] of Object.entries(stats.cancelled)) {
         for (const key of keys) {
           const sd = key.split('|')[1];
@@ -80,9 +107,21 @@ async function collectRealtime(now, meta, run) {
       d.lastError = { at: iso(now), message: e.message };
       run.errors.push(`${feed.key}: ${e.message}`);
     }
+    if ((probeVehicles || !d.vehicles) && feed.vehiclePositions) {
+      try {
+        const { buf, path: used } = await tfnswGetFirst(feed.vehiclePositions, { timeoutMs: 30_000, retries: 1 });
+        d.vehicles = { at: iso(now), endpoint: used, bytes: buf.length, ...vehicleSummary(decodeFeed(buf)), fields: fieldCensus(buf) };
+      } catch (e) {
+        d.vehicles = { at: iso(now), error: e.message };
+      }
+    }
   }
+  const finalised = service.finalise();
+  service.save();
+  if (finalised.length) run.serviceDays = finalised;
   const day = sydDate(now);
   appendLines(p('delays', day.slice(0, 7), `${day}.csv`), delayRows, DELAY_HEADER);
+  appendLines(p('load', day.slice(0, 7), `${day}.csv`), loadRows, LOAD_HEADER);
   // Unique cancelled trips per service day and line.
   for (const [date, byLine] of Object.entries(cancellations)) {
     const file = p('cancellations', `${date.slice(0, 7)}.json`);
@@ -98,6 +137,29 @@ async function collectRealtime(now, meta, run) {
     if (changed) writeJson(file, cur);
   }
   run.rt = { ok, total: FEEDS.length, trips, matched };
+}
+
+// What a vehicle positions feed holds (occupancy and consists), for diagnostics.
+function vehicleSummary(fm) {
+  const out = { vehicles: 0, withTrip: 0, occupancy: {}, withPercent: 0, withConsist: 0, consistLevels: {}, models: {} };
+  for (const e of fm.entity || []) {
+    const v = e.vehicle;
+    if (!v) continue;
+    out.vehicles++;
+    if (v.trip?.tripId) out.withTrip++;
+    if (v.occupancy != null) out.occupancy[v.occupancy] = (out.occupancy[v.occupancy] || 0) + 1;
+    if (v.occupancyPercentage != null) out.withPercent++;
+    if (v.consist?.length) {
+      out.withConsist++;
+      for (const c of v.consist) {
+        const l = c.occupancy ?? c.departureOccupancy;
+        if (l != null) out.consistLevels[l] = (out.consistLevels[l] || 0) + 1;
+      }
+    }
+    const m = v.vehicle?.tfnsw?.model;
+    if (m) out.models[m] = (out.models[m] || 0) + 1;
+  }
+  return out;
 }
 
 export async function collect(now = Date.now()) {

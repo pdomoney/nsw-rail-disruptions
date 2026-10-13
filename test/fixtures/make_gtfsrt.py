@@ -16,11 +16,19 @@ def msg(name, fields):
 
 OPT, REP = F.LABEL_OPTIONAL, F.LABEL_REPEATED
 msg('StopTimeEvent', [('delay',1,F.TYPE_INT32,OPT,None),('time',2,F.TYPE_INT64,OPT,None),('uncertainty',3,F.TYPE_INT32,OPT,None)])
+# TfNSW extensions: a carriage list on stop time updates (1007) and a vehicle descriptor (1999).
+msg('CarriageDescriptor', [('name',1,F.TYPE_STRING,OPT,None),('position_in_consist',2,F.TYPE_INT32,OPT,None),
+    ('departure_occupancy_status',7,F.TYPE_INT32,OPT,None)])
+msg('StopTimeProperties', [('assigned_stop_id',1,F.TYPE_STRING,OPT,None)])
 msg('StopTimeUpdate', [('stop_sequence',1,F.TYPE_UINT32,OPT,None),('arrival',2,F.TYPE_MESSAGE,OPT,'.transit_realtime.StopTimeEvent'),
-    ('departure',3,F.TYPE_MESSAGE,OPT,'.transit_realtime.StopTimeEvent'),('stop_id',4,F.TYPE_STRING,OPT,None),('schedule_relationship',5,F.TYPE_INT32,OPT,None)])
+    ('departure',3,F.TYPE_MESSAGE,OPT,'.transit_realtime.StopTimeEvent'),('stop_id',4,F.TYPE_STRING,OPT,None),('schedule_relationship',5,F.TYPE_INT32,OPT,None),
+    ('stop_time_properties',6,F.TYPE_MESSAGE,OPT,'.transit_realtime.StopTimeProperties'),('departure_occupancy_status',7,F.TYPE_INT32,OPT,None),
+    ('carriage_seq_predictive_occupancy',1007,F.TYPE_MESSAGE,REP,'.transit_realtime.CarriageDescriptor')])
+msg('TfnswVehicleDescriptor', [('air_conditioned',1,F.TYPE_BOOL,OPT,None),('vehicle_model',3,F.TYPE_STRING,OPT,None)])
 msg('TripDescriptor', [('trip_id',1,F.TYPE_STRING,OPT,None),('start_time',2,F.TYPE_STRING,OPT,None),('start_date',3,F.TYPE_STRING,OPT,None),
     ('schedule_relationship',4,F.TYPE_INT32,OPT,None),('route_id',5,F.TYPE_STRING,OPT,None),('direction_id',6,F.TYPE_UINT32,OPT,None)])
-msg('VehicleDescriptor', [('id',1,F.TYPE_STRING,OPT,None),('label',2,F.TYPE_STRING,OPT,None),('extra',1007,F.TYPE_STRING,OPT,None)])
+msg('VehicleDescriptor', [('id',1,F.TYPE_STRING,OPT,None),('label',2,F.TYPE_STRING,OPT,None),('extra',1007,F.TYPE_STRING,OPT,None),
+    ('tfnsw',1999,F.TYPE_MESSAGE,OPT,'.transit_realtime.TfnswVehicleDescriptor')])
 msg('TripUpdate', [('trip',1,F.TYPE_MESSAGE,OPT,'.transit_realtime.TripDescriptor'),('stop_time_update',2,F.TYPE_MESSAGE,REP,'.transit_realtime.StopTimeUpdate'),
     ('vehicle',3,F.TYPE_MESSAGE,OPT,'.transit_realtime.VehicleDescriptor'),('timestamp',4,F.TYPE_UINT64,OPT,None),('delay',5,F.TYPE_INT32,OPT,None),
     ('unknown_double',900,F.TYPE_DOUBLE,OPT,None),('unknown_fixed32',901,F.TYPE_FIXED32,OPT,None)])
@@ -37,7 +45,7 @@ def main():
     fm = FeedMessage()
     fm.header.gtfs_realtime_version = '2.0'; fm.header.timestamp = NOW
 
-    def trip(eid, route, trip_id, stops, sr=None, start_date='20261011', tu_delay=None, extras=False, ts=None):
+    def trip(eid, route, trip_id, stops, sr=None, start_date='20261011', tu_delay=None, extras=False, ts=None, occ=None):
         e = fm.entity.add(id=eid)
         tu = e.trip_update
         tu.trip.trip_id = trip_id; tu.trip.start_date = start_date
@@ -46,6 +54,7 @@ def main():
         if tu_delay is not None: tu.delay = tu_delay
         if extras:
             tu.vehicle.id = 'V1'; tu.vehicle.extra = 'tfnsw extension'
+            tu.vehicle.tfnsw.vehicle_model = 'A'; tu.vehicle.tfnsw.air_conditioned = True
             tu.unknown_double = 3.25; tu.unknown_fixed32 = 7
         tu.timestamp = NOW - 5 if ts is None else ts
         for i, (t_off, delay, kind, rel) in enumerate(stops):
@@ -54,10 +63,21 @@ def main():
             ev = s.departure if kind == 'dep' else s.arrival
             if t_off is not None: ev.time = NOW + t_off
             if delay is not None: ev.delay = delay
+            # occ: per stop, (level or None, [(position, level), ...] carriages, assigned stop or None)
+            if occ and i < len(occ) and occ[i]:
+                level, cars, assigned = occ[i]
+                if level is not None: s.departure_occupancy_status = level
+                for pos, cl in cars:
+                    c = s.carriage_seq_predictive_occupancy.add(position_in_consist=pos, name=f'C{pos}')
+                    c.departure_occupancy_status = cl
+                if assigned: s.stop_time_properties.assigned_stop_id = assigned
         return e
 
     # T1: running 6 min late (passed a stop 2 min ago with +360s)
-    trip('e1', 'T1_route', 'T1.trip.1', [(-600, 300, 'dep', None), (-120, 360, 'dep', None), (300, 360, 'arr', None)], extras=True)
+    # Occupancy: many seats leaving the first stop; standing room leaving the stop just passed, with
+    # two carriages listed out of order (position 2 crowded, position 1 standing); few seats at the end.
+    trip('e1', 'T1_route', 'T1.trip.1', [(-600, 300, 'dep', None), (-120, 360, 'dep', None), (300, 360, 'arr', None)], extras=True,
+         occ=[(1, [], None), (3, [(2, 4), (1, 3)], 'S1b'), (2, [], None)])
     # T1: early (negative delay), counts as 0 lateness
     trip('e2', 'T1_route', 'T1.trip.2', [(-60, -45, 'dep', None), (240, -30, 'arr', None)])
     # T1: not started yet (first stop 40 min away) -> not active
@@ -65,7 +85,8 @@ def main():
     # T1: cancelled
     trip('e4', 'T1_route', 'T1.trip.4', [(600, None, 'dep', None)], sr=3)
     # BMT via trips map only (no route_id): 12 min late, skipped stop ignored
-    trip('e5', None, 'BMT.trip.9', [(-300, 9999, 'dep', 1), (-200, 720, 'dep', None), (500, 700, 'arr', None)])
+    trip('e5', None, 'BMT.trip.9', [(-300, 9999, 'dep', 1), (-200, 720, 'dep', None), (500, 700, 'arr', None)],
+         occ=[None, (2, [], None), (1, [], None)])
     # Unknown route
     trip('e6', 'RTTA_DEF', 'X.trip', [(-30, 60, 'dep', None)])
     # Trip whose stops have time but no delay -> falls back to trip-level delay 90s

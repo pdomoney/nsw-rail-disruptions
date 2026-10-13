@@ -34,7 +34,7 @@ History before collection started comes from the community archive [jxeeno/nsw-s
 Notes:
 - GitHub runs scheduled workflows on a best-effort basis. Gaps of 10–15 minutes between runs are normal, and on some repositories the schedule never fires. As a fallback, each run starts the next one about five minutes after it began, as long as no scheduled run has happened in the last 30 minutes. This keeps one GitHub-hosted runner busy (mostly waiting) around the clock while the fallback is active. It stops by itself once scheduled runs arrive. To turn it off, add a repository variable `SELF_SCHEDULE` with the value `off` (**Settings → Secrets and variables → Actions → Variables**).
 - GitHub disables scheduled workflows in public repositories after 60 days without repository activity. The workflow's own data commits normally count as activity. If collection stops, re-enable the workflow from the Actions tab.
-- Each run makes about 7 API calls (one alerts call and six realtime feeds), plus a once-a-day download of the static timetables. That is roughly 2,000 calls a day, well within TfNSW's limit of 60,000 a day.
+- Each run makes about 7 API calls (one alerts call and six realtime feeds), plus a once-a-day download of the static timetables and, about once an hour, the six vehicle position feeds (for diagnostics). That is roughly 2,200 calls a day, well within TfNSW's limit of 60,000 a day.
 
 ## Data files (`data` branch)
 
@@ -44,6 +44,8 @@ Notes:
 | `alerts/open.json` | Alerts currently in the feed (tracking state). |
 | `delays/YYYY-MM/YYYY-MM-DD.csv` | One row per line per collection run: running services, late services, mean and maximum delay in seconds, cancelled trips. |
 | `cancellations/YYYY-MM.json` | Unique cancelled trip IDs per service day and line, from the realtime feed. |
+| `service/YYYY-MM/YYYY-MM-DD.json` | Every timetabled trip of one service day and what the realtime feed showed about it: whether it was seen, ran, was cancelled or added, its largest delay, its delay at the destination, skipped stops, the highest predicted occupancy level and the number of carriages. Also when each feed was being watched (`coverage`). Written at 6 am the next morning; until then the day is kept in `service/open.json` and `service/YYYY-MM/YYYY-MM-DD.sched.json` (the timetable, frozen when the day starts). Times are seconds after midnight at the start of the service day. |
+| `load/YYYY-MM/YYYY-MM-DD.csv` | One row per line per collection run: running services by predicted occupancy level (carriages, or whole trains where only a train-level figure is published) and the delay they carry. Only for lines whose feed publishes occupancy. |
 | `runs/YYYY-MM.csv` | One row per collection run, showing what succeeded. Used to show gaps in the data. |
 | `coverage/archive.json` | Number of archived snapshots per day for the imported history. |
 | `stations/<feed>.json` | Stations and how many trips each line makes there, from the static timetables (refreshed daily). A line counts as stopping at a station when it makes at least 3% as many stops there as at its busiest station; below 25% the trip page labels it "some services". |

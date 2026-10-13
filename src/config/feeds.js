@@ -15,29 +15,31 @@ export const ADD_INFO = {
   },
 };
 
-// GTFS-realtime trip updates and the matching static timetables (used to map trips to lines).
+// GTFS-realtime trip updates, the matching static timetables (used to map trips to lines and to
+// know which trips were scheduled each day) and vehicle positions (checked hourly for diagnostics).
 export const FEEDS = [
   {
     key: 'sydneytrains',
     label: 'Sydney Trains and Intercity',
     realtime: ['/v2/gtfs/realtime/sydneytrains'],
     schedule: ['/v2/gtfs/schedule/sydneytrains', '/v1/gtfs/schedule/sydneytrains'],
+    vehiclePositions: ['/v2/gtfs/vehiclepos/sydneytrains', '/v1/gtfs/vehiclepos/sydneytrains'],
     defaultLine: null,
-    tripMap: true,
   },
   {
     key: 'metro',
     label: 'Sydney Metro',
     realtime: ['/v2/gtfs/realtime/metro'],
     schedule: ['/v2/gtfs/schedule/metro', '/v1/gtfs/schedule/metro'],
+    vehiclePositions: ['/v2/gtfs/vehiclepos/metro', '/v1/gtfs/vehiclepos/metro'],
     defaultLine: 'M1',
-    tripMap: true,
   },
   {
     key: 'lr-innerwest',
     label: 'Inner West Light Rail (L1)',
     realtime: ['/v2/gtfs/realtime/lightrail/innerwest', '/v1/gtfs/realtime/lightrail/innerwest'],
     schedule: ['/v2/gtfs/schedule/lightrail/innerwest', '/v1/gtfs/schedule/lightrail/innerwest'],
+    vehiclePositions: ['/v2/gtfs/vehiclepos/lightrail/innerwest', '/v1/gtfs/vehiclepos/lightrail/innerwest'],
     defaultLine: 'L1',
   },
   {
@@ -45,14 +47,15 @@ export const FEEDS = [
     label: 'CBD and South East Light Rail (L2, L3)',
     realtime: ['/v1/gtfs/realtime/lightrail/cbdandsoutheast'],
     schedule: ['/v1/gtfs/schedule/lightrail/cbdandsoutheast'],
+    vehiclePositions: ['/v1/gtfs/vehiclepos/lightrail/cbdandsoutheast'],
     defaultLine: null,
-    tripMap: true,
   },
   {
     key: 'lr-parramatta',
     label: 'Parramatta Light Rail (L4)',
     realtime: ['/v1/gtfs/realtime/lightrail/parramatta'],
     schedule: ['/v1/gtfs/schedule/lightrail/parramatta'],
+    vehiclePositions: ['/v1/gtfs/vehiclepos/lightrail/parramatta'],
     defaultLine: 'L4',
   },
   {
@@ -60,6 +63,7 @@ export const FEEDS = [
     label: 'Newcastle Light Rail',
     realtime: ['/v1/gtfs/realtime/lightrail/newcastle'],
     schedule: ['/v1/gtfs/schedule/lightrail/newcastle'],
+    vehiclePositions: ['/v1/gtfs/vehiclepos/lightrail/newcastle'],
     defaultLine: 'NLR',
   },
 ];
