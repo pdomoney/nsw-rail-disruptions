@@ -59,7 +59,7 @@ test('daily service record: timetable, observations, coverage and the final file
   assert.equal(trips.length, 3);
   const row = id => Object.fromEntries(trips.find(r => r[0] === id).map((v, i) => [TRIP_COLUMNS[i], v]));
   assert.deepEqual(row('T1.trip.1'), {
-    trip: 'T1.trip.1', line: 'T1', dir: 0, start: 36000, end: 36900, cars: 8, forecast: 20,
+    trip: 'T1.trip.1', line: 'T1', dir: 0, start: 36000, end: 36900, cars: 8, forecast: 20, type: 'B8',
     flags: FLAG.SEEN | FLAG.RAN, first_seen: s0, last_seen: s0 + 300, max_delay: 300, end_delay: 240,
     skipped: 0, occ: 3, cars_seen: 8, model: 'A',
   });

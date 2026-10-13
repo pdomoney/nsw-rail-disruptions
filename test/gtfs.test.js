@@ -61,9 +61,9 @@ test('static GTFS route map', () => {
   assert.equal(map.routes.T1_route, 'T1');
   assert.equal(map.routes.BMT_1, 'BMT');
   assert.equal(map.routes.RTTA_DEF, null);
-  assert.deepEqual(map.sched.trips['BMT.trip.9'], ['BMT', 's1', 36000, 43200, 0, 4, null]);
+  assert.deepEqual(map.sched.trips['BMT.trip.9'], ['BMT', 's1', 36000, 43200, 0, 4, null, 'H4']);
   // Forecast occupancy: weekdays average levels 1 and 3; Saturday level 5; no Sunday forecast.
-  assert.deepEqual(map.sched.trips['T1.trip.1'], ['T1', 's1', 36000, 36900, 0, 8, [20, 20, 20, 20, 20, 50, null]]);
+  assert.deepEqual(map.sched.trips['T1.trip.1'], ['T1', 's1', 36000, 36900, 0, 8, [20, 20, 20, 20, 20, 50, null], 'B8']);
   assert.equal(map.stats.forecastTrips, 1);
   assert.equal(map.stats.tripsWithCars, 3);
   assert.equal(map.sched.trips['X.trip'], undefined); // untracked route
@@ -80,11 +80,11 @@ test('timetabled trips for a service date', () => {
   assert.equal(gtfsTime('25:10:00'), 90600);
   assert.equal(gtfsTime(''), null);
   // Tuesday: the weekday service.
-  assert.deepEqual(scheduledTrips(map, '20261013'), [['BMT.trip.9', 'BMT', 0, 36000, 43200, 4, null], ['T1.trip.1', 'T1', 0, 36000, 36900, 8, 20]]);
+  assert.deepEqual(scheduledTrips(map, '20261013'), [['BMT.trip.9', 'BMT', 0, 36000, 43200, 4, null, 'H4'], ['T1.trip.1', 'T1', 0, 36000, 36900, 8, 20, 'B8']]);
   // Monday 12 October: weekday service removed by calendar_dates.
   assert.deepEqual(scheduledTrips(map, '20261012'), []);
   // Sunday: weekend service (after midnight, from rows out of order) plus a one-day service.
-  assert.deepEqual(scheduledTrips(map, '20261011'), [['T9.trip.1', 'T9', 1, 36300, 36300, 8, null], ['T1.trip.2', 'T1', 1, 88260, 90600, null, null]]);
+  assert.deepEqual(scheduledTrips(map, '20261011'), [['T9.trip.1', 'T9', 1, 36300, 36300, 8, null, 'B8'], ['T1.trip.2', 'T1', 1, 88260, 90600, null, null, null]]);
   // Outside the calendar.
   assert.deepEqual(scheduledTrips(map, '20261102'), []);
 });

@@ -7,7 +7,7 @@ import { tfnswGetFirst } from './http.js';
 import { readJson, writeJson } from './store.js';
 
 // Bump when the map format changes, so cached maps are rebuilt.
-export const MAP_VERSION = 6;
+export const MAP_VERSION = 7;
 
 // "25:13:00" → 90780 (seconds after the start of the service day; may pass 24 hours)
 export function gtfsTime(t) {
@@ -65,13 +65,14 @@ export function buildRouteMap(zipBuf, feed) {
     forEachCsvRow(files['vehicle_couplings.txt'], ['parent_id', 'child_id'], ([parent]) => { carsOf[parent] = (carsOf[parent] || 0) + 1; });
   }
 
-  // trips[tripId] = [line, serviceId, startSec, endSec, directionId, cars, forecast] for every trip on a
-  // tracked line. cars comes from the vehicle category (null if unknown); forecast is filled in below.
+  // trips[tripId] = [line, serviceId, startSec, endSec, directionId, cars, forecast, category] for every
+  // trip on a tracked line. category is the train type (e.g. "B8"), cars its number of carriages (null
+  // if unknown); forecast is filled in below.
   const trips = {};
   if (files['trips.txt']) {
     forEachCsvRow(files['trips.txt'], ['route_id', 'service_id', 'trip_id', 'direction_id', 'vehicle_category_id'], ([routeId, sid, tripId, dir, cat]) => {
       const line = routeMap[routeId];
-      if (line) trips[tripId] = [line, sid, null, null, dir === '' || dir == null ? null : +dir, carsOf[cat] || null, null];
+      if (line) trips[tripId] = [line, sid, null, null, dir === '' || dir == null ? null : +dir, carsOf[cat] || null, null, cat || null];
     });
   }
 
@@ -172,17 +173,17 @@ export function serviceRuns(svc, ymd) {
 }
 
 // The trips scheduled on one service date:
-// [[tripId, line, directionId, startSec, endSec, cars, forecast occupancy ×10], ...].
+// [[tripId, line, directionId, startSec, endSec, cars, forecast occupancy ×10, train type], ...].
 export function scheduledTrips(map, ymd) {
   const sched = map?.sched;
   if (!sched) return [];
   const running = new Map();
   const wd = weekdayIndex(ymd);
   const out = [];
-  for (const [tripId, [line, sid, start, end, dir, cars, forecast]] of Object.entries(sched.trips)) {
+  for (const [tripId, [line, sid, start, end, dir, cars, forecast, category]] of Object.entries(sched.trips)) {
     let r = running.get(sid);
     if (r === undefined) running.set(sid, (r = serviceRuns(sched.services[sid], ymd)));
-    if (r) out.push([tripId, line, dir, start, end, cars ?? null, forecast?.[wd] ?? null]);
+    if (r) out.push([tripId, line, dir, start, end, cars ?? null, forecast?.[wd] ?? null, category ?? null]);
   }
   return out.sort((a, b) => (a[3] ?? 0) - (b[3] ?? 0) || (a[0] < b[0] ? -1 : 1));
 }
