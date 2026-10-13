@@ -296,6 +296,7 @@ function build() {
   dailyOut.lineOrder = lines.map(l => l.id);
   dailyOut.causes = [...causeAgg].map(([k, [n, m]]) => [...k.split('|').map(Number), n, m]).sort((a, b) => a[0] - b[0]);
   writeJson(out('data', 'daily.json'), dailyOut);
+  writeJson(out('data', 'stations.json'), buildStations(new Set(lines.map(l => l.id))));
   writeJson(out('data', 'delays.json'), delays);
   writeJson(out('data', 'status.json'), status);
   const firstLive = Object.keys(coverageLive).sort()[0] || null;
@@ -318,6 +319,45 @@ function build() {
     lastRunErrors: meta.lastRunErrors || [],
     config: { maxIncidentHours: MAX_INCIDENT_MS / HOUR },
   });
+}
+
+// Stations for the trip page: [id, name, [lines], [lines with only some services]] sorted by name.
+// Feeds list the same station under the same id; stops that share a name (e.g. each direction of a
+// light rail stop) are merged into one. Timetables include trackwork and special-event workings, so a
+// line only counts as stopping at a station if it makes at least 3% as many stops there as at its
+// busiest station, and below 25% it is marked as "some services".
+const STATION_MIN_SHARE = 0.03;
+const STATION_SOME_SHARE = 0.25;
+function buildStations(lineIds) {
+  const byName = new Map();
+  for (const f of listFiles(path.join(DATA_DIR, 'stations'), /\.json$/)) {
+    const stations = readJson(f, {})?.stations || {};
+    for (const [id, st] of Object.entries(stations)) {
+      if (!st.n) continue;
+      const counts = st.c || Object.fromEntries((st.l || []).map(l => [l, 1]));
+      const key = st.n.toLowerCase();
+      let cur = byName.get(key);
+      if (!cur) byName.set(key, (cur = { id, n: st.n, c: {} }));
+      else if (id < cur.id) cur.id = id; // stable choice when several stops share a name
+      for (const [l, n] of Object.entries(counts)) if (lineIds.has(l)) cur.c[l] = (cur.c[l] || 0) + n;
+    }
+  }
+  const busiest = {};
+  for (const st of byName.values()) for (const [l, n] of Object.entries(st.c)) busiest[l] = Math.max(busiest[l] || 0, n);
+  const out = [];
+  for (const st of byName.values()) {
+    const lines = [], some = [];
+    for (const [l, n] of Object.entries(st.c)) {
+      const share = n / busiest[l];
+      if (share < STATION_MIN_SHARE) continue;
+      lines.push(l);
+      if (share < STATION_SOME_SHARE) some.push(l);
+    }
+    if (!lines.length) continue;
+    const order = (a, b) => lineOrder(a) - lineOrder(b);
+    out.push([st.id, st.n, lines.sort(order), some.sort(order)]);
+  }
+  return out.sort((a, b) => a[1].localeCompare(b[1]));
 }
 
 function copySite() {

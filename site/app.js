@@ -266,7 +266,12 @@ function liveSentence(lines) {
 const NOW_SHOWN = 4;
 let nowShowAll = false;
 
-function disruptionItem({ inc, lines }) {
+function mentionsStation(text, station) {
+  const name = station.s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b(at|near|between|and|from|to|around)\\s+${name}\\b`, 'i').test(text);
+}
+
+function disruptionItem({ inc, lines }, { stations = [] } = {}) {
   const summary = inc.t || 'Service disruption';
   let rest = inc.x || '';
   if (!summary.endsWith('…') && rest.startsWith(summary)) rest = rest.slice(summary.length).trim();
@@ -280,7 +285,8 @@ function disruptionItem({ inc, lines }) {
     h('div', { class: 'now-alert-meta' },
       h('span', { class: 'now-alert-lines' }, lines.map(id => badge(id))),
       stateEl('disrupted', `Since ${time(inc.st)}${startDay}, ${duration(Date.now() - start)} so far`),
-      cause ? h('span', { class: 'muted' }, `Cause: ${cause}`) : null),
+      cause ? h('span', { class: 'muted' }, `Cause: ${cause}`) : null,
+      stations.filter(st => mentionsStation(`${inc.t} ${inc.x}`, st)).map(st => h('span', { class: 'mention' }, `Mentions ${st.s}`))),
     h('p', { class: 'now-alert-summary' }, summary),
     rest ? (rest.length > 280 ? longText(rest) : h('p', { class: 'alert-text' }, rest)) : null,
     h('p', { class: 'now-alert-foot' },
@@ -788,6 +794,235 @@ function viewAbout(main) {
   onResize(draw);
 }
 
+// ---------- trip page ----------
+// Pick two stations, see what is happening on the lines between them, then open the official
+// transportnsw.info planner with the trip filled in (this site has no journey planner of its own).
+let STATIONS = null;
+let tripRefresh = null;
+const shortStation = n => n.replace(/\s+Station$/i, '').trim();
+
+async function loadStations() {
+  if (STATIONS) return STATIONS;
+  const raw = await getJson('data/stations.json');
+  const list = raw.map(([id, n, l, some]) => ({ id, n, s: shortStation(n), l, some: new Set(some || []) }));
+  const counts = new Map();
+  for (const st of list) counts.set(st.s.toLowerCase(), (counts.get(st.s.toLowerCase()) || 0) + 1);
+  for (const st of list) if (counts.get(st.s.toLowerCase()) > 1) st.s = st.n; // keep names unique
+  STATIONS = list;
+  return list;
+}
+
+function findStation(text) {
+  const t = String(text || '').trim().toLowerCase();
+  if (!t) return null;
+  const exact = STATIONS.find(st => st.s.toLowerCase() === t || st.n.toLowerCase() === t);
+  if (exact) return exact;
+  const starts = STATIONS.filter(st => st.s.toLowerCase().startsWith(t));
+  return starts.length === 1 ? starts[0] : null;
+}
+
+function sydNowInput() {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(new Date()).map(x => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+const PLANNER = 'https://transportnsw.info/trip-planner/plan';
+// TfNSW mode numbers: 5 bus, 7 coach, 9 ferry, 11 school bus.
+const NON_RAIL_MODES = '5,7,9,11';
+
+function plannerUrl(from, to, when, t, railOnly) {
+  const u = new URL(PLANNER);
+  u.searchParams.set('from', from.id);
+  u.searchParams.set('to', to.id);
+  if (when !== 'now' && t) u.searchParams.set(when === 'arr' ? 'arrivalDateTime' : 'departureDateTime', t.replace(/[-T:]/g, ''));
+  if (railOnly) u.searchParams.set('excludedModes', NON_RAIL_MODES);
+  return u.toString();
+}
+
+function last30(id) {
+  const L = D.daily.lines[id];
+  if (!L) return null;
+  const b = D.daily.days - 1, a = Math.max(0, b - 29);
+  return { minutes: sum(L.inc, a, b), incidents: sum(L.n, a, b) };
+}
+
+function tripLineRow(id, someOnly = false) {
+  const l = lineInfo(id);
+  const st = lineStatus(id);
+  const live = liveText(D.status.lines[id]?.live, id);
+  const r = last30(id);
+  const history = r ? `Last 30 days: ${hours(r.minutes)} of unplanned disruption, ${plural(r.incidents, 'incident')}` : null;
+  return h('a', { class: 'board-row', href: `#/line/${id}` },
+    badge(id, { link: false }),
+    h('span', { class: 'board-name' }, l.name,
+      someOnly ? h('span', { class: 'board-detail' }, 'Only some trains stop at both stations') : null,
+      st.detail ? h('span', { class: 'board-detail' }, st.detail) : null,
+      history ? h('span', { class: 'board-detail muted' }, history) : null),
+    h('span', {}, stateEl(st.kind, st.label), live ? h('span', { class: 'live' }, live) : null));
+}
+
+function tripResults(from, to, when, t) {
+  const order = id => D.meta.lines.findIndex(l => l.id === id);
+  // Lines stopping at both ends; those that only do so with some of their trains go last.
+  const someOnly = l => from.some.has(l) || to.some.has(l);
+  const direct = from.l.filter(l => to.l.includes(l)).sort((a, b) => someOnly(a) - someOnly(b) || order(a) - order(b));
+  const relevant = direct.length ? direct : [...new Set([...from.l, ...to.l])].sort((a, b) => order(a) - order(b));
+  const out = h('section', { class: 'trip-results', 'aria-labelledby': 'trip-h' },
+    h('h2', { id: 'trip-h' }, `${from.s} to ${to.s}`));
+
+  const allSome = direct.length && direct.every(someOnly);
+  out.append(direct.length
+    ? h('div', { class: 'trip-summary' },
+      h('p', {}, direct.length === 1 ? 'One line stops at both stations: ' : 'Lines that stop at both stations: ', joinBadges(direct, someOnly), '.'),
+      allSome ? h('p', { class: 'muted' }, 'Only some trains run between these stations without a change, so check the planner for times.') : null)
+    : h('div', { class: 'trip-summary' },
+      h('p', {}, 'No single line runs between these stations, so you will need to change.'),
+      h('p', { class: 'trip-ends' }, h('span', {}, `At ${from.s}: `, joinBadges(from.l)), h('span', {}, `At ${to.s}: `, joinBadges(to.l)))));
+
+  const disruptions = currentDisruptions().filter(d => d.lines.some(l => relevant.includes(l)));
+  const planned = new Map();
+  for (const id of relevant) for (const p of D.status.lines[id]?.planned || []) {
+    if (!planned.has(p.id)) planned.set(p.id, { ...p, lines: [] });
+    planned.get(p.id).lines.push(id);
+  }
+  const todayKey = sydKey(Date.now());
+  const sameDay = when === 'now' || (t || '').slice(0, 10) === todayKey;
+  const railOnly = planned.size === 0 && sameDay;
+  const url = plannerUrl(from, to, when, t, railOnly);
+  const note = railOnly ? 'Shows trains, metro and light rail only.'
+    : planned.size ? 'Buses are included because trackwork is replacing some services today.'
+      : 'Buses are included in case trackwork replaces trains at that time.';
+
+  out.append(h('div', { class: 'trip-cta' },
+    h('a', { class: 'button', href: url, target: '_blank', rel: 'noopener' }, 'See journeys and times on transportnsw.info'),
+    h('p', { class: 'muted' }, `Opens the official trip planner in a new tab with your stations filled in. ${note}`)));
+
+  // With a change, the lines at a big station can be many; only list the ones with something to report.
+  const rows = direct.length ? relevant : relevant.filter(id => lineStatus(id).kind !== 'good');
+  out.append(h('h3', {}, direct.length ? (direct.length === 1 ? 'The line' : 'The lines') : 'Lines at either end with alerts'));
+  out.append(rows.length ? h('div', { class: 'trip-lines' }, rows.map(id => tripLineRow(id, direct.length > 0 && someOnly(id))))
+    : h('p', {}, stateEl('good', 'No alerts on any line at either station')));
+
+  out.append(h('h3', {}, 'Unplanned disruptions'));
+  out.append(disruptions.length
+    ? h('ul', { class: 'now-alerts' }, disruptions.map(d => disruptionItem(d, { stations: [from, to] })))
+    : h('p', {}, stateEl('good', 'None on these lines right now')));
+
+  out.append(h('h3', {}, 'Trackwork and closures today'));
+  out.append(planned.size
+    ? h('ul', { class: 'now-list' }, [...planned.values()].map(p => h('li', {},
+      h('div', { class: 'now-alert-meta' }, h('span', { class: 'now-alert-lines' }, p.lines.map(id => badge(id))), stateEl('planned', p.now ? 'On now' : 'Later today')),
+      h('div', { class: 'alert-text', style: { marginTop: '4px' } }, p.t))))
+    : h('p', {}, stateEl('good', 'None on these lines today')));
+  if (!sameDay) out.append(h('p', { class: 'muted' }, 'Trackwork shown here is for today. Check transportnsw.info for the day you travel.'));
+  return out;
+}
+
+function joinBadges(ids, someOnly = () => false) {
+  const parts = [];
+  ids.forEach((id, i) => {
+    if (i > 0) parts.push(i === ids.length - 1 ? ' and ' : ', ');
+    parts.push(badge(id));
+    if (someOnly(id)) parts.push(h('span', { class: 'muted' }, ' (some services)'));
+  });
+  return parts;
+}
+
+async function viewTrip(main) {
+  document.title = 'Plan a trip | NSW Rail Disruptions';
+  await loadStations();
+  const q = new URLSearchParams(location.hash.split('?')[1] || '');
+  const saved = prefs.get('trip', {});
+  const byId = id => STATIONS.find(st => st.id === id) || null;
+  const state = {
+    from: byId(q.get('from') || saved.from), to: byId(q.get('to') || saved.to),
+    when: ['now', 'dep', 'arr'].includes(q.get('when')) ? q.get('when') : 'now',
+    t: q.get('t') || '',
+  };
+
+  const list = h('datalist', { id: 'station-list' }, STATIONS.map(st => h('option', { value: st.s, label: st.l.join(', ') })));
+  const fromIn = h('input', { type: 'text', list: 'station-list', autocomplete: 'off', placeholder: 'Station or stop', value: state.from?.s || '', id: 'trip-from' });
+  const toIn = h('input', { type: 'text', list: 'station-list', autocomplete: 'off', placeholder: 'Station or stop', value: state.to?.s || '', id: 'trip-to' });
+  const fromHint = h('span', { class: 'field-hint', 'aria-live': 'polite' });
+  const toHint = h('span', { class: 'field-hint', 'aria-live': 'polite' });
+  const timeIn = h('input', { type: 'datetime-local', value: state.t || sydNowInput(), 'aria-label': 'Date and time (Sydney time)' });
+  const whenHolder = h('div', { class: 'trip-when' });
+  const results = h('div');
+
+  const update = () => {
+    const p = new URLSearchParams();
+    if (state.from) p.set('from', state.from.id);
+    if (state.to) p.set('to', state.to.id);
+    if (state.when !== 'now') { p.set('when', state.when); p.set('t', state.t); }
+    history.replaceState(null, '', `#/trip${p.toString() ? `?${p}` : ''}`);
+    if (state.from && state.to) prefs.set('trip', { from: state.from.id, to: state.to.id });
+    renderResults();
+  };
+  const renderResults = () => {
+    if (!state.from || !state.to) {
+      results.replaceChildren(h('p', { class: 'muted trip-empty' }, 'Choose where you are leaving from and going to.'));
+      return;
+    }
+    if (state.from.id === state.to.id) {
+      results.replaceChildren(h('p', { class: 'trip-empty' }, 'Choose two different stations.'));
+      return;
+    }
+    results.replaceChildren(tripResults(state.from, state.to, state.when, state.t));
+  };
+  const resolve = (input, hint, key) => {
+    const st = findStation(input.value);
+    state[key] = st;
+    hint.textContent = input.value.trim() && !st ? 'Choose a station from the list.' : '';
+    if (st && input.value !== st.s && document.activeElement !== input) input.value = st.s;
+    update();
+  };
+  for (const [input, hint, key] of [[fromIn, fromHint, 'from'], [toIn, toHint, 'to']]) {
+    input.addEventListener('change', () => resolve(input, hint, key));
+    input.addEventListener('input', () => { if (findStation(input.value)?.s === input.value) resolve(input, hint, key); });
+  }
+  const swap = h('button', { type: 'button', class: 'swap', 'aria-label': 'Swap From and To', title: 'Swap From and To',
+    onclick: () => {
+      [state.from, state.to] = [state.to, state.from];
+      [fromIn.value, toIn.value] = [toIn.value, fromIn.value];
+      fromHint.textContent = toHint.textContent = '';
+      update();
+    } });
+  swap.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3v13M6 16l-3-3M6 16l3-3M14 17V4M14 4l-3 3M14 4l3 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  timeIn.addEventListener('change', () => { state.t = timeIn.value; update(); });
+  const drawWhen = () => {
+    whenHolder.replaceChildren(
+      segmented([['now', 'Leave now'], ['dep', 'Depart at'], ['arr', 'Arrive by']], state.when, v => {
+        state.when = v;
+        if (v !== 'now' && !state.t) state.t = timeIn.value || sydNowInput();
+        drawWhen();
+        update();
+      }, 'When'),
+      ...(state.when === 'now' ? [] : [timeIn]));
+  };
+  drawWhen();
+
+  main.replaceChildren(
+    h('div', { class: 'line-head' }, h('h1', {}, 'Plan a trip')),
+    h('p', { class: 'section-intro' }, 'Check what is happening on the lines between two stations, then see journeys and times on transportnsw.info.'),
+    list,
+    h('form', { class: 'trip-form', onsubmit: ev => ev.preventDefault() },
+      h('div', { class: 'trip-stations' },
+        h('label', { class: 'field', for: 'trip-from' }, 'From', fromIn, fromHint),
+        swap,
+        h('label', { class: 'field', for: 'trip-to' }, 'To', toIn, toHint)),
+      h('div', { class: 'field' }, h('span', {}, 'When'), whenHolder)),
+    results);
+  renderResults();
+
+  tripRefresh = () => {
+    if (userIsInteracting() && results.contains(document.activeElement)) { redrawPending = true; return; }
+    if (!document.getElementById('tooltip').hidden) { redrawPending = true; return; }
+    redrawPending = false;
+    renderResults();
+  };
+}
+
 function notFound(main, msg) {
   main.replaceChildren(h('div', { class: 'error-box' }, h('h1', {}, 'Page not found'), h('p', {}, msg), h('p', {}, h('a', { href: '#/' }, 'Go to the overview'))));
 }
@@ -798,19 +1033,21 @@ function resetView() {
   resizeHandlers = [];
   viewAbort.abort();
   viewAbort = new AbortController();
+  tripRefresh = null;
 }
 
 async function route() {
   resetView();
   const main = document.getElementById('main');
   const hash = location.hash || '#/';
-  const navKey = hash.startsWith('#/log') ? 'log' : hash.startsWith('#/about') ? 'about' : hash.startsWith('#/line') ? '' : 'overview';
+  const navKey = hash.startsWith('#/log') ? 'log' : hash.startsWith('#/about') ? 'about' : hash.startsWith('#/trip') ? 'trip' : hash.startsWith('#/line') ? '' : 'overview';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === navKey) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let m;
     if ((m = hash.match(/^#\/line\/([A-Za-z0-9]+)/))) await viewLine(main, m[1]);
     else if (hash.startsWith('#/log')) await viewLog(main);
     else if (hash.startsWith('#/about')) viewAbout(main);
+    else if (hash.startsWith('#/trip')) await viewTrip(main);
     else { document.title = 'NSW Rail Disruptions'; viewOverview(main); }
   } catch (e) {
     console.error(e);
@@ -829,7 +1066,7 @@ window.addEventListener('hashchange', () => {
 
 // ---------- live updates ----------
 // New data is published about every five minutes. While the page is open and visible, check once a
-// minute and redraw the overview in place when a newer build is available. Other pages pick up the
+// minute and redraw the overview (or the trip page results) in place when a newer build is available. Other pages pick up the
 // new data the next time they are opened, so a reading position is never lost.
 const CHECK_EVERY_MS = 60_000;
 let checking = false;
@@ -840,7 +1077,7 @@ function isStale() {
 }
 function onOverview() {
   const hash = location.hash || '#/';
-  return hash === '#/' || hash === '#' || !/^#\/(line|log|about)/.test(hash);
+  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip)/.test(hash);
 }
 function userIsInteracting() {
   const main = document.getElementById('main');
@@ -865,6 +1102,12 @@ function redrawOverview() {
   }));
 }
 
+// The trip page refreshes its results; the overview redraws in full; other pages wait.
+function liveRedraw() {
+  if (tripRefresh) tripRefresh();
+  else redrawOverview();
+}
+
 async function checkForUpdates() {
   if (checking || document.hidden) return;
   checking = true;
@@ -873,9 +1116,9 @@ async function checkForUpdates() {
     if (meta.generatedAt !== D.meta.generatedAt) {
       const [daily, status, delays] = await Promise.all(['daily', 'status', 'delays'].map(n => getJson(`data/${n}.json?t=${Date.now()}`)));
       Object.assign(D, { meta, daily, status, delays, line: {}, log: {} });
-      redrawOverview();
+      liveRedraw();
     } else if (redrawPending || (onOverview() && !!document.querySelector('.stale-note') !== isStale())) {
-      redrawOverview();
+      liveRedraw();
     }
   } catch {
     // Offline or a deploy in progress: try again at the next check.
