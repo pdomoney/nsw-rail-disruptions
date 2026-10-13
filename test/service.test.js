@@ -51,15 +51,17 @@ test('daily service record: timetable, observations, coverage and the final file
   const out = JSON.parse(fs.readFileSync(path.join(dir, 'service', '2026-10', '2026-10-13.json'), 'utf8'));
   assert.deepEqual(out.cols, TRIP_COLUMNS);
   const s0 = (t0 - base) / 1000;
-  assert.deepEqual(out.feeds.sydneytrains, {
+  const { trips, ...info } = out.feeds.sydneytrains;
+  assert.deepEqual(info, {
     timetable: '2026-10-12T20:00:00Z', scheduled: 2, observed: 3, unscheduled: 1,
     coverage: [[s0, s0 + 300], [s0 + 3600, s0 + 3600]],
   });
-  const row = id => Object.fromEntries(out.trips.find(r => r[1] === id).map((v, i) => [TRIP_COLUMNS[i], v]));
+  assert.equal(trips.length, 3);
+  const row = id => Object.fromEntries(trips.find(r => r[0] === id).map((v, i) => [TRIP_COLUMNS[i], v]));
   assert.deepEqual(row('T1.trip.1'), {
-    feed: 'sydneytrains', trip: 'T1.trip.1', line: 'T1', dir: 0, start: 36000, end: 36900,
+    trip: 'T1.trip.1', line: 'T1', dir: 0, start: 36000, end: 36900, cars: 8, forecast: 20,
     flags: FLAG.SEEN | FLAG.RAN, first_seen: s0, last_seen: s0 + 300, max_delay: 300, end_delay: 240,
-    skipped: 0, occ: 3, cars: 8, model: 'A', rt_start: null,
+    skipped: 0, occ: 3, cars_seen: 8, model: 'A',
   });
   assert.equal(row('BMT.trip.9').flags, FLAG.SEEN | FLAG.RAN | FLAG.CANCELLED);
   assert.equal(row('BMT.trip.9').skipped, 2);

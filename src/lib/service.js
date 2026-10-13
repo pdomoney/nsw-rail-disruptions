@@ -27,12 +27,18 @@ export const FLAG = {
   REPLACED: 128,       // ran with a changed stopping pattern (schedule_relationship REPLACEMENT)
 };
 
-export const TRIP_COLUMNS = ['feed', 'trip', 'line', 'dir', 'start', 'end', 'flags', 'first_seen', 'last_seen',
-  'max_delay', 'end_delay', 'skipped', 'occ', 'cars', 'model', 'rt_start'];
+// Columns of each trip in the final file. From the timetable: trip, line, dir (direction_id), start
+// and end (seconds), cars (train length) and forecast (forecast occupancy level ×10 for the day).
+// From the realtime feed: flags (FLAG), first_seen and last_seen (seconds), max_delay and end_delay
+// (seconds; end_delay is the last delay given for the final stop), skipped (stops skipped), occ (highest
+// occupancy level predicted or measured), cars_seen (carriages listed) and model (TfNSW fleet letter).
+export const TRIP_COLUMNS = ['trip', 'line', 'dir', 'start', 'end', 'cars', 'forecast', 'flags', 'first_seen', 'last_seen',
+  'max_delay', 'end_delay', 'skipped', 'occ', 'cars_seen', 'model'];
 
 // Observation array positions (in open.json).
-const O = { FLAGS: 0, FIRST: 1, LAST: 2, MAX: 3, END: 4, SKIP: 5, OCC: 6, CARS: 7, MODEL: 8, LINE: 9, RTSTART: 10 };
+const O = { FLAGS: 0, FIRST: 1, LAST: 2, MAX: 3, END: 4, SKIP: 5, OCC: 6, CARS: 7, MODEL: 8, LINE: 9 };
 
+const SCHED_VERSION = 2;          // 2: train length and forecast occupancy added
 const CLOSE_AFTER = 30 * HOUR;     // a service day is finalised at 6 am the next day
 const GAP = 15 * MIN;              // runs further apart than this break a coverage interval
 
@@ -77,10 +83,11 @@ export class ServiceRecorder {
     return this.schedSets.get(k);
   }
 
-  // Freeze each open day's timetable for a feed, the first time a timetable covering it is available.
+  // Freeze each open day's timetable for a feed, the first time a timetable covering it is available
+  // (or again if it was frozen in an older format).
   freeze(feed, map) {
     for (const [date, d] of Object.entries(this.state.days)) {
-      if (d.sched[feed.key] || !map?.sched) continue;
+      if ((d.sched[feed.key]?.v ?? 1) >= SCHED_VERSION || !map?.sched) continue;
       const ymd = date.replaceAll('-', '');
       const { from, to } = map.stats || {};
       if (from && to && (ymd < from || ymd > to)) continue;
@@ -89,7 +96,7 @@ export class ServiceRecorder {
       s.feeds[feed.key] = { builtAt: map.builtAt, source: map.source, trips };
       this.schedSets.delete(`${date}|${feed.key}`);
       this.dirty.add(date);
-      d.sched[feed.key] = { builtAt: map.builtAt, n: trips.length };
+      d.sched[feed.key] = { builtAt: map.builtAt, n: trips.length, v: SCHED_VERSION };
     }
   }
 
@@ -141,7 +148,7 @@ export class ServiceRecorder {
         if (set.has(t.tripId)) diag.inTimetable++;
         else {
           diag.notInTimetable++;
-          const known = inStatic ? inStatic(t.tripId) : null;
+          const known = inStatic ? inStatic(t.tripId) : null; // false, or what the timetable says about it
           if (known === false) diag.notInStatic++;
           if (diag.missing.length < 6 && t.sr === TRIP_SR.SCHEDULED) diag.missing.push([t.tripId, t.line, t.startTime, known]);
         }
@@ -149,7 +156,7 @@ export class ServiceRecorder {
       }
       const obs = (d.obs[feedKey] ||= {});
       let o = obs[t.tripId];
-      if (!o) o = obs[t.tripId] = [0, s, s, null, null, 0, null, 0, null, t.line, t.startTime];
+      if (!o) o = obs[t.tripId] = [0, s, s, null, null, 0, null, 0, null, t.line];
       const { sum } = t;
       let f = o[O.FLAGS];
       if (t.sr === TRIP_SR.CANCELED || t.sr === TRIP_SR.DELETED) f |= FLAG.CANCELLED | FLAG.CANCELLED_LAST;
@@ -183,16 +190,16 @@ export class ServiceRecorder {
       if (atMs < d.base + CLOSE_AFTER) continue;
       const sched = this.schedule(date);
       const feedKeys = [...new Set([...Object.keys(sched.feeds), ...Object.keys(d.obs), ...Object.keys(d.cov)])].sort();
-      const rows = [];
       const feeds = {};
       for (const key of feedKeys) {
         const obs = d.obs[key] || {};
         const trips = sched.feeds[key]?.trips || [];
         const inSched = new Set();
-        for (const [tripId, line, dir, start, end] of trips) {
+        const rows = [];
+        for (const [tripId, line, dir, start, end, cars, forecast] of trips) {
           inSched.add(tripId);
           const o = obs[tripId];
-          rows.push([key, tripId, line, dir, start, end, ...(o ? obsCols(o) : [0, null, null, null, null, 0, null, 0, null, null])]);
+          rows.push([tripId, line, dir, start, end, cars ?? null, forecast ?? null, ...(o ? obsCols(o) : [0, null, null, null, null, 0, null, 0, null])]);
         }
         let extra = 0;
         for (const [tripId, o] of Object.entries(obs)) {
@@ -200,7 +207,7 @@ export class ServiceRecorder {
           extra++;
           const c = obsCols(o);
           c[0] |= FLAG.UNSCHEDULED;
-          rows.push([key, tripId, o[O.LINE], null, null, null, ...c]);
+          rows.push([tripId, o[O.LINE], null, null, null, null, null, ...c]);
         }
         feeds[key] = {
           timetable: sched.feeds[key]?.builtAt || null,
@@ -208,10 +215,11 @@ export class ServiceRecorder {
           observed: Object.keys(obs).length,
           unscheduled: extra,
           coverage: d.cov[key] || [],
+          trips: rows,
         };
       }
       const out = path.join(this.dataDir, 'service', date.slice(0, 7), `${date}.json`);
-      writeJson(out, { date, finalisedAt: iso(atMs), feeds, cols: TRIP_COLUMNS, trips: rows });
+      writeJson(out, { date, finalisedAt: iso(atMs), cols: TRIP_COLUMNS, feeds });
       try { fs.unlinkSync(this.schedFile(date)); } catch { /* never written */ }
       this.schedCache.delete(date);
       this.dirty.delete(date);
@@ -229,7 +237,7 @@ export class ServiceRecorder {
   }
 }
 
-// Observation → final columns: flags, first_seen, last_seen, max_delay, end_delay, skipped, occ, cars, model, rt_start
+// Observation → final columns: flags, first_seen, last_seen, max_delay, end_delay, skipped, occ, cars_seen, model
 function obsCols(o) {
-  return [o[O.FLAGS], o[O.FIRST], o[O.LAST], o[O.MAX], o[O.END], o[O.SKIP], o[O.OCC], o[O.CARS], o[O.MODEL], o[O.RTSTART] ?? null];
+  return [o[O.FLAGS], o[O.FIRST], o[O.LAST], o[O.MAX], o[O.END], o[O.SKIP], o[O.OCC], o[O.CARS], o[O.MODEL]];
 }

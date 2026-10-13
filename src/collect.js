@@ -107,7 +107,10 @@ async function collectRealtime(now, meta, run) {
         if (!w.withOcc) continue;
         loadRows.push(toCsvLine([iso(feedTime * 1000), line, w.running, w.withOcc, w.cars.join(' '), w.carDelay.join(' '), w.trains.join(' '), w.trainDelay.join(' '), feed.key]));
       }
-      d.last.ids = service.record(feed.key, stats.tripList, feedTime * 1000, id => !!map.sched?.trips[id]);
+      d.last.ids = service.record(feed.key, stats.tripList, feedTime * 1000, id => {
+        const t = map.sched?.trips[id];
+        return t ? [t[1], map.sched.services[t[1]]] : false;
+      });
       service.covered(feed.key, feedTime * 1000);
       for (const [line, keys] of Object.entries(stats.cancelled)) {
         for (const key of keys) {

@@ -10,12 +10,26 @@ BMT_1,SydneyTrains,BMT,Blue Mountains Line,Intercity Trains Network,2,F99D1C
 T9_route,SydneyTrains,T9,Northern Line,Sydney Trains Network,2,D11F2F
 RTTA_DEF,SydneyTrains,,Non Revenue,,2,
 ''',
-    'trips.txt': '''route_id,service_id,trip_id,trip_headsign,direction_id
-T1_route,s1,T1.trip.1,"Emu Plains, via Strathfield",0
-T1_route,s2,T1.trip.2,Hornsby,1
-BMT_1,s1,BMT.trip.9,Lithgow,0
-T9_route,s3,T9.trip.1,Gordon,1
-RTTA_DEF,s1,X.trip,Empty,0
+    'trips.txt': '''route_id,service_id,trip_id,trip_headsign,direction_id,vehicle_category_id
+T1_route,s1,T1.trip.1,"Emu Plains, via Strathfield",0,B8
+T1_route,s2,T1.trip.2,Hornsby,1,
+BMT_1,s1,BMT.trip.9,Lithgow,0,H4
+T9_route,s3,T9.trip.1,Gordon,1,B8
+RTTA_DEF,s1,X.trip,Empty,0,B8
+''',
+    # Train consists (Sydney Trains publishes these): an 8-car and a 4-car set.
+    'vehicle_categories.txt': '''vehicle_category_id,vehicle_category_name
+B8,8 car Waratah Series 2
+Bcar,Individual Waratah Series 2 car
+H4,4 car OSCAR
+''',
+    'vehicle_couplings.txt': 'parent_id,child_id,child_sequence,child_label\n' + ''.join(f'B8,Bcar,{i},{i}\n' for i in range(1, 9)) + ''.join(f'H4,Hcar,{i},{i}\n' for i in range(1, 5)),
+    # Forecast occupancy per stop and day of week: T1.trip.1 averages level 2 on weekdays, 5 on Saturdays.
+    'occupancies.txt': '''"trip_id","stop_sequence","occupancy_status","monday","tuesday","wednesday","thursday","friday","saturday","sunday","start_date","end_date","exception"
+"T1.trip.1","1","1","1","1","1","1","1","0","0","20261001","","0"
+"T1.trip.1","2","3","1","1","1","1","1","0","0","20261001","","0"
+"T1.trip.1","1","5","0","0","0","0","0","1","0","20261001","","0"
+"X.trip","1","4","1","1","1","1","1","1","1","20261001","","0"
 ''',
     'agency.txt': '''agency_id,agency_name
 SydneyTrains,Sydney Trains

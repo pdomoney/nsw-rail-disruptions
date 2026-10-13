@@ -7,7 +7,7 @@ import { tfnswGetFirst } from './http.js';
 import { readJson, writeJson } from './store.js';
 
 // Bump when the map format changes, so cached maps are rebuilt.
-export const MAP_VERSION = 5;
+export const MAP_VERSION = 6;
 
 // "25:13:00" → 90780 (seconds after the start of the service day; may pass 24 hours)
 export function gtfsTime(t) {
@@ -15,8 +15,9 @@ export function gtfsTime(t) {
   return m ? +m[1] * 3600 + +m[2] * 60 + +m[3] : null;
 }
 
-// Extra files in TfNSW bundles (occupancy forecasts, train consists) that are sampled for diagnostics.
-const SAMPLED = ['occupancies.txt', 'vehicle_categories.txt', 'vehicle_couplings.txt', 'vehicle_boardings.txt', 'notes.txt'];
+// Extra files in the Sydney Trains bundle: occupancy forecasts and train consists.
+const EXTRA = ['occupancies.txt', 'vehicle_categories.txt', 'vehicle_couplings.txt'];
+const SAMPLED = ['occupancies.txt', 'vehicle_categories.txt', 'vehicle_couplings.txt'];
 
 // "Central Station, Platform 18" → "Central Station"
 function stationName(name) {
@@ -24,7 +25,7 @@ function stationName(name) {
 }
 
 export function buildRouteMap(zipBuf, feed) {
-  const files = readZip(zipBuf, ['routes.txt', 'trips.txt', 'stops.txt', 'stop_times.txt', 'calendar.txt', 'calendar_dates.txt', ...SAMPLED]);
+  const files = readZip(zipBuf, ['routes.txt', 'trips.txt', 'stops.txt', 'stop_times.txt', 'calendar.txt', 'calendar_dates.txt', ...EXTRA]);
   if (!files['routes.txt']) throw new Error('routes.txt missing from bundle');
   const routes = parseCsv(files['routes.txt'].toString('utf8'),
     ['route_id', 'route_short_name', 'route_long_name', 'route_desc', 'route_color']);
@@ -58,13 +59,40 @@ export function buildRouteMap(zipBuf, feed) {
     });
   }
 
-  // trips[tripId] = [line, serviceId, startSec, endSec, directionId] for every trip on a tracked line.
+  // Train lengths: vehicle categories (e.g. "B8", an 8-car Waratah Series 2) and their carriages.
+  const carsOf = {};
+  if (files['vehicle_couplings.txt']) {
+    forEachCsvRow(files['vehicle_couplings.txt'], ['parent_id', 'child_id'], ([parent]) => { carsOf[parent] = (carsOf[parent] || 0) + 1; });
+  }
+
+  // trips[tripId] = [line, serviceId, startSec, endSec, directionId, cars, forecast] for every trip on a
+  // tracked line. cars comes from the vehicle category (null if unknown); forecast is filled in below.
   const trips = {};
   if (files['trips.txt']) {
-    forEachCsvRow(files['trips.txt'], ['route_id', 'service_id', 'trip_id', 'direction_id'], ([routeId, sid, tripId, dir]) => {
+    forEachCsvRow(files['trips.txt'], ['route_id', 'service_id', 'trip_id', 'direction_id', 'vehicle_category_id'], ([routeId, sid, tripId, dir, cat]) => {
       const line = routeMap[routeId];
-      if (line) trips[tripId] = [line, sid, null, null, dir === '' || dir == null ? null : +dir];
+      if (line) trips[tripId] = [line, sid, null, null, dir === '' || dir == null ? null : +dir, carsOf[cat] || null, null];
     });
+  }
+
+  // Forecast occupancy (occupancies.txt, Sydney Trains): the average level over a trip's stops for
+  // each day of the week, times 10 (so 15 = between "many seats" and "few seats"), or null.
+  let forecastTrips = 0;
+  if (files['occupancies.txt']) {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const acc = new Map(); // tripId → [sum×7, count×7]
+    forEachCsvRow(files['occupancies.txt'], ['trip_id', 'occupancy_status', ...days], row => {
+      if (!trips[row[0]]) return;
+      const level = row[1] === '' ? NaN : +row[1];
+      if (!(level >= 0 && level <= 5)) return;
+      let a = acc.get(row[0]);
+      if (!a) acc.set(row[0], (a = [new Array(7).fill(0), new Array(7).fill(0)]));
+      for (let i = 0; i < 7; i++) if (row[2 + i] === '1') { a[0][i] += level; a[1][i]++; }
+    });
+    for (const [tripId, [sum, n]] of acc) {
+      trips[tripId][6] = sum.map((x, i) => (n[i] ? Math.round((x / n[i]) * 10) : null));
+      forecastTrips++;
+    }
   }
 
   // One pass over stop_times: first departure and last arrival of each trip, and the stations
@@ -125,7 +153,8 @@ export function buildRouteMap(zipBuf, feed) {
     sched: { services, trips },
     stats: {
       routes: routes.length, matchedRoutes: routes.length - unmatched.length, trips: Object.keys(trips).length,
-      stations: Object.keys(stations).length, services: Object.keys(services).length, calendarDates, from, to, files: listing, samples,
+      stations: Object.keys(stations).length, services: Object.keys(services).length, calendarDates, from, to,
+      forecastTrips, tripsWithCars: Object.values(trips).filter(t => t[5]).length, files: listing, samples,
     },
     unmatched: unmatched.slice(0, 40),
   };
@@ -142,16 +171,18 @@ export function serviceRuns(svc, ymd) {
   return !!start && start <= ymd && ymd <= end && ((mask >> weekdayIndex(ymd)) & 1) === 1;
 }
 
-// The trips scheduled on one service date: [[tripId, line, directionId, startSec, endSec], ...].
+// The trips scheduled on one service date:
+// [[tripId, line, directionId, startSec, endSec, cars, forecast occupancy ×10], ...].
 export function scheduledTrips(map, ymd) {
   const sched = map?.sched;
   if (!sched) return [];
   const running = new Map();
+  const wd = weekdayIndex(ymd);
   const out = [];
-  for (const [tripId, [line, sid, start, end, dir]] of Object.entries(sched.trips)) {
+  for (const [tripId, [line, sid, start, end, dir, cars, forecast]] of Object.entries(sched.trips)) {
     let r = running.get(sid);
     if (r === undefined) running.set(sid, (r = serviceRuns(sched.services[sid], ymd)));
-    if (r) out.push([tripId, line, dir, start, end]);
+    if (r) out.push([tripId, line, dir, start, end, cars ?? null, forecast?.[wd] ?? null]);
   }
   return out.sort((a, b) => (a[3] ?? 0) - (b[3] ?? 0) || (a[0] < b[0] ? -1 : 1));
 }
