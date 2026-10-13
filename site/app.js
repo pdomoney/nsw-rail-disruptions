@@ -383,8 +383,10 @@ function viewOverview(main) {
     modes.filter(m => !BOARD_LEFT.includes(m) && !BOARD_RIGHT.includes(m)).map(m => group(m, true)));
 
   main.replaceChildren(
-    h('section', { class: 'now', 'aria-labelledby': 'now-h' }, Object.assign(head, { id: 'now-h' }), sub, stale, nowAlerts()),
-    clockBand(),
+    h('section', { class: 'now', 'aria-labelledby': 'now-h' },
+      h('div', { class: 'now-head' }, Object.assign(head, { id: 'now-h' }), sub, stale),
+      clockBand(),
+      nowAlerts()),
     board,
     calendarSection(),
     rankingSection(),
@@ -429,14 +431,13 @@ function clockBand() {
   // Say so when today's readings started late (the first day, or after an outage).
   const firstAt = c.firstAt?.[c.days.indexOf(today)];
   const lateStart = !!firstAt && Number(F.hour.format(new Date(ms(firstAt)))) >= 5;
-  return h('section', { class: 'clock', 'aria-labelledby': 'clock-h' },
+  const rate = c.perMin && c.asOf ? `Losing about ${plural(Math.round(c.perMin), 'minute')} a minute at ${time(c.asOf)}. ` : '';
+  const prev = yesterday.found && yesterday.late + yesterday.wait > 0 ? `Yesterday ${hoursLabel(yesterday.late + yesterday.wait)}. ` : '';
+  return h('aside', { class: 'clock', 'aria-labelledby': 'clock-h' },
     h('h2', { id: 'clock-h', class: 'clock-label' }, 'Delay clock'),
-    h('p', { class: 'clock-main' }, num, h('span', { class: 'clock-unit' }, lateStart ? ` passenger-hours lost since ${time(firstAt)}` : ' passenger-hours lost today'),
-      h('span', { class: 'clock-sub' }, ' to late trains and metros, and to waiting after cancelled trains.')),
-    h('p', { class: 'clock-meta' },
-      c.perMin && c.asOf ? `At ${time(c.asOf)}, about ${compact(c.aboard)} people were on board, together losing ${plural(Math.round(c.perMin), 'minute')} every minute. ` : '',
-      yesterday.found && yesterday.late + yesterday.wait > 0 ? `Yesterday: ${hoursLabel(yesterday.late + yesterday.wait)} hours. ` : '',
-      'A rough estimate from TfNSW occupancy and live trip data. ', h('a', { href: '#/service' }, 'How it is worked out')));
+    h('p', { class: 'clock-main' }, num, h('span', { class: 'clock-unit' }, lateStart ? `passenger-hours lost since ${time(firstAt)}` : 'passenger-hours lost today')),
+    h('p', { class: 'clock-meta' }, 'To late trains and metros, and waits after cancelled trains. ', rate, prev,
+      'A rough estimate. ', h('a', { href: '#/service' }, 'How it’s worked out')));
 }
 
 function calendarSection() {
