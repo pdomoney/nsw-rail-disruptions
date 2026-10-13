@@ -410,35 +410,39 @@ function clockDay(date) {
 }
 const hoursLabel = minutes => Math.round(minutes / 60).toLocaleString('en-AU');
 let clockTimer = null;
-// The hero: headline with the delay clock beside it, the current disruptions across the full width, then
-// today's trips and the lines running late now.
+// The hero: a slim banner with the delay clock and today's trips; the headline under it with the lines
+// running late now beside it; then the current disruptions across the full width.
 function nowSection(head, sub, stale) {
   const alerts = nowAlerts();
-  const clock = clockBand();
-  const extra = [tripsTodayBlock(), lateNowBlock()].filter(Boolean);
+  const banner = statsBanner();
+  const late = lateNowBlock();
   return h('section', { class: 'now', 'aria-labelledby': 'now-h' },
+    banner,
     h('div', { class: 'now-head' }, Object.assign(head, { id: 'now-h' }), sub, stale),
-    clock ? h('div', { class: 'now-side' }, clock) : null,
-    alerts ? h('div', { class: 'now-list-wrap' }, alerts) : null,
-    extra.length ? h('div', { class: 'now-extra' }, extra) : null);
+    late ? h('div', { class: 'now-side' }, late) : null,
+    alerts ? h('div', { class: 'now-list-wrap' }, alerts) : null);
+}
+
+function statsBanner() {
+  const cells = [clockCell(), tripsTodayCell()].filter(Boolean);
+  if (!cells.length) return null;
+  return h('aside', { class: 'stats-banner', 'aria-label': 'Today in numbers' }, cells);
 }
 
 // Today's timetabled trips so far (from the service record).
-function tripsTodayBlock() {
+function tripsTodayCell() {
   const t = D.status.service;
   if (!t || t.date !== sydKey(Date.now()) || !t.counted) return null;
   const lost = t.cancelled + t.missing;
   const n = v => v.toLocaleString('en-AU');
-  const parts = [];
+  const parts = [`${n(t.counted - lost)} of ${n(t.counted)}`];
   if (t.cancelled) parts.push(`${n(t.cancelled)} cancelled`);
-  if (t.missing) parts.push(`${n(t.missing)} never seen in the live data`);
-  return h('section', { class: 'side-block', 'aria-labelledby': 'trips-today-h' },
-    h('h2', { id: 'trips-today-h', class: 'clock-label' }, 'Trips today'),
-    h('p', { class: 'clock-main' }, h('span', { class: 'side-num' }, `${pctLabel((100 * (t.counted - lost)) / t.counted)} ran`),
-      h('span', { class: 'clock-unit' }, `${n(t.counted - lost)} of ${n(t.counted)} timetabled trips so far`)),
-    h('p', { class: 'clock-meta' }, parts.length ? `${parts.join(', ')}. ` : 'None cancelled or missing. ',
-      t.ran ? `${pctLabel((100 * t.late) / t.ran)} reached the end of the line 5+ minutes late. ` : '',
-      h('a', { href: '#/service' }, 'See the trips')));
+  if (t.missing) parts.push(`${n(t.missing)} never seen`);
+  return h('p', { class: 'stat' },
+    h('span', { class: 'stat-label' }, 'Trips today'),
+    h('span', { class: 'stat-num' }, `${pctLabel((100 * (t.counted - lost)) / t.counted)} ran`),
+    h('span', { class: 'stat-text' }, parts.join(' · ')),
+    h('a', { class: 'stat-link', href: '#/service', 'aria-label': 'See today’s trips' }, 'Details'));
 }
 
 // Lines with the most late services in the latest live trip data.
@@ -464,12 +468,12 @@ function lateNowBlock() {
     h('p', { class: 'clock-meta' }, `Share of running services, from live trip data at ${time(at)}.`));
 }
 
-function clockBand() {
+function clockCell() {
   const c = D.clock;
   const today = sydKey(Date.now());
   const day = clockDay(today);
   if (!c || !day.found || !(day.late + day.wait > 0)) return null;
-  const num = h('span', { class: 'clock-num' });
+  const num = h('span', { class: 'stat-num' });
   const base = day.late + day.wait;
   // Between data updates the clock keeps counting at the latest rate (for up to 15 minutes).
   const tick = () => {
@@ -480,17 +484,15 @@ function clockBand() {
   clearInterval(clockTimer);
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   clockTimer = setInterval(tick, reduce ? 60000 : 2000);
-  const yesterday = clockDay(addDays(today, -1));
   // Say so when today's readings started late (the first day, or after an outage).
   const firstAt = c.firstAt?.[c.days.indexOf(today)];
   const lateStart = !!firstAt && Number(F.hour.format(new Date(ms(firstAt)))) >= 5;
-  const rate = c.perMin && c.asOf ? `Losing about ${plural(Math.round(c.perMin), 'minute')} a minute at ${time(c.asOf)}. ` : '';
-  const prev = yesterday.found && yesterday.late + yesterday.wait > 0 ? `Yesterday ${hoursLabel(yesterday.late + yesterday.wait)}. ` : '';
-  return h('aside', { class: 'clock', 'aria-labelledby': 'clock-h' },
-    h('h2', { id: 'clock-h', class: 'clock-label' }, 'Delay clock'),
-    h('p', { class: 'clock-main' }, num, h('span', { class: 'clock-unit' }, lateStart ? `passenger-hours lost since ${time(firstAt)}` : 'passenger-hours lost today')),
-    h('p', { class: 'clock-meta' }, 'To late trains and metros, and waits after cancelled trains. ', rate, prev,
-      'A rough estimate. ', h('a', { href: '#/service' }, 'How it’s worked out')));
+  const title = `To late trains and metros, and waits after cancelled trains. ${c.perMin && c.asOf ? `Losing about ${plural(Math.round(c.perMin), 'minute')} a minute at ${time(c.asOf)}. ` : ''}A rough estimate.`;
+  return h('p', { class: 'stat', title },
+    h('span', { class: 'stat-label' }, 'Delay clock'),
+    num,
+    h('span', { class: 'stat-text' }, lateStart ? `passenger-hours lost since ${time(firstAt)}` : 'passenger-hours lost today'),
+    h('a', { class: 'stat-link', href: '#/service', 'aria-label': 'How the delay clock is worked out' }, 'Details'));
 }
 
 function calendarSection() {
