@@ -125,23 +125,25 @@ jobs:
     permissions:
       actions: write
     steps:
-      - name: Start the next run if GitHub's schedule is not running
+      - name: Start the next run unless one is already waiting
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          last=$(gh run list --workflow collect.yml --event schedule --limit 1 --json createdAt --jq '.[0].createdAt // empty')
-          if [ -n "$last" ] && [ $(( $(date +%s) - $(date -d "$last" +%s) )) -lt 1800 ]; then
-            echo "GitHub's schedule is running (last scheduled run at $last), so no follow-up run is needed."
-            exit 0
-          fi
           started=$(gh api "repos/$GH_REPO/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at)
           wait=$(( 290 - ( $(date +%s) - $(date -d "$started" +%s) ) ))
           if [ "$wait" -gt 0 ]; then
             echo "Waiting ${wait}s before starting the next run."
             sleep "$wait"
+          fi
+          # A scheduled or manual run queued meanwhile carries on the chain (it waits for this one to finish).
+          waiting=$(gh run list --workflow collect.yml --limit 20 --json databaseId,status \
+            --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID and .status != \"completed\")] | length")
+          if [ "$waiting" -gt 0 ]; then
+            echo "Another run is already queued, so it will start next."
+            exit 0
           fi
           for attempt in 1 2 3; do
             gh workflow run collect.yml --ref "${DEFAULT_BRANCH:-main}" && exit 0
