@@ -925,6 +925,9 @@ const SVC_PERIODS = [['today', 'Today'], ['yesterday', 'Yesterday'], ['7d', 'Las
 async function viewService(main) {
   document.title = 'Service delivered | NSW Rail Disruptions';
   await loadService();
+  const ride = D.clock?.assumptions?.rideMinutes ?? 30;
+  const levelNames = ['empty', 'many seats free', 'few seats free', 'standing room only', 'crowded', 'full'];
+  const loads = (D.clock?.assumptions?.carLoad?.train || []).map((n, i) => `${n} people when ${levelNames[i]}`).join(', ') || 'see the source code';
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   const days = D.service.days;
   const today = sydKey(Date.now());
@@ -977,8 +980,8 @@ async function viewService(main) {
         h('li', {}, 'About every five minutes the live trip data is read. A trip is ', h('strong', {}, 'cancelled'), ' if the feed marks it cancelled and it is never seen running, and ', h('strong', {}, 'never seen'), ' if it does not appear in the feed at all. Every other judged trip counts as run: almost all of them are seen moving against their timetable, and the rest were listed in the feed as running but happened to fall between readings.'),
         h('li', {}, 'Only trips that were due while the live data was being collected are judged. Some train types hardly ever appear in the live data (the Hunter Line’s diesel railcars, for example), so their trips are not judged either.'),
         h('li', {}, 'Late means arriving at the last stop 5 or more minutes behind the timetable (6 for Intercity), using the last delay the feed gave for that stop.'),
-        h('li', {}, 'People on lost trips is a rough estimate for Sydney Trains and Intercity, where TfNSW forecasts how full each trip will be: carriages × an assumed load for the forecast level × the trip’s length in average 25-minute journeys. Treat it as an order of magnitude.'),
-        h('li', {}, 'The delay clock uses the occupancy TfNSW publishes for each carriage (predicted for Sydney Trains and Intercity, measured on board for Metro), turned into people with assumed loads: from 5 people in an empty carriage to 180 in a full one. At each reading, a train carrying L people D minutes late is taken to drop off L ÷ 25 people a minute, each D minutes late. Services with no occupancy figure are assumed to be like those with one. People on a lost trip wait until the next timetabled train on the line in the same direction, up to an hour.'),
+        h('li', {}, `People on lost trips is a rough estimate for Sydney Trains and Intercity, where TfNSW forecasts how full each trip will be: carriages × an assumed load for the forecast level × the trip’s length in average ${ride}-minute journeys. Treat it as an order of magnitude.`),
+        h('li', {}, `The delay clock uses the occupancy TfNSW publishes for each carriage (predicted for Sydney Trains and Intercity, measured on board for Metro), turned into people with assumed loads. For a Sydney Trains carriage: ${loads}. At each reading, a train carrying L people D minutes late is taken to drop off L ÷ ${ride} people a minute, each D minutes late. Services with no occupancy figure are assumed to be like those with one. People on a lost trip wait until the next timetabled train on the line in the same direction, up to an hour. The loads are assumptions and have not yet been checked against Opal trip counts.`),
         h('li', {}, 'This is not TfNSW’s official on-time running measure, which uses peak-hour arrivals at key stations.'))));
 
   const dayIndexes = () => {

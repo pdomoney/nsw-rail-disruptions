@@ -6,15 +6,15 @@
 // is (sum of D × L over running services) ÷ RIDE_MINUTES, and each run stands for the minutes until
 // the next one (at most 10). Loads come from TfNSW occupancy levels: predicted per carriage for
 // Sydney Trains and Intercity, measured per carriage for Metro.
-import { RIDE_MINUTES } from './service-stats.js';
+import { RIDE_MINUTES, PAX_PER_CAR } from './service-stats.js';
 import { sydDate, sydHour, toMs } from './time.js';
 
 // Rough passengers aboard one carriage at each occupancy level (empty, many seats, few seats, standing
 // room, crowded, full): a double-deck Sydney Trains carriage (about 110 seats) and a Metro carriage
 // (about 63 seats, with more standing room).
 export const CAR_LOAD = {
-  train: [5, 35, 85, 125, 160, 180],
-  metro: [5, 20, 50, 100, 150, 180],
+  train: PAX_PER_CAR,
+  metro: [3, 15, 45, 100, 150, 180],
 };
 const TRAIN_CARS = 8;           // carriages assumed when only a level for the whole train is given
 const MAX_STEP_MIN = 10;         // a run counts for at most this many minutes

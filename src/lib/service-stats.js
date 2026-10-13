@@ -27,10 +27,12 @@ export const COUNTERS = ['sched', 'due', 'counted', 'ran', 'late', 'part', 'canc
 const K = Object.fromEntries(COUNTERS.map((c, i) => [c, i]));
 
 // Rough passengers aboard one carriage at each TfNSW occupancy level (empty, many seats, few seats,
-// standing room, crowded, full), for a double-deck Sydney Trains carriage of about 110 seats.
-export const PAX_PER_CAR = [5, 35, 85, 125, 160, 180];
+// standing room, crowded, full), for a double-deck Sydney Trains carriage of about 110 seats. "Many
+// seats" means under half the seats taken; most off-peak carriages are at that level, so it is taken
+// near the bottom of its range. These are assumptions, to be checked against Opal trip counts.
+export const PAX_PER_CAR = [3, 20, 70, 120, 160, 190];
 // Average journey length, to turn the average load of a trip into the number of people who use it.
-export const RIDE_MINUTES = 25;
+export const RIDE_MINUTES = 30;
 
 // Estimated passengers using one trip: carriages × average load × trip length ÷ average journey.
 export function tripPassengers(cars, forecast10, minutes) {

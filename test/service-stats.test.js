@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FLAG, TRIP_COLUMNS } from '../src/lib/service.js';
-import { summariseDay, pairStats, trackedPairs, tripPassengers, watched, COUNTERS } from '../src/lib/service-stats.js';
+import { summariseDay, pairStats, trackedPairs, tripPassengers, watched, COUNTERS, PAX_PER_CAR, RIDE_MINUTES } from '../src/lib/service-stats.js';
 
 // Build a trip row from named fields.
 const row = o => TRIP_COLUMNS.map(c => o[c] ?? (c === 'flags' || c === 'skipped' || c === 'cars_seen' ? 0 : null));
@@ -30,9 +30,10 @@ const record = {
 };
 
 test('passenger estimate and watched trips', () => {
-  // 8 cars at level 2 (85 a carriage) for 50 minutes, two average journeys long.
-  assert.equal(tripPassengers(8, 20, 50), 1360);
-  assert.equal(tripPassengers(8, 15, 25), 8 * 60);
+  // 8 cars at level 2 for a trip two average journeys long.
+  assert.equal(tripPassengers(8, 20, 2 * RIDE_MINUTES), 8 * PAX_PER_CAR[2] * 2);
+  // Level 1.5 is halfway between; a trip shorter than one journey still counts its load once.
+  assert.equal(tripPassengers(8, 15, 10), 8 * (PAX_PER_CAR[1] + PAX_PER_CAR[2]) / 2);
   assert.equal(tripPassengers(null, 20, 50), null);
   assert.equal(watched([[0, 1000]], 100, 900), true);
   assert.equal(watched([[0, 400]], 100, 2000), false); // 700 s watched of a 30-minute trip
@@ -44,9 +45,9 @@ test('a day of trips is summarised per line', () => {
   const get = l => Object.fromEntries(COUNTERS.map((c, i) => [c, s.lines[l][i]]));
   assert.deepEqual(get('T1'), {
     sched: 6, due: 5, counted: 5, ran: 2, late: 1, part: 1, cancelled: 1, missing: 1, unclear: 1, untracked: 0, added: 1,
-    paxCounted: 1632 + 4 * 1360, paxLost: 2 * 1360, // A runs for an hour
+    paxCounted: Math.round(tripPassengers(8, 20, 60) + 4 * tripPassengers(8, 20, 50)), paxLost: Math.round(2 * tripPassengers(8, 20, 50)),
     // B's passengers wait for C (1000 s), C's for D (1000 s).
-    lostWaitMin: Math.round(2 * 1360 * (1000 / 60)),
+    lostWaitMin: Math.round(2 * tripPassengers(8, 20, 50) * (1000 / 60)),
   });
   // The South Coast railcars never appear in the feed, so they are not judged.
   assert.equal(get('SCO').untracked, 2);
