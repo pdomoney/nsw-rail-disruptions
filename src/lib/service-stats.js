@@ -63,7 +63,7 @@ export function outcome(flags, row) {
 
 const isEmptyRun = r => /^empty train$/i.test(r[C.headsign] || '');
 const pairOf = r => `${r[C.line]}|${r[C.type] ?? ''}`;
-const isDue = (r, nowSec) => nowSec == null || (r[C.end] ?? r[C.start]) + 600 <= nowSec;
+const isDue = (r, nowSec) => nowSec == null || Math.max(r[C.end] ?? r[C.start], r[C.start]) + 600 <= nowSec;
 
 // For each line and train type pair ("SCO|N2"): [timetabled trips due while the feed was watched, how
 // many of them appeared in it]. Some train types (such as diesel railcar shuttles) hardly ever appear
