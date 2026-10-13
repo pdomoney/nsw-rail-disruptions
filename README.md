@@ -36,7 +36,7 @@ History before collection started comes from the community archive [jxeeno/nsw-s
 Notes:
 - GitHub runs scheduled workflows on a best-effort basis. Gaps of 10–15 minutes between runs are normal, and on some repositories the schedule never fires. As a fallback, each run starts the next one about five minutes after it began, unless another run (scheduled or manual) is already queued, in which case that run carries on the chain. This keeps one GitHub-hosted runner busy (mostly waiting) around the clock. To turn it off, add a repository variable `SELF_SCHEDULE` with the value `off` (**Settings → Secrets and variables → Actions → Variables**).
 - GitHub disables scheduled workflows in public repositories after 60 days without repository activity. The workflow's own data commits normally count as activity. If collection stops, re-enable the workflow from the Actions tab.
-- Each run makes about 7 API calls (one alerts call and six realtime feeds), plus a once-a-day download of the static timetables and, about once an hour, the six vehicle position feeds (for diagnostics). That is roughly 2,200 calls a day, well within TfNSW's limit of 60,000 a day.
+- Each run makes about 11 API calls: one for alerts, six realtime trip feeds, and the vehicle positions of Sydney Trains, Metro, Parramatta and Newcastle light rail (which carry measured occupancy). The other two vehicle position feeds are read about once an hour, and the static timetables once a day. That is roughly 3,300 calls a day, well within TfNSW's limit of 60,000 a day.
 
 ## Data files (`data` branch)
 
