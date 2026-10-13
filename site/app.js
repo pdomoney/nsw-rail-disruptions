@@ -342,9 +342,11 @@ function viewOverview(main) {
   if (!disrupted.length) head.append('No unplanned disruptions on trains, metro or light rail right now.');
   else {
     head.append(disrupted.length === 1 ? 'Unplanned disruption on ' : 'Unplanned disruptions on ');
+    // Keep each comma with its badge so a line never starts with one.
+    const n = disrupted.length;
     disrupted.forEach((l, i) => {
-      if (i > 0) head.append(i === disrupted.length - 1 ? ' and ' : ', ');
-      head.append(badge(l.id));
+      head.append(h('span', { class: 'nowrap' }, badge(l.id), i < n - 2 ? ',' : ''));
+      if (i < n - 1) head.append(i === n - 2 ? ' and ' : ' ');
     });
     head.append(' right now.');
   }
@@ -383,10 +385,7 @@ function viewOverview(main) {
     modes.filter(m => !BOARD_LEFT.includes(m) && !BOARD_RIGHT.includes(m)).map(m => group(m, true)));
 
   main.replaceChildren(
-    h('section', { class: 'now', 'aria-labelledby': 'now-h' },
-      h('div', { class: 'now-head' }, Object.assign(head, { id: 'now-h' }), sub, stale),
-      clockBand(),
-      nowAlerts()),
+    nowSection(head, sub, stale),
     board,
     calendarSection(),
     rankingSection(),
@@ -411,6 +410,63 @@ function clockDay(date) {
 }
 const hoursLabel = minutes => Math.round(minutes / 60).toLocaleString('en-AU');
 let clockTimer = null;
+// The hero: headline, then the current disruptions on the left; on the right, the delay clock, today's
+// trips and the lines running late now. With no disruptions, the last two sit under the headline.
+function nowSection(head, sub, stale) {
+  const alerts = nowAlerts();
+  const clock = clockBand();
+  const extra = [tripsTodayBlock(), lateNowBlock()].filter(Boolean);
+  const headEl = h('div', { class: 'now-head' }, Object.assign(head, { id: 'now-h' }), sub, stale);
+  if (alerts) {
+    return h('section', { class: 'now', 'aria-labelledby': 'now-h' }, headEl,
+      h('div', { class: 'now-side' }, clock, extra), h('div', { class: 'now-list-wrap' }, alerts));
+  }
+  return h('section', { class: 'now now-quiet', 'aria-labelledby': 'now-h' }, headEl,
+    clock ? h('div', { class: 'now-side' }, clock) : null,
+    extra.length ? h('div', { class: 'now-extra' }, extra) : null);
+}
+
+// Today's timetabled trips so far (from the service record).
+function tripsTodayBlock() {
+  const t = D.status.service;
+  if (!t || t.date !== sydKey(Date.now()) || !t.counted) return null;
+  const lost = t.cancelled + t.missing;
+  const n = v => v.toLocaleString('en-AU');
+  const parts = [];
+  if (t.cancelled) parts.push(`${n(t.cancelled)} cancelled`);
+  if (t.missing) parts.push(`${n(t.missing)} never seen in the live data`);
+  return h('section', { class: 'side-block', 'aria-labelledby': 'trips-today-h' },
+    h('h2', { id: 'trips-today-h', class: 'clock-label' }, 'Trips today'),
+    h('p', { class: 'clock-main' }, h('span', { class: 'side-num' }, `${pctLabel((100 * (t.counted - lost)) / t.counted)} ran`),
+      h('span', { class: 'clock-unit' }, `${n(t.counted - lost)} of ${n(t.counted)} timetabled trips so far`)),
+    h('p', { class: 'clock-meta' }, parts.length ? `${parts.join(', ')}. ` : 'None cancelled or missing. ',
+      t.ran ? `${pctLabel((100 * t.late) / t.ran)} reached the end of the line 5+ minutes late. ` : '',
+      h('a', { href: '#/service' }, 'See the trips')));
+}
+
+// Lines with the most late services in the latest live trip data.
+const LATE_SHOWN = 5;
+function lateNowBlock() {
+  const rows = D.meta.lines.map(l => ({ id: l.id, live: D.status.lines[l.id]?.live }))
+    .filter(x => x.live?.active >= 3)
+    .map(x => ({ ...x, pct: (100 * x.live.late) / x.live.active }))
+    .sort((a, b) => b.pct - a.pct || b.live.mean - a.live.mean);
+  if (!rows.length) return null;
+  const late = rows.filter(x => x.pct >= 5 || x.live.mean >= 120).slice(0, LATE_SHOWN);
+  const at = rows.map(x => x.live.at).sort().pop();
+  return h('section', { class: 'side-block', 'aria-labelledby': 'late-now-h' },
+    h('h2', { id: 'late-now-h', class: 'clock-label' }, 'Running late now'),
+    late.length
+      ? h('ul', { class: 'late-list' }, late.map(x => {
+        const thr = lineInfo(x.id).mode === 'intercity' ? 6 : 5;
+        return h('li', {}, badge(x.id),
+          h('span', { class: 'late-bar', style: { '--w': `${Math.min(100, x.pct)}%` }, 'aria-hidden': 'true' }),
+          h('span', { class: 'late-text' }, h('strong', {}, `${Math.round(x.pct)}%`), ` ${thr}+ min late`, h('span', { class: 'muted' }, ` · avg ${(x.live.mean / 60).toFixed(1)} min`)));
+      }))
+      : h('p', { class: 'clock-unit' }, 'Every line is within a few minutes of its timetable.'),
+    h('p', { class: 'clock-meta' }, `Share of running services, from live trip data at ${time(at)}.`));
+}
+
 function clockBand() {
   const c = D.clock;
   const today = sydKey(Date.now());

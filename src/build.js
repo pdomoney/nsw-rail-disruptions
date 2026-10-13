@@ -280,6 +280,18 @@ function build() {
     const canToday = cancels[l.id]?.[today] ?? null;
     status.lines[l.id] = { incidents: inc, planned, live, cancelledToday: canToday };
   }
+  // Today's timetabled trips so far, all tracked lines, for the overview.
+  const svcToday = service.days.findIndex(d => d.date === today);
+  if (svcToday >= 0) {
+    const K = Object.fromEntries(COUNTERS.map((c, i) => [c, i]));
+    const t = { date: today, asOf: service.days[svcToday].asOf, counted: 0, ran: 0, late: 0, cancelled: 0, missing: 0 };
+    for (const l of lines) {
+      const c = service.lines[l.id]?.[svcToday];
+      if (!c) continue;
+      for (const k of ['counted', 'ran', 'late', 'cancelled', 'missing']) t[k] += c[K[k]];
+    }
+    status.service = t;
+  }
 
   // ---------- event logs ----------
   const logEvents = events.filter(e => LOG_KINDS.has(e.k))
