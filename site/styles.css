@@ -336,3 +336,32 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .trip-form input[type="text"] { width: 100%; }
   .swap { margin: -6px 0 0 auto; }
 }
+
+/* Service delivered */
+.mark-cancel { fill: var(--heat-5); }
+.mark-missing { fill: var(--heat-3); }
+.key { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.85rem; color: var(--ink-2); margin-top: 6px; }
+.key span { display: inline-flex; align-items: center; gap: 6px; }
+.key i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.key-cancel { background: var(--heat-5); }
+.key-missing { background: var(--heat-3); }
+.svc-headline h2 { font-family: var(--font-narrow); font-weight: 600; font-size: clamp(1.45rem, 3.2vw, 2rem); line-height: 1.15; margin: 6px 0 6px; }
+.svc-headline p { color: var(--ink-2); font-size: 1.05rem; max-width: 72ch; margin: 0 0 6px; }
+.field.inline { flex-direction: row; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--ink-2); }
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--ink-2); cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--ink); }
+.svc-trips { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 8px 40px; }
+.svc-group h3 { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; margin: 14px 0 6px; }
+.svc-group h3 .muted { font-weight: 400; font-size: 0.9rem; }
+.svc-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.svc-list li { display: grid; grid-template-columns: 5.2em 1fr auto; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 0.95rem; }
+.svc-time { font-family: var(--font-narrow); font-weight: 600; font-variant-numeric: tabular-nums; }
+.svc-trip { min-width: 0; }
+.svc-out { font-size: 0.85rem; color: var(--ink-2); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.svc-out::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--muted); }
+.svc-out.cancelled::before { background: var(--heat-5); }
+.svc-out.missing::before { background: var(--heat-3); }
+.svc-out.late::before, .svc-out.part::before { background: var(--heat-1); box-shadow: inset 0 0 0 1px var(--heat-3); }
+.method { margin: 36px 0 12px; max-width: 80ch; color: var(--ink-2); }
+.method summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+.method li { margin-bottom: 0.4em; }

@@ -74,7 +74,7 @@ function stateEl(kind, label) {
 }
 
 // ---------- data ----------
-const D = { meta: null, daily: null, status: null, delays: null, line: {}, log: {} };
+const D = { meta: null, daily: null, status: null, delays: null, line: {}, log: {}, service: null, serviceDay: {} };
 async function getJson(p) {
   const r = await fetch(p, { cache: 'no-cache' });
   if (!r.ok) throw new Error(`Could not load ${p} (HTTP ${r.status})`);
@@ -175,14 +175,40 @@ const METRICS = {
     day: (L, i) => L.pl[i] / 60, total: (L, a, b) => countDays(L.pl, a, b), totalLabel: v => `${v} d`,
     tip: (L, c) => [`${hours(sum(L.pl, c.a, c.b))} of planned closures`, plural(countDays(L.pl, c.a, c.b), 'day') + ' affected'],
   },
+  lost: {
+    label: 'Trips lost', ramp: HEAT, bins: [0.5, 1, 2, 5, 10], legend: 'Share of timetabled trips cancelled or never seen in the live data',
+    tickLabels: ['<0.5%', '0.5–1%', '1–2%', '2–5%', '5–10%', '10%+'],
+    day: (L, i) => (L.tc?.[i] ? (100 * L.tl[i]) / L.tc[i] : null),
+    total: (L, a, b) => { const c = sum(L.tc || [], a, b); return c ? (100 * sum(L.tl || [], a, b)) / c : 0; },
+    totalLabel: v => pctLabel(v), from: () => D.daily.service?.start ?? Infinity, noData: 'No live trip data for this period',
+    tip: (L, c) => { const n = sum(L.tc || [], c.a, c.b), l = sum(L.tl || [], c.a, c.b); return [`${pctLabel(n ? (100 * l) / n : 0)} of timetabled trips lost`, `${plural(l, 'trip')} of ${n.toLocaleString('en-AU')} cancelled or never seen`]; },
+  },
   cancelled: {
-    label: 'Cancelled trips', ramp: HEAT, bins: [2, 5, 10, 20, 40], legend: 'Trip cancellation alerts per day',
+    label: 'Cancellation alerts', ramp: HEAT, bins: [2, 5, 10, 20, 40], legend: 'Trip cancellation alerts per day',
     tickLabels: ['1', '2–4', '5–9', '10–19', '20–39', '40+'],
     day: (L, i) => L.can[i], total: (L, a, b) => sum(L.can, a, b), totalLabel: v => compact(v), from: () => D.daily.tripStart ?? 0,
     tip: (L, c) => [plural(sum(L.can, c.a, c.b), 'cancellation alert'), plural(sum(L.late, c.a, c.b), 'running-late alert')],
   },
 };
 function sum(arr, a, b) { let s = 0; for (let i = a; i <= b; i++) s += arr[i] || 0; return s; }
+// "1.2%", "0.4%", "12%", "100%"
+function pctLabel(v) {
+  if (!(v > 0)) return '0%';
+  if (v >= 99.95 && v < 100) return '99.9%';
+  return v < 10 || (v > 90 && v < 100) ? `${(Math.round(v * 10) / 10).toLocaleString('en-AU')}%` : `${Math.round(v)}%`;
+}
+// Copy the per-day service counts (trips counted and lost) onto the calendar's line arrays.
+function attachService(daily) {
+  const svc = daily.service;
+  if (!svc) return;
+  for (const [id, { tc, tl }] of Object.entries(svc.lines)) {
+    const L = daily.lines[id];
+    if (!L) continue;
+    L.tc = new Array(daily.days).fill(0);
+    L.tl = new Array(daily.days).fill(0);
+    tc.forEach((v, k) => { if (svc.start + k < daily.days) { L.tc[svc.start + k] = v; L.tl[svc.start + k] = tl[k]; } });
+  }
+}
 function countDays(arr, a, b) { let s = 0; for (let i = a; i <= b; i++) if (arr[i] > 0) s++; return s; }
 function covered(c) { for (let i = c.a; i <= c.b; i++) if (D.daily.coverage[i] > 0) return true; return false; }
 function binOf(v, bins) {
@@ -394,7 +420,11 @@ function calendarSection() {
       const values = cols.map(c => {
         if (!covered(c) || c.b < firstDay) return null;
         let s = 0, n = 0;
-        for (let i = Math.max(c.a, firstDay); i <= c.b; i++) if (D.daily.coverage[i] > 0) { s += m.day(L, i); n++; }
+        for (let i = Math.max(c.a, firstDay); i <= c.b; i++) {
+          if (!(D.daily.coverage[i] > 0)) continue;
+          const v = m.day(L, i);
+          if (v != null) { s += v; n++; }
+        }
         return n ? s / n : null;
       });
       rows.push({ id: l.id, color: l.color, short: l.id, name: l.name, href: `#/line/${l.id}`, values, L, total: m.totalLabel(m.total(L, a, b)) });
@@ -407,7 +437,7 @@ function calendarSection() {
       cellTip: (row, i) => {
         const c = cols[i];
         const head = [{ value: `${row.short} ${row.name}` }, { label: colLabel(c, unit), muted: true }];
-        if (row.values[i] == null) return [...head, { label: m.from && c.b < m.from() ? 'TfNSW did not publish trip alerts this early' : 'No data was collected for this period' }];
+        if (row.values[i] == null) return [...head, { label: m.noData || (m.from && c.b < m.from() ? 'TfNSW did not publish trip alerts this early' : 'No data was collected for this period') }];
         return [...head, ...m.tip(row.L, c).map(t => ({ label: t }))];
       },
       onCell: row => { location.hash = `#/line/${row.id}`; },
@@ -455,8 +485,9 @@ function rankingSection() {
     const rlabel = RANGES.find(r => r[0] === range)[1].toLowerCase();
     const since = rlabel === 'all' ? `since ${F.dateUTC.format(dateFromKey(D.daily.start))}` : `in the last ${rlabel}`;
     note.textContent = `${m.label} ${since}.` +
-      (metric === 'planned' ? ' Days with at least one planned closure.' : metric === 'unplanned' ? ' Hours with at least one unplanned disruption alert.' : ' Alerts about individual cancelled trips.');
-    const items = D.meta.lines.map(l => {
+      (metric === 'planned' ? ' Days with at least one planned closure.' : metric === 'unplanned' ? ' Hours with at least one unplanned disruption alert.'
+        : metric === 'lost' ? ' Share of timetabled trips that were cancelled or never seen in the live data.' : ' Alerts about individual cancelled trips.');
+    const items = D.meta.lines.filter(l => metric !== 'lost' || sum(D.daily.lines[l.id].tc || [], a, b) > 0).map(l => {
       const L = D.daily.lines[l.id];
       const v = m.total(L, a, b);
       return { id: l.id, label: l.name, short: l.id, color: l.color, href: `#/line/${l.id}`, value: metric === 'unplanned' ? v / 60 : v, valueLabel: m.totalLabel(v),
@@ -586,6 +617,8 @@ async function viewLine(main, id) {
   const listHolder = h('div');
   const countLine = h('p', { class: 'count-line' });
   const delaySection = h('div', { class: 'chart-grid' });
+  const svcSection = h('div');
+  lineService(svcSection, id);
 
   mount(main,
     h('div', { class: 'line-head' }, badge(id, { link: false, size: 'lg' }), h('div', {}, h('h1', {}, l.name), h('div', { class: 'line-mode' }, D.meta.modes[l.mode]?.label || ''))),
@@ -602,6 +635,9 @@ async function viewLine(main, id) {
     h('section', { class: 'section', 'aria-labelledby': 'ln-delay' },
       h('h2', { id: 'ln-delay' }, 'Delays from live trip data'),
       delaySection),
+    h('section', { class: 'section', 'aria-labelledby': 'ln-svc' },
+      h('h2', { id: 'ln-svc' }, 'Timetabled trips that ran'),
+      svcSection),
     h('section', { class: 'section', 'aria-labelledby': 'ln-alerts' },
       h('h2', { id: 'ln-alerts' }, 'Alerts'), listHead, countLine, listHolder));
 
@@ -756,7 +792,8 @@ function viewAbout(main) {
     h('ul', {},
       h('li', {}, h('strong', {}, 'Service alerts. '), 'Every few minutes a scheduled job on GitHub reads the Transport for NSW Trip Planner alerts feed, the same alerts shown on transportnsw.info. Each alert is followed from the moment it appears until it disappears.'),
       h('li', {}, h('strong', {}, 'Earlier alerts. '), `Alerts from July 2023 until this site started come from a community archive that saved the same feed every 20 to 30 minutes (github.com/jxeeno/nsw-service-alerts-historical).${m.archive ? ` ${m.archive.snapshots.toLocaleString('en-AU')} archived snapshots were replayed.` : ''}`),
-      h('li', {}, h('strong', {}, 'Delays. '), 'The job also reads the GTFS-realtime trip updates for Sydney Trains, Metro and the four light rail networks, works out how far behind the timetable each running service is, and stores an average per line. This only exists from the day collection started.')),
+      h('li', {}, h('strong', {}, 'Delays. '), 'The job also reads the GTFS-realtime trip updates for Sydney Trains, Metro and the four light rail networks, works out how far behind the timetable each running service is, and stores an average per line. This only exists from the day collection started.'),
+      h('li', {}, h('strong', {}, 'Timetabled trips. '), 'Each day’s timetable is taken from the TfNSW static timetables and every trip in it is followed through the live data, to see which ran, ran late, were cancelled or never appeared. See ', h('a', { href: '#/service' }, 'Service delivered'), '. Recording started in October 2026.')),
     h('h2', {}, 'How alerts are sorted'),
     h('ul', {},
       h('li', {}, h('strong', {}, 'Unplanned: '), 'alerts about something going wrong, such as signal or track repairs, emergencies, weather, train faults or industrial action. The cause is read from the alert wording, so it is only as good as that wording.'),
@@ -794,11 +831,303 @@ function viewAbout(main) {
   onResize(draw);
 }
 
+// ---------- service delivered ----------
+// Timetabled trips against what the live trip data showed: ran, ran late, cancelled, never appeared.
+async function loadService() {
+  if (!D.service) D.service = await getJson(`data/service.json?t=${Date.now()}`);
+  return D.service;
+}
+async function loadServiceDay(date) {
+  if (!D.serviceDay[date]) D.serviceDay[date] = await getJson(`data/service/${date}.json?t=${Date.now()}`);
+  return D.serviceDay[date];
+}
+const svcK = () => Object.fromEntries(D.service.cols.map((c, i) => [c, i]));
+const trackedLine = id => D.meta.lines.some(l => l.id === id);
+
+// "7:42 am" for seconds after the start of a service day (after midnight shows as the next morning).
+function svcTime(sec) {
+  const m = Math.floor(sec / 60) % (24 * 60);
+  const hh = Math.floor(m / 60), mm = m % 60;
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:${String(mm).padStart(2, '0')} ${hh < 12 ? 'am' : 'pm'}`;
+}
+
+// Counters summed over the selected days, per line and for the whole network.
+function serviceTotals(dayIdx) {
+  const K = svcK();
+  const lines = {};
+  const all = new Array(D.service.cols.length).fill(0);
+  for (const [id, perDay] of Object.entries(D.service.lines)) {
+    if (!trackedLine(id)) continue;
+    const acc = new Array(D.service.cols.length).fill(0);
+    for (const j of dayIdx) {
+      const c = perDay[j];
+      if (c) c.forEach((v, k) => { acc[k] += v; });
+    }
+    lines[id] = acc;
+    acc.forEach((v, k) => { all[k] += v; });
+  }
+  return { K, lines, all };
+}
+
+const SVC_PERIODS = [['today', 'Today'], ['yesterday', 'Yesterday'], ['7d', 'Last 7 days'], ['30d', 'Last 30 days']];
+
+async function viewService(main) {
+  document.title = 'Service delivered | NSW Rail Disruptions';
+  await loadService();
+  const q = new URLSearchParams(location.hash.split('?')[1] || '');
+  const days = D.service.days;
+  const today = sydKey(Date.now());
+  let period = q.get('day') && days.some(d => d.date === q.get('day')) ? q.get('day') : (q.get('period') || prefs.get('svcPeriod', 'today'));
+  let lineFilter = q.get('line') || '';
+  let showAll = false;
+
+  const intro = h('p', { class: 'section-intro' },
+    'How many of the trips in the timetable actually ran, worked out from the live trip data that TfNSW publishes for every train, metro and tram. ',
+    'Trips the feed marks as cancelled, and trips that never appear in it at all, count as lost; the rest count as run.');
+  const filters = h('div', { class: 'filters' });
+  const headline = h('div', { class: 'svc-headline', role: 'status' });
+  const kpis = h('div', { class: 'kpis' });
+  const cLines = h('div', { class: 'chart' }), cLate = h('div', { class: 'chart' }), cHour = h('div', { class: 'chart' }), cDays = h('div', { class: 'chart' });
+  const nLines = h('p', { class: 'chart-note' }), nHour = h('p', { class: 'chart-note' });
+  const daysBlock = h('div', { class: 'chart-block' }, h('h3', {}, 'Trips lost each day'), h('p', { class: 'chart-note' }, 'Share of judged trips that were cancelled or never seen, all lines.'), cDays);
+  const tableHolder = h('div');
+  let showTable = false;
+  const toggle = h('button', { type: 'button', class: 'table-toggle', onclick: () => { showTable = !showTable; draw(); } });
+  const listHead = h('div', { class: 'filters' });
+  const listHolder = h('div');
+  const listSection = h('section', { class: 'section', 'aria-labelledby': 'svc-list-h' }, h('h2', { id: 'svc-list-h' }, 'Trips that did not run'), listHead, listHolder);
+
+  mount(main,
+    h('div', { class: 'line-head' }, h('h1', {}, 'Service delivered')),
+    intro, filters, headline, kpis,
+    h('div', { class: 'chart-grid' },
+      h('div', { class: 'chart-block' }, h('h3', {}, 'Trips lost, by line'), nLines, cLines, h('div', { class: 'key' },
+        h('span', {}, h('i', { class: 'key-cancel' }), 'Cancelled'), h('span', {}, h('i', { class: 'key-missing' }), 'Never seen in the live data'))),
+      h('div', { class: 'chart-block' }, h('h3', {}, 'Late at the end of the line'), h('p', { class: 'chart-note' }, 'Share of trips that ran and reached their last stop 5 or more minutes late (6 for Intercity).'), cLate),
+      h('div', { class: 'chart-block' }, h('h3', {}, 'When trips were lost'), nHour, cHour),
+      daysBlock),
+    h('p', {}, toggle), tableHolder,
+    listSection,
+    h('details', { class: 'method' }, h('summary', {}, 'How this is worked out'),
+      h('ul', {},
+        h('li', {}, 'Each morning the day’s timetable is taken from the TfNSW static timetables and frozen, so later changes do not rewrite it. Trips marked “Empty Train” are left out.'),
+        h('li', {}, 'About every five minutes the live trip data is read. A trip is ', h('strong', {}, 'cancelled'), ' if the feed marks it cancelled and it is never seen running, and ', h('strong', {}, 'never seen'), ' if it does not appear in the feed at all. Every other judged trip counts as run: almost all of them are seen moving against their timetable, and the rest were listed in the feed as running but happened to fall between readings.'),
+        h('li', {}, 'Only trips that were due while the live data was being collected are judged. Some train types hardly ever appear in the live data (the Hunter Line’s diesel railcars, for example), so their trips are not judged either.'),
+        h('li', {}, 'Late means arriving at the last stop 5 or more minutes behind the timetable (6 for Intercity), using the last delay the feed gave for that stop.'),
+        h('li', {}, 'People on lost trips is a rough estimate for Sydney Trains and Intercity, where TfNSW forecasts how full each trip will be: carriages × an assumed load for the forecast level × the trip’s length in average 25-minute journeys. Treat it as an order of magnitude.'),
+        h('li', {}, 'This is not TfNSW’s official on-time running measure, which uses peak-hour arrivals at key stations.'))));
+
+  const dayIndexes = () => {
+    if (period === 'today') return days.map((d, j) => (d.date === today ? j : -1)).filter(j => j >= 0);
+    if (period === 'yesterday') return days.map((d, j) => (d.date === addDays(today, -1) ? j : -1)).filter(j => j >= 0);
+    if (period === '7d' || period === '30d') {
+      const n = period === '7d' ? 7 : 30;
+      return days.map((d, j) => ((dateFromKey(today) - dateFromKey(d.date)) / 864e5 < n ? j : -1)).filter(j => j >= 0);
+    }
+    return days.map((d, j) => (d.date === period ? j : -1)).filter(j => j >= 0);
+  };
+  const singleDate = () => (period === 'today' ? today : period === 'yesterday' ? addDays(today, -1) : /^\d{4}-/.test(period) ? period : null);
+  const setPeriod = v => {
+    period = v;
+    if (!/^\d{4}-/.test(v)) prefs.set('svcPeriod', v);
+    const p = new URLSearchParams();
+    if (/^\d{4}-/.test(v)) p.set('day', v); else if (v !== 'today') p.set('period', v);
+    if (lineFilter) p.set('line', lineFilter);
+    history.replaceState(null, '', `#/service${p.toString() ? `?${p}` : ''}`);
+    draw();
+  };
+
+  let drawing = 0;
+  const draw = async () => {
+    const my = ++drawing;
+    const idxs = dayIndexes();
+    const date = singleDate();
+    const pickable = days.filter(d => d.final || d.date === today).map(d => d.date).reverse();
+    filters.replaceChildren(
+      segmented(SVC_PERIODS, period, setPeriod, 'Period'),
+      h('label', { class: 'field inline' }, 'Day ',
+        h('select', { onchange: ev => setPeriod(ev.target.value || 'today') },
+          h('option', { value: '' }, 'Pick a day'),
+          pickable.map(d => { const o = h('option', { value: d }, F.dateUTC.format(dateFromKey(d))); if (d === period) o.selected = true; return o; }))));
+    const { K, lines, all } = serviceTotals(idxs);
+    const dayRec = idxs.length === 1 ? days[idxs[0]] : null;
+    const counted = all[K.counted];
+    const lost = all[K.cancelled] + all[K.missing];
+    const when = period === 'today' ? 'Today so far' : period === 'yesterday' ? 'Yesterday'
+      : period === '7d' ? 'Over the last 7 days' : period === '30d' ? 'Over the last 30 days' : `On ${F.dateUTC.format(dateFromKey(period))}`;
+    if (!counted) {
+      headline.replaceChildren(h('h2', {}, `${when}: not enough live trip data yet.`),
+        h('p', {}, days.length ? `Recording started on ${F.dateUTC.format(dateFromKey(days[0].date))}. Trips are judged once they are due to have finished.` : 'Recording has not started yet.'));
+    } else {
+      const asOf = dayRec && !dayRec.final && dayRec.asOf ? ` Counting trips due to finish by ${time(new Date(ms(dayRec.asOf) - 10 * 60000).toISOString())}.` : '';
+      const n = v => v.toLocaleString('en-AU');
+      const can = all[K.cancelled], mis = all[K.missing];
+      const canText = can === 1 ? 'one was cancelled' : `${n(can)} were cancelled`;
+      const misText = `${mis === 1 ? 'one' : n(mis)} never appeared in the live data`;
+      const lostText = can && mis ? `${canText} and ${misText}` : can ? canText : mis ? misText : 'none were cancelled or missing';
+      const unclear = all[K.unclear] ? ` (${n(all[K.unclear])} of them listed in the live data but not seen moving)` : '';
+      headline.replaceChildren(
+        h('h2', {}, `${when}, ${pctLabel((100 * (counted - lost)) / counted)} of timetabled trips ran.`),
+        h('p', {}, `${n(counted - lost)} of ${plural(counted, 'judged trip')} ran${unclear}; ${lostText}.${asOf}`));
+    }
+    kpis.replaceChildren(
+      kpi('Trips that ran', counted ? pctLabel((100 * (counted - lost)) / counted) : '–', counted ? `${(counted - lost).toLocaleString('en-AU')} of ${counted.toLocaleString('en-AU')} judged` : 'No trips judged yet'),
+      kpi('Cancelled', all[K.cancelled].toLocaleString('en-AU'), 'Marked cancelled in the live data'),
+      kpi('Never seen', all[K.missing].toLocaleString('en-AU'), 'Timetabled, but not in the live data'),
+      kpi('Late at the end of the line', all[K.ran] ? pctLabel((100 * all[K.late]) / all[K.ran]) : '–', `${plural(all[K.late], 'trip')} 5+ minutes late`),
+      kpi('People on lost trips', all[K.paxLost] ? `~${compact(all[K.paxLost])}` : '0', 'Rough estimate, Sydney Trains and Intercity only'));
+
+    // By line
+    const order = id => D.meta.lines.findIndex(l => l.id === id);
+    const judged = Object.entries(lines).filter(([, c]) => c[K.counted] > 0);
+    const notJudged = Object.entries(lines).filter(([, c]) => c[K.counted] === 0 && c[K.due] > 0).map(([id]) => id).sort((a, b) => order(a) - order(b));
+    nLines.replaceChildren(`Share of judged trips that were cancelled or never seen.`,
+      notJudged.length ? ` Not judged: ${notJudged.join(', ')} (not enough live data for ${notJudged.length === 1 ? 'this line' : 'these lines'}).` : '');
+    const items = judged.map(([id, c]) => {
+      const l = lineInfo(id);
+      const pc = (100 * c[K.cancelled]) / c[K.counted], pm = (100 * c[K.missing]) / c[K.counted];
+      return { id, label: l.name, short: id, color: l.color, href: `#/line/${id}`, value: pc + pm, valueLabel: pctLabel(pc + pm),
+        segments: [{ value: pc, fillClass: 'mark-cancel' }, { value: pm, fillClass: 'mark-missing' }],
+        tip: [{ value: `${pctLabel(pc + pm)} of trips lost` }, { label: fullName(l) }, { label: `${c[K.cancelled]} cancelled, ${c[K.missing]} never seen, of ${c[K.counted].toLocaleString('en-AU')}`, muted: true }] };
+    }).sort((x, y) => y.value - x.value || order(x.id) - order(y.id));
+    const lateItems = judged.filter(([, c]) => c[K.ran] > 0).map(([id, c]) => {
+      const l = lineInfo(id);
+      const v = (100 * c[K.late]) / c[K.ran];
+      return { id, label: l.name, short: id, color: l.color, href: `#/line/${id}`, value: v, valueLabel: pctLabel(v),
+        tip: [{ value: `${pctLabel(v)} late` }, { label: fullName(l) }, { label: `${c[K.late]} of ${plural(c[K.ran], 'trip')} that ran`, muted: true }] };
+    }).sort((x, y) => y.value - x.value || order(x.id) - order(y.id));
+    if (items.length) hbars(cLines, { items, badges: true, ariaLabel: 'Share of trips lost by line' });
+    else cLines.replaceChildren(h('p', { class: 'empty-chart' }, 'No trips judged in this period yet.'));
+    if (lateItems.length) hbars(cLate, { items: lateItems, badges: true, ariaLabel: 'Share of trips late at the end of the line' });
+    else cLate.replaceChildren(h('p', { class: 'empty-chart' }, 'No trips judged in this period yet.'));
+
+    // By hour (from the day file for one day, or the 7 and 30 day totals)
+    let hours = null;
+    if (date) {
+      try { hours = (await loadServiceDay(date)).hours; } catch { hours = null; }
+      if (my !== drawing) return;
+    } else hours = D.service.hours?.[period] || null;
+    const hourTotals = Array.from({ length: 24 }, () => [0, 0]);
+    for (const [id, hrs] of Object.entries(hours || {})) if (trackedLine(id)) hrs.forEach(([c, l], i) => { hourTotals[i][0] += c; hourTotals[i][1] += l; });
+    const hourLabel = i => (i === 0 ? '12 am' : i < 12 ? `${i} am` : i === 12 ? '12 pm' : `${i - 12} pm`);
+    nHour.textContent = 'Trips cancelled or never seen, by the hour they were due to start (all lines).';
+    if (hourTotals.some(([, l]) => l > 0)) {
+      columns(cHour, { items: hourTotals.map(([c, l], i) => ({ value: l, tip: [{ value: plural(l, 'trip') + ' lost' }, { label: `Due to start ${hourLabel(i)} to ${hourLabel((i + 1) % 24)}` }, { label: `${c.toLocaleString('en-AU')} judged`, muted: true }] })),
+        ticks: [0, 6, 12, 18].map(i => ({ i, label: hourLabel(i) })), ariaLabel: 'Trips lost by hour of day' });
+    } else cHour.replaceChildren(h('p', { class: 'empty-chart' }, hourTotals.some(([c]) => c > 0) ? 'No judged trip was lost in this period.' : 'No trips judged in this period yet.'));
+
+    // Day by day (periods only)
+    const dayCols = idxs.length > 1 ? idxs.map(j => {
+      let c = 0, l = 0;
+      for (const [id, perDay] of Object.entries(D.service.lines)) {
+        if (!trackedLine(id) || !perDay[j]) continue;
+        c += perDay[j][K.counted]; l += perDay[j][K.cancelled] + perDay[j][K.missing];
+      }
+      return { date: days[j].date, c, l };
+    }) : [];
+    daysBlock.hidden = dayCols.length < 2;
+    if (dayCols.length >= 2) {
+      columns(cDays, { items: dayCols.map(d => ({ value: d.c ? (100 * d.l) / d.c : 0, tip: [{ value: d.c ? `${pctLabel((100 * d.l) / d.c)} lost` : 'No trips judged' }, { label: F.dateUTC.format(dateFromKey(d.date)) }, { label: `${d.l} of ${d.c.toLocaleString('en-AU')} trips`, muted: true }] })),
+        ticks: dayCols.map((d, i) => ({ i, label: F.dateUTCShort.format(dateFromKey(d.date)) })).filter((t, i) => i % Math.max(1, Math.ceil(dayCols.length / 6)) === 0), yUnit: '%', ariaLabel: 'Share of trips lost per day' });
+    }
+
+    // Table
+    toggle.textContent = showTable ? 'Hide the table' : 'Show all lines as a table';
+    tableHolder.replaceChildren(showTable ? serviceTable(lines, K) : '');
+
+    // Trips that did not run (one day at a time)
+    if (!date) {
+      listSection.hidden = false;
+      listHead.replaceChildren();
+      listHolder.replaceChildren(h('p', { class: 'section-intro' }, 'Choose Today, Yesterday or a single day to list the trips.'));
+      return;
+    }
+    let detail = null;
+    try { detail = await loadServiceDay(date); } catch { detail = null; }
+    if (my !== drawing) return;
+    const lineIds = Object.keys(detail?.trips || {}).filter(trackedLine).sort((a, b) => order(a) - order(b));
+    listHead.replaceChildren(
+      h('label', { class: 'field inline' }, 'Line ',
+        h('select', { onchange: ev => { lineFilter = ev.target.value; setPeriod(period); } },
+          h('option', { value: '' }, 'All lines'),
+          lineIds.map(id => { const o = h('option', { value: id }, `${id} ${lineInfo(id).name}`); if (id === lineFilter) o.selected = true; return o; }))),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: showAll || null, onchange: ev => { showAll = ev.target.checked; draw(); } }), 'Also show late trips and trips that skipped stops'));
+    listHolder.replaceChildren(tripList(detail, lineIds.filter(id => !lineFilter || id === lineFilter), showAll));
+  };
+  pageRefresh = async () => { D.service = null; D.serviceDay = {}; await loadService(); draw(); };
+  draw();
+  onResize(draw);
+}
+
+// Line page: the last 30 days of timetabled trips against what ran.
+async function lineService(holder, id) {
+  try { await loadService(); } catch { holder.replaceChildren(h('p', { class: 'section-intro' }, 'Not available yet.')); return; }
+  const days = D.service.days;
+  const today = sydKey(Date.now());
+  const idxs = days.map((d, j) => ((dateFromKey(today) - dateFromKey(d.date)) / 864e5 < 30 ? j : -1)).filter(j => j >= 0);
+  const { K, lines } = serviceTotals(idxs);
+  const c = lines[id];
+  const link = h('a', { href: `#/service?line=${id}` }, 'Today’s cancelled and missing trips on this line');
+  if (!c || !c[K.counted]) {
+    holder.replaceChildren(h('p', { class: 'section-intro' },
+      c && c[K.untracked] ? 'This line’s trains do not appear in the live trip data often enough to tell which trips ran.'
+        : days.length ? `Recording started on ${F.dateUTC.format(dateFromKey(days[0].date))}. Figures appear once trips have been judged.` : 'Recording has not started yet.'));
+    return;
+  }
+  const lost = c[K.cancelled] + c[K.missing];
+  const chart = h('div', { class: 'chart' });
+  const perDay = idxs.map(j => ({ date: days[j].date, c: D.service.lines[id]?.[j] }));
+  holder.replaceChildren(
+    h('p', { class: 'section-intro' }, `Last 30 days, from the live trip data (recording started ${F.dateUTC.format(dateFromKey(days[0].date))}). `, link, '.'),
+    h('div', { class: 'kpis' },
+      kpi('Trips that ran', pctLabel((100 * (c[K.counted] - lost)) / c[K.counted]), `${(c[K.counted] - lost).toLocaleString('en-AU')} of ${c[K.counted].toLocaleString('en-AU')} judged`),
+      kpi('Cancelled', c[K.cancelled].toLocaleString('en-AU'), 'Marked cancelled in the live data'),
+      kpi('Never seen', c[K.missing].toLocaleString('en-AU'), 'Timetabled, but not in the live data'),
+      kpi('Late at the end of the line', c[K.ran] ? pctLabel((100 * c[K.late]) / c[K.ran]) : '–', `${plural(c[K.late], 'trip')} ${lineInfo(id).mode === 'intercity' ? 6 : 5}+ minutes late`)),
+    ...(perDay.length >= 2 ? [h('div', { class: 'chart-block' }, h('h3', {}, 'Trips lost each day'), h('p', { class: 'chart-note' }, 'Share of judged trips that were cancelled or never seen.'), chart)] : []));
+  if (perDay.length >= 2) {
+    requestAnimationFrame(() => columns(chart, {
+      items: perDay.map(({ date, c: x }) => {
+        const n = x?.[K.counted] || 0, l = n ? x[K.cancelled] + x[K.missing] : 0;
+        return { value: n ? (100 * l) / n : 0, tip: [{ value: n ? `${pctLabel((100 * l) / n)} lost` : 'No trips judged' }, { label: F.dateUTC.format(dateFromKey(date)) }, { label: `${l} of ${n.toLocaleString('en-AU')} trips`, muted: true }] };
+      }),
+      ticks: perDay.map((d, i) => ({ i, label: F.dateUTCShort.format(dateFromKey(d.date)) })).filter((t, i) => i % Math.max(1, Math.ceil(perDay.length / 6)) === 0),
+      yUnit: '%', ariaLabel: 'Share of trips lost per day' }));
+  }
+}
+
+const OUTCOME_LABEL = { cancelled: 'Cancelled', missing: 'Never seen', unclear: 'Not seen running', late: 'Late', part: 'Skipped stops' };
+function tripList(detail, lineIds, showAll) {
+  const keep = t => showAll || t[3] === 'cancelled' || t[3] === 'missing';
+  const groups = lineIds.map(id => [id, (detail?.trips?.[id] || []).filter(keep)]).filter(([, list]) => list.length);
+  if (!groups.length) return h('p', { class: 'empty-chart' }, showAll ? 'Every judged trip ran on time.' : 'No judged trip was cancelled or missing.');
+  return h('div', { class: 'svc-trips' }, groups.map(([id, list]) => h('section', { class: 'svc-group', 'aria-label': fullName(lineInfo(id)) },
+    h('h3', {}, badge(id), ' ', lineInfo(id).name, h('span', { class: 'muted' }, ` ${plural(list.length, 'trip')}`)),
+    h('ul', { class: 'svc-list' }, list.map(([start, headsign, origin, outcome, delay]) => h('li', {},
+      h('span', { class: 'svc-time' }, svcTime(start)),
+      h('span', { class: 'svc-trip' }, headsign ? `to ${headsign.replace(/\s+Station$/i, '')}` : 'Trip', origin ? h('span', { class: 'muted' }, ` from ${origin}`) : null),
+      h('span', { class: `svc-out ${outcome}` }, OUTCOME_LABEL[outcome] || outcome, (outcome === 'late' || outcome === 'part') && delay != null && delay >= 60 ? ` ${Math.round(delay / 60)} min` : '')))))));
+}
+
+function serviceTable(lines, K) {
+  const ids = Object.keys(lines).sort((a, b) => D.meta.lines.findIndex(l => l.id === a) - D.meta.lines.findIndex(l => l.id === b));
+  const n = v => v.toLocaleString('en-AU');
+  return h('div', { class: 'table-wrap' }, h('table', {},
+    h('thead', {}, h('tr', {}, ['Line', 'Due', 'Judged', 'Ran', 'Late', 'Skipped stops', 'Cancelled', 'Never seen', 'Not seen running', 'Not judged', 'Extra trips']
+      .map((t, i) => h('th', { class: i ? 'num' : null }, t)))),
+    h('tbody', {}, ids.map(id => {
+      const c = lines[id];
+      return h('tr', {}, h('td', {}, badge(id), ' ', lineInfo(id).name),
+        [c[K.due], c[K.counted], c[K.ran], c[K.late], c[K.part], c[K.cancelled], c[K.missing], c[K.unclear], c[K.due] - c[K.counted], c[K.added]].map(v => h('td', { class: 'num' }, n(v))));
+    }))));
+}
+
 // ---------- trip page ----------
 // Pick two stations, see what is happening on the lines between them, then open the official
 // transportnsw.info planner with the trip filled in (this site has no journey planner of its own).
 let STATIONS = null;
-let tripRefresh = null;
+let pageRefresh = null;
 const shortStation = n => n.replace(/\s+Station$/i, '').trim();
 
 async function loadStations() {
@@ -1015,7 +1344,7 @@ async function viewTrip(main) {
     results);
   renderResults();
 
-  tripRefresh = () => {
+  pageRefresh = () => {
     if (userIsInteracting() && results.contains(document.activeElement)) { redrawPending = true; return; }
     if (!document.getElementById('tooltip').hidden) { redrawPending = true; return; }
     redrawPending = false;
@@ -1033,14 +1362,15 @@ function resetView() {
   resizeHandlers = [];
   viewAbort.abort();
   viewAbort = new AbortController();
-  tripRefresh = null;
+  pageRefresh = null;
 }
 
 async function route() {
   resetView();
   const main = document.getElementById('main');
   const hash = location.hash || '#/';
-  const navKey = hash.startsWith('#/log') ? 'log' : hash.startsWith('#/about') ? 'about' : hash.startsWith('#/trip') ? 'trip' : hash.startsWith('#/line') ? '' : 'overview';
+  const navKey = hash.startsWith('#/log') ? 'log' : hash.startsWith('#/about') ? 'about' : hash.startsWith('#/trip') ? 'trip'
+    : hash.startsWith('#/service') ? 'service' : hash.startsWith('#/line') ? '' : 'overview';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === navKey) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let m;
@@ -1048,6 +1378,7 @@ async function route() {
     else if (hash.startsWith('#/log')) await viewLog(main);
     else if (hash.startsWith('#/about')) viewAbout(main);
     else if (hash.startsWith('#/trip')) await viewTrip(main);
+    else if (hash.startsWith('#/service')) await viewService(main);
     else { document.title = 'NSW Rail Disruptions'; viewOverview(main); }
   } catch (e) {
     console.error(e);
@@ -1058,8 +1389,8 @@ async function route() {
 let lastHashPath = null;
 window.addEventListener('hashchange', () => {
   const pathOnly = location.hash.split('?')[0];
-  // Filter changes on the log page update the query string without re-rendering.
-  if (pathOnly === '#/log' && lastHashPath === '#/log') return;
+  // Filter changes on the log and service pages update the query string without re-rendering.
+  if ((pathOnly === '#/log' || pathOnly === '#/service') && lastHashPath === pathOnly) return;
   lastHashPath = pathOnly;
   route().then(() => { if (!location.hash.startsWith('#/log')) window.scrollTo(0, 0); document.getElementById('main').focus({ preventScroll: true }); });
 });
@@ -1077,7 +1408,7 @@ function isStale() {
 }
 function onOverview() {
   const hash = location.hash || '#/';
-  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip)/.test(hash);
+  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip|service)/.test(hash);
 }
 function userIsInteracting() {
   const main = document.getElementById('main');
@@ -1104,7 +1435,7 @@ function redrawOverview() {
 
 // The trip page refreshes its results; the overview redraws in full; other pages wait.
 function liveRedraw() {
-  if (tripRefresh) tripRefresh();
+  if (pageRefresh) pageRefresh();
   else redrawOverview();
 }
 
@@ -1115,7 +1446,8 @@ async function checkForUpdates() {
     const meta = await getJson(`data/meta.json?t=${Date.now()}`);
     if (meta.generatedAt !== D.meta.generatedAt) {
       const [daily, status, delays] = await Promise.all(['daily', 'status', 'delays'].map(n => getJson(`data/${n}.json?t=${Date.now()}`)));
-      Object.assign(D, { meta, daily, status, delays, line: {}, log: {} });
+      attachService(daily);
+      Object.assign(D, { meta, daily, status, delays, line: {}, log: {}, service: null, serviceDay: {} });
       liveRedraw();
     } else if (redrawPending || (onOverview() && !!document.querySelector('.stale-note') !== isStale())) {
       liveRedraw();
@@ -1130,6 +1462,7 @@ async function checkForUpdates() {
 (async function init() {
   try {
     [D.meta, D.daily, D.status, D.delays] = await Promise.all(['meta', 'daily', 'status', 'delays'].map(n => getJson(`data/${n}.json`)));
+    attachService(D.daily);
   } catch (e) {
     document.getElementById('main').replaceChildren(h('div', { class: 'error-box' }, h('h1', {}, 'The data could not be loaded'), h('p', {}, e.message),
       h('p', {}, 'If this site was just set up, the first collection run may not have finished yet. Try again in a few minutes.')));

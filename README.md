@@ -7,6 +7,7 @@ An open, read-only record of delays, outages and service interruptions on Sydney
 - **Overview:** what is disrupted right now, a calendar of disruption by line and day, and lines and causes compared.
 - **Line pages:** history of unplanned disruption and planned closures, causes, the time of day incidents start, live delay trends, and every alert for the line.
 - **Alert log:** every recorded alert since July 2023, searchable by line, type, cause and text.
+- **Service delivered:** how many timetabled trips actually ran, per line and day: trips cancelled, trips that never appeared in the live data, trips late at the end of the line, when in the day trips were lost, and a rough estimate of the people on lost trips. Each day's timetable is frozen in the morning and every trip in it is followed through the live trip data.
 - **Plan a trip:** pick two stations to see the lines between them, their current disruptions, today's trackwork, live delays and the last 30 days' reliability, then open the official [transportnsw.info](https://transportnsw.info) trip planner with the trip filled in. This site does not plan journeys itself: the TfNSW planner API cannot be called from a browser without exposing the API key.
 
 It is an independent project and is not affiliated with Transport for NSW. For live travel information use [transportnsw.info](https://transportnsw.info/alerts).

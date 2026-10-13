@@ -160,7 +160,8 @@ function truncateText(s, n) {
 
 // ---------- horizontal bars (one series) ----------
 // items: [{ label, color?, short?, href?, value, valueLabel, tip }]
-export function hbars(container, { items, fillClass = 'mark-heat', badges = false, ariaLabel }) {
+// Horizontal bars. An item may give segments ([{ value, fillClass }]) to stack several parts in one bar.
+export function hbars(container, { items, fillClass = 'mark-heat', badges = false, ariaLabel, max: fixedMax = null }) {
   const W = Math.max(280, container.clientWidth);
   const narrow = W < 520;
   const labelW = badges ? (narrow ? 52 : 236) : (narrow ? 150 : 210);
@@ -168,7 +169,8 @@ export function hbars(container, { items, fillClass = 'mark-heat', badges = fals
   const plotW = W - labelW - valueW;
   const barH = 16, rowH = 26;
   const H = items.length * rowH + 6;
-  const max = Math.max(1e-9, ...items.map(d => d.value));
+  const total = d => (d.segments ? d.segments.reduce((s, x) => s + (x.value || 0), 0) : d.value);
+  const max = fixedMax ?? Math.max(1e-9, ...items.map(total));
   const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': ariaLabel || '' });
   svg.append(el('line', { x1: labelW, x2: labelW, y1: 0, y2: H - 4, class: 'axis-line' }));
   items.forEach((d, k) => {
@@ -182,8 +184,20 @@ export function hbars(container, { items, fillClass = 'mark-heat', badges = fals
     } else {
       svg.append(text(0, y + barH / 2 + 4.5, truncateText(d.label, narrow ? 20 : 30), { class: 'bar-label' }));
     }
-    const w = d.value > 0 ? Math.max(2, (plotW - 4) * (d.value / max)) : 0;
-    if (w > 0) svg.append(el('path', { d: roundedBarH(labelW, y, w, barH, 4), class: fillClass }));
+    const v = total(d);
+    const w = v > 0 ? Math.max(2, (plotW - 4) * (v / max)) : 0;
+    if (w > 0 && d.segments) {
+      // Square joins between parts, rounded end.
+      let x = labelW;
+      const parts = d.segments.filter(p => p.value > 0);
+      parts.forEach((p, i) => {
+        const pw = (w * p.value) / v;
+        const last = i === parts.length - 1;
+        svg.append(last ? el('path', { d: roundedBarH(x, y, pw, barH, Math.min(4, pw)), class: p.fillClass })
+          : el('rect', { x, y, width: pw, height: barH, class: p.fillClass }));
+        x += pw;
+      });
+    } else if (w > 0) svg.append(el('path', { d: roundedBarH(labelW, y, w, barH, 4), class: d.fillClass || fillClass }));
     svg.append(text(labelW + w + 6, y + barH / 2 + 4.5, d.valueLabel, { class: 'bar-value' }));
     const hit = el('rect', { x: 0, y: y - 4, width: W, height: rowH, class: 'hit', tabindex: -1 });
     hit.addEventListener('pointermove', ev => showTip(d.tip, ev.clientX, ev.clientY));
