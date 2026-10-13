@@ -1,13 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 
 export function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+// Reads JSON, or gzipped JSON when the name ends in .gz.
 export function readJson(file, fallback = null) {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    const buf = fs.readFileSync(file);
+    return JSON.parse((file.endsWith('.gz') ? zlib.gunzipSync(buf) : buf).toString('utf8'));
   } catch (e) {
     if (e.code === 'ENOENT') return fallback;
     throw new Error(`Cannot read ${file}: ${e.message}`);
@@ -15,10 +18,12 @@ export function readJson(file, fallback = null) {
 }
 
 // Atomic write (write to temp file, then rename) so an interrupted run never leaves half a file.
+// A name ending in .gz is written gzipped.
 export function writeJson(file, obj, { pretty = false } = {}) {
   ensureDir(path.dirname(file));
   const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(obj, null, pretty ? 1 : 0) + '\n');
+  const text = JSON.stringify(obj, null, pretty ? 1 : 0) + '\n';
+  fs.writeFileSync(tmp, file.endsWith('.gz') ? zlib.gzipSync(text, { level: 9 }) : text);
   fs.renameSync(tmp, file);
 }
 

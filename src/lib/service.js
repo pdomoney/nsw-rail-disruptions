@@ -4,7 +4,8 @@
 // While a service day is open (until 6 am the next morning) the collector keeps:
 //   service/YYYY-MM/YYYY-MM-DD.sched.json  the day's timetable, frozen when the day starts
 //   service/open.json                     observations so far, and when each feed was being watched
-// When the day is over both are merged into service/YYYY-MM/YYYY-MM-DD.json and the two are removed.
+// When the day is over both are merged into service/YYYY-MM/YYYY-MM-DD.json.gz (gzipped JSON, about
+// 60 KB a day) and the two are removed.
 //
 // Times in these files are seconds after midnight at the start of the service day (Sydney time),
 // as in GTFS; trips after midnight have values above 86400.
@@ -30,17 +31,17 @@ export const FLAG = {
 // Columns of each trip in the final file. From the timetable: trip, line, dir (direction_id), start
 // and end (seconds), cars (train length), forecast (forecast occupancy level ×10 for the day) and
 // type (the train type, e.g. "B8"; some types, such as regional diesel railcars, are not in the
-// realtime feed at all).
+// realtime feed at all), headsign (where it is going) and origin (the first station's stop ID).
 // From the realtime feed: flags (FLAG), first_seen and last_seen (seconds), max_delay and end_delay
 // (seconds; end_delay is the last delay given for the final stop), skipped (stops skipped), occ (highest
 // occupancy level predicted or measured), cars_seen (carriages listed) and model (TfNSW fleet letter).
-export const TRIP_COLUMNS = ['trip', 'line', 'dir', 'start', 'end', 'cars', 'forecast', 'type', 'flags', 'first_seen', 'last_seen',
+export const TRIP_COLUMNS = ['trip', 'line', 'dir', 'start', 'end', 'cars', 'forecast', 'type', 'headsign', 'origin', 'flags', 'first_seen', 'last_seen',
   'max_delay', 'end_delay', 'skipped', 'occ', 'cars_seen', 'model'];
 
 // Observation array positions (in open.json).
 const O = { FLAGS: 0, FIRST: 1, LAST: 2, MAX: 3, END: 4, SKIP: 5, OCC: 6, CARS: 7, MODEL: 8, LINE: 9 };
 
-const SCHED_VERSION = 3;          // 2: train length and forecast occupancy; 3: train type
+const SCHED_VERSION = 4;          // 2: train length and forecast occupancy; 3: train type; 4: headsign and origin
 const CLOSE_AFTER = 30 * HOUR;     // a service day is finalised at 6 am the next day
 const GAP = 15 * MIN;              // runs further apart than this break a coverage interval
 
@@ -198,10 +199,10 @@ export class ServiceRecorder {
         const trips = sched.feeds[key]?.trips || [];
         const inSched = new Set();
         const rows = [];
-        for (const [tripId, line, dir, start, end, cars, forecast, type] of trips) {
+        for (const [tripId, line, dir, start, end, cars, forecast, type, headsign, origin] of trips) {
           inSched.add(tripId);
           const o = obs[tripId];
-          rows.push([tripId, line, dir, start, end, cars ?? null, forecast ?? null, type ?? null,
+          rows.push([tripId, line, dir, start, end, cars ?? null, forecast ?? null, type ?? null, headsign ?? null, origin ?? null,
             ...(o ? obsCols(o) : [0, null, null, null, null, 0, null, 0, null])]);
         }
         let extra = 0;
@@ -210,7 +211,7 @@ export class ServiceRecorder {
           extra++;
           const c = obsCols(o);
           c[0] |= FLAG.UNSCHEDULED;
-          rows.push([tripId, o[O.LINE], null, null, null, null, null, null, ...c]);
+          rows.push([tripId, o[O.LINE], null, null, null, null, null, null, null, null, ...c]);
         }
         feeds[key] = {
           timetable: sched.feeds[key]?.builtAt || null,
@@ -221,7 +222,7 @@ export class ServiceRecorder {
           trips: rows,
         };
       }
-      const out = path.join(this.dataDir, 'service', date.slice(0, 7), `${date}.json`);
+      const out = path.join(this.dataDir, 'service', date.slice(0, 7), `${date}.json.gz`);
       writeJson(out, { date, finalisedAt: iso(atMs), cols: TRIP_COLUMNS, feeds });
       try { fs.unlinkSync(this.schedFile(date)); } catch { /* never written */ }
       this.schedCache.delete(date);

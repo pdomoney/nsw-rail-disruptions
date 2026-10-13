@@ -7,7 +7,7 @@ import { tfnswGetFirst } from './http.js';
 import { readJson, writeJson } from './store.js';
 
 // Bump when the map format changes, so cached maps are rebuilt.
-export const MAP_VERSION = 7;
+export const MAP_VERSION = 8;
 
 // "25:13:00" → 90780 (seconds after the start of the service day; may pass 24 hours)
 export function gtfsTime(t) {
@@ -65,14 +65,14 @@ export function buildRouteMap(zipBuf, feed) {
     forEachCsvRow(files['vehicle_couplings.txt'], ['parent_id', 'child_id'], ([parent]) => { carsOf[parent] = (carsOf[parent] || 0) + 1; });
   }
 
-  // trips[tripId] = [line, serviceId, startSec, endSec, directionId, cars, forecast, category] for every
-  // trip on a tracked line. category is the train type (e.g. "B8"), cars its number of carriages (null
-  // if unknown); forecast is filled in below.
+  // trips[tripId] = [line, serviceId, startSec, endSec, directionId, cars, forecast, category, headsign,
+  // origin] for every trip on a tracked line. category is the train type (e.g. "B8"), cars its number of
+  // carriages (null if unknown); forecast and origin (the first station's id) are filled in below.
   const trips = {};
   if (files['trips.txt']) {
-    forEachCsvRow(files['trips.txt'], ['route_id', 'service_id', 'trip_id', 'direction_id', 'vehicle_category_id'], ([routeId, sid, tripId, dir, cat]) => {
+    forEachCsvRow(files['trips.txt'], ['route_id', 'service_id', 'trip_id', 'direction_id', 'vehicle_category_id', 'trip_headsign'], ([routeId, sid, tripId, dir, cat, head]) => {
       const line = routeMap[routeId];
-      if (line) trips[tripId] = [line, sid, null, null, dir === '' || dir == null ? null : +dir, carsOf[cat] || null, null, cat || null];
+      if (line) trips[tripId] = [line, sid, null, null, dir === '' || dir == null ? null : +dir, carsOf[cat] || null, null, cat || null, head || null, null];
     });
   }
 
@@ -112,13 +112,13 @@ export function buildRouteMap(zipBuf, feed) {
       const t = trips[tripId];
       if (!t) return;
       const seq = +seqStr;
+      const stop = stops.get(stopId);
+      const station = stop?.parent && stops.has(stop.parent) ? stop.parent : stopId;
       let s = seqs.get(tripId);
       if (!s) seqs.set(tripId, (s = [Infinity, -Infinity]));
-      if (seq < s[0]) { const v = gtfsTime(dep) ?? gtfsTime(arr); if (v != null) { s[0] = seq; t[2] = v; } }
+      if (seq < s[0]) { const v = gtfsTime(dep) ?? gtfsTime(arr); if (v != null) { s[0] = seq; t[2] = v; t[9] = station; } }
       if (seq > s[1]) { const v = gtfsTime(arr) ?? gtfsTime(dep); if (v != null) { s[1] = seq; t[3] = v; } }
       if (stops.size) {
-        const stop = stops.get(stopId);
-        const station = stop?.parent && stops.has(stop.parent) ? stop.parent : stopId;
         let counts = servedBy.get(station);
         if (!counts) servedBy.set(station, (counts = {}));
         counts[t[0]] = (counts[t[0]] || 0) + 1;
@@ -173,17 +173,17 @@ export function serviceRuns(svc, ymd) {
 }
 
 // The trips scheduled on one service date:
-// [[tripId, line, directionId, startSec, endSec, cars, forecast occupancy ×10, train type], ...].
+// [[tripId, line, directionId, startSec, endSec, cars, forecast occupancy ×10, train type, headsign, origin station id], ...].
 export function scheduledTrips(map, ymd) {
   const sched = map?.sched;
   if (!sched) return [];
   const running = new Map();
   const wd = weekdayIndex(ymd);
   const out = [];
-  for (const [tripId, [line, sid, start, end, dir, cars, forecast, category]] of Object.entries(sched.trips)) {
+  for (const [tripId, [line, sid, start, end, dir, cars, forecast, category, headsign, origin]] of Object.entries(sched.trips)) {
     let r = running.get(sid);
     if (r === undefined) running.set(sid, (r = serviceRuns(sched.services[sid], ymd)));
-    if (r) out.push([tripId, line, dir, start, end, cars ?? null, forecast?.[wd] ?? null, category ?? null]);
+    if (r) out.push([tripId, line, dir, start, end, cars ?? null, forecast?.[wd] ?? null, category ?? null, headsign ?? null, origin ?? null]);
   }
   return out.sort((a, b) => (a[3] ?? 0) - (b[3] ?? 0) || (a[0] < b[0] ? -1 : 1));
 }
