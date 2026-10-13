@@ -11,7 +11,7 @@
 // as in GTFS; trips after midnight have values above 86400.
 import fs from 'node:fs';
 import path from 'node:path';
-import { readJson, writeJson } from './store.js';
+import { readJson, writeJson, listFiles } from './store.js';
 import { scheduledTrips } from './gtfs-static.js';
 import { TRIP_SR } from './gtfs-rt.js';
 import { sydDate, sydMidnight, addDays, iso, HOUR, MIN } from './time.js';
@@ -191,37 +191,7 @@ export class ServiceRecorder {
     const done = [];
     for (const [date, d] of Object.entries(this.state.days)) {
       if (atMs < d.base + CLOSE_AFTER) continue;
-      const sched = this.schedule(date);
-      const feedKeys = [...new Set([...Object.keys(sched.feeds), ...Object.keys(d.obs), ...Object.keys(d.cov)])].sort();
-      const feeds = {};
-      for (const key of feedKeys) {
-        const obs = d.obs[key] || {};
-        const trips = sched.feeds[key]?.trips || [];
-        const inSched = new Set();
-        const rows = [];
-        for (const [tripId, line, dir, start, end, cars, forecast, type, headsign, origin] of trips) {
-          inSched.add(tripId);
-          const o = obs[tripId];
-          rows.push([tripId, line, dir, start, end, cars ?? null, forecast ?? null, type ?? null, headsign ?? null, origin ?? null,
-            ...(o ? obsCols(o) : [0, null, null, null, null, 0, null, 0, null])]);
-        }
-        let extra = 0;
-        for (const [tripId, o] of Object.entries(obs)) {
-          if (inSched.has(tripId)) continue;
-          extra++;
-          const c = obsCols(o);
-          c[0] |= FLAG.UNSCHEDULED;
-          rows.push([tripId, o[O.LINE], null, null, null, null, null, null, null, null, ...c]);
-        }
-        feeds[key] = {
-          timetable: sched.feeds[key]?.builtAt || null,
-          scheduled: trips.length,
-          observed: Object.keys(obs).length,
-          unscheduled: extra,
-          coverage: d.cov[key] || [],
-          trips: rows,
-        };
-      }
+      const { feeds } = dayRecord(date, this.schedule(date), d);
       const out = path.join(this.dataDir, 'service', date.slice(0, 7), `${date}.json.gz`);
       writeJson(out, { date, finalisedAt: iso(atMs), cols: TRIP_COLUMNS, feeds });
       try { fs.unlinkSync(this.schedFile(date)); } catch { /* never written */ }
@@ -239,6 +209,63 @@ export class ServiceRecorder {
     this.state.updatedAt = iso(this.now);
     writeJson(this.file, this.state);
   }
+}
+
+// One service day in the final format: the frozen timetable merged with the observations, plus the
+// trips seen in the feed that were not in the timetable.
+export function dayRecord(date, sched, d) {
+  const feedKeys = [...new Set([...Object.keys(sched.feeds), ...Object.keys(d.obs), ...Object.keys(d.cov)])].sort();
+  const feeds = {};
+  for (const key of feedKeys) {
+    const obs = d.obs[key] || {};
+    const trips = sched.feeds[key]?.trips || [];
+    const inSched = new Set();
+    const rows = [];
+    for (const [tripId, line, dir, start, end, cars, forecast, type, headsign, origin] of trips) {
+      inSched.add(tripId);
+      const o = obs[tripId];
+      rows.push([tripId, line, dir, start, end, cars ?? null, forecast ?? null, type ?? null, headsign ?? null, origin ?? null,
+        ...(o ? obsCols(o) : [0, null, null, null, null, 0, null, 0, null])]);
+    }
+    let extra = 0;
+    for (const [tripId, o] of Object.entries(obs)) {
+      if (inSched.has(tripId)) continue;
+      extra++;
+      const c = obsCols(o);
+      c[0] |= FLAG.UNSCHEDULED;
+      rows.push([tripId, o[O.LINE], null, null, null, null, null, null, null, null, ...c]);
+    }
+    feeds[key] = {
+      timetable: sched.feeds[key]?.builtAt || null,
+      scheduled: trips.length,
+      observed: Object.keys(obs).length,
+      unscheduled: extra,
+      coverage: d.cov[key] || [],
+      trips: rows,
+    };
+  }
+  return { date, cols: TRIP_COLUMNS, feeds };
+}
+
+// Every recorded service day, oldest first: { date, base (ms of the day's midnight), final, record }.
+// Open days (today, and yesterday until 6 am) are merged from the files the collector keeps.
+export function readServiceDays(dataDir, { since = null } = {}) {
+  const out = [];
+  const dir = path.join(dataDir, 'service');
+  for (const f of listFiles(dir, /\d{4}-\d{2}-\d{2}\.json\.gz$/)) {
+    const date = path.basename(f).slice(0, 10);
+    if (since && date < since) continue;
+    out.push({ date, base: sydMidnight(date), final: true, file: f });
+  }
+  const open = readJson(path.join(dir, 'open.json'), { days: {} });
+  for (const [date, d] of Object.entries(open.days || {})) {
+    if (since && date < since) continue;
+    const sched = readJson(path.join(dir, date.slice(0, 7), `${date}.sched.json`), { date, feeds: {} });
+    out.push({ date, base: d.base, final: false, record: dayRecord(date, sched, d), updatedAt: open.updatedAt });
+  }
+  out.sort((a, b) => a.date.localeCompare(b.date));
+  for (const day of out) if (day.file) Object.defineProperty(day, 'record', { get() { return readJson(day.file); } });
+  return out;
 }
 
 // Observation → final columns: flags, first_seen, last_seen, max_delay, end_delay, skipped, occ, cars_seen, model

@@ -10,6 +10,8 @@ import { modeOfLineId } from './lib/lines.js';
 import { readAllEvents } from './lib/events.js';
 import { readJson, writeJson, listFiles, readLines, ensureDir } from './lib/store.js';
 import { parseCsv } from './lib/csv.js';
+import { readServiceDays } from './lib/service.js';
+import { summariseDay, pairStats, trackedPairs, COUNTERS } from './lib/service-stats.js';
 import { addDays, daysBetween, iso, splitByDay, sydDate, sydMidnight, sydHour, toMs, HOUR, DAY, MIN } from './lib/time.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
@@ -236,6 +238,27 @@ function build() {
     }
   }
 
+  // ---------- service delivered ----------
+  const service = buildService();
+  let svcDaily = null;
+  if (service.days.length) {
+    // Trips counted and lost per line and day, for the calendar (from the first recorded day).
+    const s0 = idx(service.days[0].date);
+    svcDaily = { start: s0, lines: {} };
+    const K = Object.fromEntries(COUNTERS.map((c, i) => [c, i]));
+    for (const [l, perDay] of Object.entries(service.lines)) {
+      const tc = new Array(N - s0).fill(0), tl = new Array(N - s0).fill(0);
+      service.days.forEach((d, j) => {
+        const c = perDay[j];
+        const i = idx(d.date) - s0;
+        if (!c || i < 0 || i >= tc.length) return;
+        tc[i] = c[K.counted];
+        tl[i] = c[K.cancelled] + c[K.missing];
+      });
+      svcDaily.lines[l] = { tc, tl };
+    }
+  }
+
   // ---------- status (right now) ----------
   const meta = readJson(path.join(DATA_DIR, 'state', 'meta.json'), {});
   const ongoing = events.filter(e => e.ongoing);
@@ -295,6 +318,9 @@ function build() {
   dailyOut.tripStart = Number.isFinite(firstTrip) ? Math.max(0, idx(sydDate(firstTrip))) : null;
   dailyOut.lineOrder = lines.map(l => l.id);
   dailyOut.causes = [...causeAgg].map(([k, [n, m]]) => [...k.split('|').map(Number), n, m]).sort((a, b) => a[0] - b[0]);
+  // Timetabled trips counted (tc) and lost (tl: cancelled or never appeared) per line and day, from service.start.
+  dailyOut.service = svcDaily;
+  writeJson(out('data', 'service.json'), service);
   writeJson(out('data', 'daily.json'), dailyOut);
   writeJson(out('data', 'stations.json'), buildStations(new Set(lines.map(l => l.id))));
   writeJson(out('data', 'delays.json'), delays);
@@ -306,6 +332,7 @@ function build() {
     start,
     firstLiveDay: firstLive,
     delayStart,
+    serviceStart: service.days[0]?.date || null,
     lines: lines.map(l => ({ id: l.id, mode: l.mode, name: l.name, color: l.color, note: l.note || null })),
     modes: MODES,
     causes: Object.fromEntries([...CAUSES.map(([id, label]) => [id, label]), ['unknown', 'Not stated']]),
@@ -319,6 +346,64 @@ function build() {
     lastRunErrors: meta.lastRunErrors || [],
     config: { maxIncidentHours: MAX_INCIDENT_MS / HOUR },
   });
+}
+
+// ---------- service delivered ----------
+// service.json: per line and recorded day, the counters from service-stats.js, plus trips lost by
+// hour of day over the last 7 and 30 days. data/service/<date>.json: the trips that were lost, late
+// or cut short on one day, and the hour profile, for the last 14 days.
+const SERVICE_DETAIL_DAYS = 14;
+function buildService() {
+  const names = stationNames();
+  const days = readServiceDays(DATA_DIR);
+  const service = { generatedAt: iso(now), cols: COUNTERS, days: [], lines: {}, hours: { '7d': {}, '30d': {} } };
+  ensureDir(out('data', 'service'));
+  // A line and train type pair counts as covered by the feed if most of its trips appeared in it over
+  // the week up to the day.
+  const cutoffOf = day => (day.final ? null : Math.floor(((toMs(day.updatedAt) ?? now) - day.base) / 1000));
+  const pairs = days.map(d => pairStats(d.record, { nowSec: cutoffOf(d) }));
+  days.forEach((day, j) => {
+    const asOf = day.final ? null : day.updatedAt || null;
+    const nowSec = cutoffOf(day);
+    const tracked = trackedPairs(pairs.filter((_, k) => k <= j && daysBetween(days[k].date, day.date) < 7));
+    const s = summariseDay(day.record, { nowSec, tracked });
+    service.days.push({ date: day.date, final: day.final, asOf, cutoff: nowSec });
+    for (const [l, c] of Object.entries(s.lines)) {
+      (service.lines[l] ||= [])[j] = c;
+    }
+    const age = daysBetween(day.date, today);
+    for (const [period, n] of [['7d', 7], ['30d', 30]]) {
+      if (age >= n) continue;
+      for (const [l, hrs] of Object.entries(s.hours)) {
+        const acc = (service.hours[period][l] ||= Array.from({ length: 24 }, () => [0, 0]));
+        hrs.forEach(([c, lost], i) => { acc[i][0] += c; acc[i][1] += lost; });
+      }
+    }
+    if (age < SERVICE_DETAIL_DAYS) {
+      const trips = {};
+      for (const [l, list] of Object.entries(s.trips)) {
+        trips[l] = list.map(([start, headsign, origin, outcome, delay, cars, forecast]) =>
+          [start, headsign, origin ? names.get(origin) || null : null, outcome, delay, cars, forecast]);
+      }
+      writeJson(out('data', 'service', `${day.date}.json`), { date: day.date, final: day.final, asOf, cutoff: nowSec, lines: s.lines, trips, hours: s.hours });
+    }
+  });
+  // Fill the gaps (days a line had no trips) so every line has one entry per day.
+  for (const l of Object.keys(service.lines)) {
+    for (let j = 0; j < service.days.length; j++) if (!service.lines[l][j]) service.lines[l][j] = null;
+  }
+  return service;
+}
+
+// Station id → short name ("Central"), from the timetable station lists.
+function stationNames() {
+  const out = new Map();
+  for (const f of listFiles(path.join(DATA_DIR, 'stations'), /\.json$/)) {
+    for (const [id, st] of Object.entries(readJson(f, {})?.stations || {})) {
+      if (st.n) out.set(id, st.n.replace(/\s+(Station|Light Rail|Metro Station)$/i, '').trim());
+    }
+  }
+  return out;
 }
 
 // Stations for the trip page: [id, name, [lines], [lines with only some services]] sorted by name.
