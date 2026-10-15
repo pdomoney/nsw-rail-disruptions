@@ -1,5 +1,5 @@
 {
- "alertsLastOkAt": "2026-10-15T15:59:38Z",
+ "alertsLastOkAt": "2026-10-15T16:04:35Z",
  "archiveImport": {
   "at": "2026-10-12T11:37:13Z",
   "since": "2023-07-01",
@@ -122,13 +122,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-15T15:59:38Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v2/gtfs/realtime/sydneytrains",
-    "bytes": 77180,
+    "bytes": 79389,
     "entities": 159,
     "trips": 159,
     "matched": 94,
-    "feedAgeS": 4,
+    "feedAgeS": 0,
     "unmatched": [
      [
       "RTTA_REV",
@@ -156,36 +156,36 @@
      "delayOnly": 67,
      "noStops": 8,
      "tripDelay": 0,
-     "active": 14,
+     "active": 13,
      "notStarted": 4,
      "finished": 10,
-     "noDelay": 64
+     "noDelay": 65
     },
     "occupancy": {
-     "stops": 1184,
-     "stopLevel": 538,
-     "stopCars": 538,
+     "stops": 1218,
+     "stopLevel": 563,
+     "stopCars": 563,
      "trips": 92,
-     "tripsWithLevel": 26,
-     "tripsWithCars": 26,
-     "fromVehicles": 5,
-     "runningWithLevel": 1,
+     "tripsWithLevel": 27,
+     "tripsWithCars": 27,
+     "fromVehicles": 4,
+     "runningWithLevel": 2,
      "levels": [
       0,
-      488,
+      513,
       50,
       0,
       0,
       0
      ],
      "cars": {
-      "8": 26
+      "8": 27
      },
      "models": {
       "B": 17,
-      "A": 29,
+      "A": 28,
       "T": 9,
-      "D": 25,
+      "D": 26,
       "M": 4,
       "N": 3,
       "H": 5
@@ -206,6 +206,12 @@
       "5": 5
      },
      "missing": [
+      [
+       "6--C.947.173.64.B.8.91437836",
+       "T8",
+       null,
+       false
+      ],
       [
        "195A.947.173.64.B.8.91438401",
        "T1",
@@ -235,67 +241,61 @@
        "SCO",
        null,
        false
-      ],
-      [
-       "98-A.947.173.64.A.8.91437789",
-       "T2",
-       null,
-       false
       ]
      ],
      "example": "14-A.947.171.32.B.8.91438120"
     }
    },
    "census": {
-    "at": "2026-10-15T15:01:07Z",
+    "at": "2026-10-15T16:04:35Z",
     "fields": {
      "1:2": 1,
-     "2:2": 118,
-     "entity.1:2": 118,
-     "entity.3:2": 118,
-     "entity.tu.1:2": 118,
-     "entity.tu.1007:2": 118,
-     "entity.tu.2:2": 762,
-     "entity.tu.3:2": 118,
-     "entity.tu.4:0": 118,
-     "entity.tu.stu.1007:2": 872,
-     "entity.tu.stu.2:2": 760,
-     "entity.tu.stu.3:2": 726,
-     "entity.tu.stu.4:2": 762,
-     "entity.tu.stu.5:0": 526,
-     "entity.tu.stu.6:0": 109,
-     "entity.tu.stu.arr.1:0": 566,
-     "entity.tu.stu.arr.2:0": 235,
-     "entity.tu.stu.car.2:0": 872,
-     "entity.tu.stu.car.7:0": 872,
-     "entity.tu.stu.dep.1:0": 548,
-     "entity.tu.stu.dep.2:0": 200,
-     "entity.tu.trip.1:2": 118,
-     "entity.tu.trip.4:0": 89,
-     "entity.tu.trip.5:2": 118,
-     "entity.tu.veh.1007:2": 118,
-     "entity.tu.veh.x7.3:2": 118,
-     "entity.tu.x7.7:2": 28,
-     "entity.tu.x7.8:2": 118
+     "2:2": 159,
+     "entity.1:2": 159,
+     "entity.3:2": 159,
+     "entity.tu.1:2": 159,
+     "entity.tu.1007:2": 159,
+     "entity.tu.2:2": 1320,
+     "entity.tu.3:2": 159,
+     "entity.tu.4:0": 159,
+     "entity.tu.stu.1007:2": 4504,
+     "entity.tu.stu.2:2": 1314,
+     "entity.tu.stu.3:2": 1270,
+     "entity.tu.stu.4:2": 1320,
+     "entity.tu.stu.5:0": 981,
+     "entity.tu.stu.6:0": 563,
+     "entity.tu.stu.arr.1:0": 1131,
+     "entity.tu.stu.arr.2:0": 338,
+     "entity.tu.stu.car.2:0": 4504,
+     "entity.tu.stu.car.7:0": 4504,
+     "entity.tu.stu.dep.1:0": 1103,
+     "entity.tu.stu.dep.2:0": 292,
+     "entity.tu.trip.1:2": 159,
+     "entity.tu.trip.4:0": 135,
+     "entity.tu.trip.5:2": 159,
+     "entity.tu.veh.1007:2": 159,
+     "entity.tu.veh.x7.3:2": 159,
+     "entity.tu.x7.7:2": 69,
+     "entity.tu.x7.8:2": 159
     }
    },
    "vehicles": {
-    "at": "2026-10-15T15:59:38Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v2/gtfs/vehiclepos/sydneytrains",
-    "bytes": 24803,
-    "vehicles": 126,
-    "withTrip": 126,
+    "bytes": 24391,
+    "vehicles": 124,
+    "withTrip": 124,
     "occupancy": {
-     "1": 6
+     "1": 5
     },
     "withPercent": 0,
-    "withConsist": 100,
+    "withConsist": 99,
     "consistLevels": {
-     "1": 48
+     "1": 40
     },
     "models": {
      "M": 3,
-     "B": 21,
+     "B": 20,
      "A": 30,
      "T": 11,
      "D": 26,
@@ -307,26 +307,26 @@
     },
     "fields": {
      "1:2": 1,
-     "2:2": 133,
-     "entity.1:2": 133,
-     "entity.4:2": 133,
-     "entity.vp.1:2": 133,
-     "entity.vp.1007:2": 582,
-     "entity.vp.2:2": 133,
-     "entity.vp.5:0": 133,
-     "entity.vp.6:0": 133,
-     "entity.vp.7:2": 133,
-     "entity.vp.8:2": 133,
+     "2:2": 124,
+     "entity.1:2": 124,
+     "entity.4:2": 124,
+     "entity.vp.1:2": 124,
+     "entity.vp.1007:2": 760,
+     "entity.vp.2:2": 124,
+     "entity.vp.5:0": 124,
+     "entity.vp.6:0": 124,
+     "entity.vp.7:2": 124,
+     "entity.vp.8:2": 124,
      "entity.vp.9:0": 5,
-     "entity.vp.car7.2:0": 582,
+     "entity.vp.car7.2:0": 760,
      "entity.vp.car7.3:0": 40,
-     "entity.vp.trip.1:2": 133,
-     "entity.vp.trip.4:0": 133,
-     "entity.vp.trip.5:2": 84,
-     "entity.vp.veh.1:2": 133,
-     "entity.vp.veh.1007:2": 84,
-     "entity.vp.veh.2:2": 69,
-     "entity.vp.veh.x7.3:2": 84
+     "entity.vp.trip.1:2": 124,
+     "entity.vp.trip.4:0": 124,
+     "entity.vp.trip.5:2": 106,
+     "entity.vp.veh.1:2": 124,
+     "entity.vp.veh.1007:2": 106,
+     "entity.vp.veh.2:2": 87,
+     "entity.vp.veh.x7.3:2": 106
     }
    }
   },
@@ -397,13 +397,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-15T15:59:38Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v2/gtfs/realtime/metro",
     "bytes": 15,
     "entities": 0,
     "trips": 0,
     "matched": 0,
-    "feedAgeS": 5,
+    "feedAgeS": 3,
     "unmatched": [],
     "shape": {
      "withTimes": 0,
@@ -449,13 +449,13 @@
     }
    },
    "census": {
-    "at": "2026-10-15T15:01:07Z",
+    "at": "2026-10-15T16:04:35Z",
     "fields": {
      "1:2": 1
     }
    },
    "vehicles": {
-    "at": "2026-10-15T15:59:38Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v2/gtfs/vehiclepos/metro",
     "bytes": 15,
     "vehicles": 0,
@@ -466,40 +466,7 @@
     "consistLevels": {},
     "models": {},
     "fields": {
-     "1:2": 1,
-     "2:2": 2,
-     "entity.1:2": 2,
-     "entity.4:2": 2,
-     "entity.vp.1:2": 2,
-     "entity.vp.1007:2": 12,
-     "entity.vp.2:2": 2,
-     "entity.vp.3:0": 2,
-     "entity.vp.4:0": 2,
-     "entity.vp.5:0": 2,
-     "entity.vp.6:0": 2,
-     "entity.vp.7:2": 2,
-     "entity.vp.8:2": 2,
-     "entity.vp.9:0": 2,
-     "entity.vp.car7.1:2": 12,
-     "entity.vp.car7.2:0": 12,
-     "entity.vp.car7.3:0": 12,
-     "entity.vp.car7.4:0": 12,
-     "entity.vp.car7.5:0": 12,
-     "entity.vp.car7.6:0": 12,
-     "entity.vp.trip.1:2": 2,
-     "entity.vp.trip.2:2": 2,
-     "entity.vp.trip.3:2": 2,
-     "entity.vp.trip.4:0": 2,
-     "entity.vp.trip.5:2": 2,
-     "entity.vp.trip.6:0": 2,
-     "entity.vp.veh.1:2": 2,
-     "entity.vp.veh.1007:2": 2,
-     "entity.vp.veh.2:2": 2,
-     "entity.vp.veh.3:2": 2,
-     "entity.vp.veh.x7.1:0": 2,
-     "entity.vp.veh.x7.2:0": 2,
-     "entity.vp.veh.x7.3:2": 2,
-     "entity.vp.veh.x7.5:0": 2
+     "1:2": 1
     }
    }
   },
@@ -570,13 +537,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-15T15:59:38Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v2/gtfs/realtime/lightrail/innerwest",
     "bytes": 15,
     "entities": 0,
     "trips": 0,
     "matched": 0,
-    "feedAgeS": 4,
+    "feedAgeS": 0,
     "unmatched": [],
     "shape": {
      "withTimes": 0,
@@ -622,13 +589,13 @@
     }
    },
    "census": {
-    "at": "2026-10-15T15:01:07Z",
+    "at": "2026-10-15T16:04:35Z",
     "fields": {
      "1:2": 1
     }
    },
    "vehicles": {
-    "at": "2026-10-15T15:01:07Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v2/gtfs/vehiclepos/lightrail/innerwest",
     "bytes": 15,
     "vehicles": 0,
@@ -712,13 +679,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-15T15:59:38Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/cbdandsoutheast",
     "bytes": 15,
     "entities": 0,
     "trips": 0,
     "matched": 0,
-    "feedAgeS": 5,
+    "feedAgeS": 0,
     "unmatched": [],
     "shape": {
      "withTimes": 0,
@@ -764,37 +731,13 @@
     }
    },
    "census": {
-    "at": "2026-10-15T15:01:07Z",
+    "at": "2026-10-15T16:04:35Z",
     "fields": {
-     "1:2": 1,
-     "2:2": 5,
-     "entity.1:2": 5,
-     "entity.3:2": 5,
-     "entity.tu.1:2": 5,
-     "entity.tu.2:2": 73,
-     "entity.tu.3:2": 5,
-     "entity.tu.4:0": 5,
-     "entity.tu.stu.1:0": 73,
-     "entity.tu.stu.2:2": 68,
-     "entity.tu.stu.3:2": 68,
-     "entity.tu.stu.4:2": 73,
-     "entity.tu.stu.5:0": 73,
-     "entity.tu.stu.arr.1:0": 68,
-     "entity.tu.stu.arr.2:0": 68,
-     "entity.tu.stu.dep.1:0": 68,
-     "entity.tu.stu.dep.2:0": 68,
-     "entity.tu.trip.1:2": 5,
-     "entity.tu.trip.2:2": 5,
-     "entity.tu.trip.3:2": 5,
-     "entity.tu.trip.4:0": 5,
-     "entity.tu.trip.5:2": 5,
-     "entity.tu.trip.6:0": 5,
-     "entity.tu.veh.1:2": 5,
-     "entity.tu.veh.2:2": 5
+     "1:2": 1
     }
    },
    "vehicles": {
-    "at": "2026-10-15T15:01:07Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/cbdandsoutheast",
     "bytes": 15,
     "vehicles": 0,
@@ -876,13 +819,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-15T15:59:38Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/parramatta",
     "bytes": 15,
     "entities": 0,
     "trips": 0,
     "matched": 0,
-    "feedAgeS": 1,
+    "feedAgeS": 0,
     "unmatched": [],
     "shape": {
      "withTimes": 0,
@@ -928,13 +871,13 @@
     }
    },
    "census": {
-    "at": "2026-10-15T15:01:07Z",
+    "at": "2026-10-15T16:04:35Z",
     "fields": {
      "1:2": 1
     }
    },
    "vehicles": {
-    "at": "2026-10-15T15:59:38Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/parramatta",
     "bytes": 15,
     "vehicles": 0,
@@ -945,32 +888,7 @@
     "consistLevels": {},
     "models": {},
     "fields": {
-     "1:2": 1,
-     "2:2": 3,
-     "entity.1:2": 3,
-     "entity.4:2": 3,
-     "entity.vp.1:2": 3,
-     "entity.vp.2:2": 3,
-     "entity.vp.3:0": 3,
-     "entity.vp.4:0": 3,
-     "entity.vp.5:0": 3,
-     "entity.vp.6:0": 3,
-     "entity.vp.7:2": 3,
-     "entity.vp.8:2": 3,
-     "entity.vp.9:0": 3,
-     "entity.vp.trip.1:2": 3,
-     "entity.vp.trip.2:2": 3,
-     "entity.vp.trip.3:2": 3,
-     "entity.vp.trip.4:0": 3,
-     "entity.vp.trip.5:2": 3,
-     "entity.vp.trip.6:0": 3,
-     "entity.vp.veh.1:2": 3,
-     "entity.vp.veh.1007:2": 3,
-     "entity.vp.veh.2:2": 3,
-     "entity.vp.veh.x7.1:0": 3,
-     "entity.vp.veh.x7.2:0": 3,
-     "entity.vp.veh.x7.3:2": 3,
-     "entity.vp.veh.x7.5:0": 3
+     "1:2": 1
     }
    }
   },
@@ -1045,13 +963,13 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-15T15:59:38Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/newcastle",
     "bytes": 15,
     "entities": 0,
     "trips": 0,
     "matched": 0,
-    "feedAgeS": 0,
+    "feedAgeS": 9,
     "unmatched": [],
     "shape": {
      "withTimes": 0,
@@ -1097,13 +1015,13 @@
     }
    },
    "census": {
-    "at": "2026-10-15T15:01:07Z",
+    "at": "2026-10-15T16:04:35Z",
     "fields": {
      "1:2": 1
     }
    },
    "vehicles": {
-    "at": "2026-10-15T15:59:38Z",
+    "at": "2026-10-15T16:04:35Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/newcastle",
     "bytes": 15,
     "vehicles": 0,
@@ -1119,11 +1037,11 @@
    }
   }
  },
- "lastRunAt": "2026-10-15T15:59:38Z",
+ "lastRunAt": "2026-10-15T16:04:35Z",
  "lastRunErrors": [],
  "alertsLastError": {
   "at": "2026-10-15T00:52:38Z",
   "message": "alerts feed returned 5 alerts after 403; waiting for the next run to confirm"
  },
- "alertsLastTotal": 387
+ "alertsLastTotal": 386
 }
