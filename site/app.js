@@ -1567,8 +1567,9 @@ function trackworkChart(container, { items, lines, days, selected, onLine }) {
 
 // ---------- live map ----------
 // Every train where it is now, on the network's real track: warmer dots are later, bigger dots fuller.
-async function loadMap(force = false) {
-  if (!D.network) D.network = await getJson('data/network.json');
+async function loadMap(force = false, kind = 'track') {
+  if (kind === 'diagram') { if (!D.schematic) D.schematic = await getJson('data/schematic.json'); }
+  else if (!D.network) D.network = await getJson('data/network.json');
   if (!D.live || force) D.live = await getJson(`data/live.json?t=${Date.now()}`);
 }
 const decode = flat => { const pts = [[flat[0], flat[1]]]; for (let i = 2; i < flat.length; i += 2) { const [x, y] = pts[pts.length - 1]; pts.push([x + flat[i], y + flat[i + 1]]); } return pts; };
@@ -1585,8 +1586,10 @@ const sizeOf = pax => (pax == null ? 4 : MAP_SIZE.find(([m]) => pax < m)[1]);
 
 async function viewMap(main) {
   document.title = 'Live map | NSW Rail Disruptions';
-  await loadMap(true);
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
+  // Two maps: the real track, or the network diagram (straight lines, evenly spaced stations).
+  let kind = q.get('map') === 'diagram' ? 'diagram' : q.get('map') === 'track' ? 'track' : prefs.get('mapKind', 'track');
+  await loadMap(true, kind);
   let view = q.get('view') === 'all' ? 'all' : prefs.get('mapView', 'sydney');
   let lineFilter = q.get('line') || '';
   const head = h('div', { class: 'map-head' });
@@ -1666,7 +1669,9 @@ async function viewMap(main) {
     svg.addEventListener('pointercancel', end);
   };
   const drawMapOnly = () => {
-    geo = networkMap(holder, { net: D.network, live: D.live, view, lineFilter, vb });
+    geo = kind === 'diagram'
+      ? schematicMap(holder, { sch: D.schematic, live: D.live, view, lineFilter, vb })
+      : networkMap(holder, { net: D.network, live: D.live, view, lineFilter, vb });
     attach(geo.svg);
   };
   const legend = h('div', { class: 'map-legend' });
@@ -1675,10 +1680,11 @@ async function viewMap(main) {
     h('div', { class: 'line-head' }, h('h1', {}, 'Live map')),
     head, filters, frame, legend,
     h('section', { class: 'section', 'aria-labelledby': 'map-notes-h' }, h('h2', { id: 'map-notes-h' }, 'Marked on the map'), notes),
-    h('p', { class: 'chart-note' }, 'Track and stations are drawn from the TfNSW timetables; train positions, delays and occupancy come from the live trip data, read every few minutes. People on board is a rough estimate from how full TfNSW says each carriage is. Light rail trams show without a load.'));
+    h('p', { class: 'chart-note' }, 'Track and stations are drawn from the TfNSW timetables; train positions, delays and occupancy come from the live trip data, read every few minutes. People on board is a rough estimate from how full TfNSW says each carriage is. Light rail trams show without a load. The network diagram is this site’s own drawing of the lines in the style of the station maps, not the official TfNSW map; each train on it is placed between the two stations it is between.'));
 
   const setState = () => {
     const p = new URLSearchParams();
+    if (kind === 'diagram') p.set('map', 'diagram');
     if (view === 'all') p.set('view', 'all');
     if (lineFilter) p.set('line', lineFilter);
     history.replaceState(null, '', `#/map${p.toString() ? `?${p}` : ''}`);
@@ -1692,8 +1698,11 @@ async function viewMap(main) {
         c.late5 ? `${c.late5.toLocaleString('en-AU')} are 5 or more minutes late${top.length ? ', most on ' : '.'}` : 'Almost all are on time.',
         ...(c.late5 && top.length ? [...badgeList(top), '.'] : [])] : 'No live positions right now.'),
       h('p', { class: 'tw-sub' }, live.at ? `Positions at ${time(live.at)}. Each dot is a train: warmer is later, bigger is fuller.` : ''));
-    const lineIds = Object.keys(net.lines).filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
+    const lineIds = Object.keys((kind === 'diagram' ? D.schematic : net).lines).filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
     filters.replaceChildren(
+      segmented([['track', 'Track map'], ['diagram', 'Network diagram']], kind, async v => {
+        kind = v; vb = null; prefs.set('mapKind', v); await loadMap(false, v); setState(); draw();
+      }, 'Kind of map'),
       segmented([['sydney', 'Sydney'], ['all', 'Whole network']], view, v => { view = v; vb = null; prefs.set('mapView', v); setState(); draw(); }, 'Map area'),
       h('label', { class: 'field inline' }, 'Line ',
         h('select', { onchange: ev => { lineFilter = ev.target.value; setState(); draw(); } },
@@ -1704,17 +1713,19 @@ async function viewMap(main) {
       h('div', { class: 'key' }, MAP_DELAY.map(b => h('span', {}, h('i', { class: `map-dot ${b.cls}` }), b.label)), h('span', {}, h('i', { class: 'map-dot mt-none' }), 'No delay figure')),
       h('div', { class: 'key' }, MAP_SIZE.map(([, r, label]) => h('span', {}, h('i', { class: 'map-dot mt-ok', style: { width: `${2 * r}px`, height: `${2 * r}px` } }), label))),
       h('div', { class: 'key' }, h('span', {}, h('i', { class: 'map-sec incident' }), 'Incident'), h('span', {}, h('i', { class: 'map-sec closed' }), 'Closed for trackwork now'),
-        h('span', { class: 'muted' }, 'Zoom with the buttons, a double-click or a pinch, and drag to move around once zoomed in.')));
+        h('span', { class: 'muted' }, kind === 'diagram'
+          ? 'Lines that share track run side by side. Light rail is only on the track map. Zoom in for every station name.'
+          : 'Zoom with the buttons, a double-click or a pinch, and drag to move around once zoomed in.')));
     const ov = (live.overlays || []).filter(o => !lineFilter || o.lines.includes(lineFilter));
     notes.replaceChildren(ov.length
       ? h('ul', { class: 'map-notes' }, ov.map(o => h('li', { class: o.kind },
         h('span', { class: `map-sec ${o.kind}` }), h('span', {}, o.lines.filter(trackedLine).map(id => badge(id)), ' ', o.title,
-          !o.paths.length && !o.pins.length ? h('span', { class: 'muted' }, ' (no place named, so not marked)') : null))))
+          !(kind === 'diagram' ? o.sp?.length || o.spins?.length : o.paths.length || o.pins.length) ? h('span', { class: 'muted' }, ' (no place named, so not marked)') : null))))
       : h('p', { class: 'empty-chart' }, 'No incidents or trackwork closures right now.'));
   };
   draw();
   onResize(draw);
-  pageRefresh = async () => { await loadMap(true); draw(); };
+  pageRefresh = async () => { await loadMap(true, kind); draw(); };
 }
 
 function networkMap(container, { net, live, view, lineFilter, vb: zoom }) {
@@ -1788,6 +1799,182 @@ function networkMap(container, { net, live, view, lineFilter, vb: zoom }) {
   for (const [line, x, y, delay, pax, fullest, cars, headsign] of trains) {
     const dim = lineFilter && line !== lineFilter;
     const c = S('circle', { cx: x, cy: y, r: u(sizeOf(pax) * (W < 640 && zoomed < 2 ? 0.75 : 1)), class: `map-train ${delayClass(delay)}${dim ? ' dim' : ''}`, 'stroke-width': u(1) });
+    const tip = [
+      { value: `${line}${headsign ? ` to ${headsign.replace(/\s+Station$/i, '')}` : ''}` },
+      { label: delay == null ? 'No delay figure' : delay < 60 ? 'On time' : `${Math.round(delay / 60)} min late` },
+      { label: pax == null ? '' : `About ${(Math.round(pax / 10) * 10).toLocaleString('en-AU')} people on board${fullest != null ? `; fullest carriage: ${LEVEL_WORDS[fullest]}` : ''}`, muted: true },
+    ];
+    c.addEventListener('pointermove', ev => showTip(tip, ev.clientX, ev.clientY));
+    c.addEventListener('pointerleave', hideTip);
+    tg.append(c);
+  }
+  svg.append(tg);
+  svg.append(lbl);
+  container.replaceChildren(svg);
+  return { svg, base, W, H };
+}
+
+// The network diagram: this site's own schematic of the lines (lib/schematic.js), with each train placed
+// between the two stations it is between, and the same incidents and closures.
+const SCH_LINE_W = 0.16;   // a line's width in diagram units (about a fifth of the gap between stations)
+function schematicMap(container, { sch, live, view, lineFilter, vb: zoom }) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const S = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, v); return n; };
+  const [vx0, vy0, vx1, vy1] = sch.views[view];
+  const W = Math.max(300, container.clientWidth);
+  let base = [vx0, vy0, vx1 - vx0, vy1 - vy0];
+  const H = Math.min(Math.round((W * base[3]) / base[2]), Math.round(window.innerHeight * 0.85), 1100);
+  if (base[2] / base[3] < W / H) { const w = (base[3] * W) / H; base = [base[0] - (w - base[2]) / 2, base[1], w, base[3]]; }
+  else { const hh = (base[2] * H) / W; base = [base[0], base[1] - (hh - base[3]) / 2, base[2], hh]; }
+  const vb = zoom || base;
+  const scale = W / vb[2]; // px per diagram unit
+  const u = px => px / scale;
+  const svg = S('svg', { viewBox: vb.join(' '), width: W, height: H, class: `map-svg sch-svg${zoom ? ' zoomed' : ''}`, role: 'img', 'aria-label': 'Network diagram with each running train' });
+  const pathOf = flats => flats.map(f => { let d = `M${f[0]} ${f[1]}`; for (let i = 2; i < f.length; i += 2) d += `L${f[i]} ${f[i + 1]}`; return d; }).join('');
+  // Lines, each in its colour; a chosen line stays bright and the rest fade.
+  const lines = S('g', { class: 'sch-lines' });
+  for (const [id, pieces] of Object.entries(sch.lines)) {
+    if (!trackedLine(id)) continue;
+    lines.append(S('path', { d: pathOf(pieces), stroke: lineInfo(id).color, 'stroke-width': Math.max(SCH_LINE_W, u(1.5)), class: lineFilter && id !== lineFilter ? 'dim' : null }));
+  }
+  svg.append(lines);
+  // Incidents and trackwork closures, on the strands of the lines they affect.
+  for (const o of live.overlays || []) {
+    if (lineFilter && !o.lines.includes(lineFilter)) continue;
+    const d = pathOf(o.sp || []);
+    if (!d) continue;
+    const w = o.kind === 'incident' ? 0.5 : 0.3;
+    svg.append(S('path', { d, class: 'map-ov-case', 'stroke-width': Math.max(w + 0.14, u(o.kind === 'incident' ? 12 : 9)) }));
+    svg.append(S('path', { d, class: `map-ov sch-ov ${o.kind}`, 'stroke-width': Math.max(w, u(o.kind === 'incident' ? 9 : 6)),
+      'stroke-dasharray': o.kind === 'closed' ? `${Math.max(0.45, u(8))} ${Math.max(0.28, u(5))}` : null }));
+  }
+  // Stations: a rounded bar across the lines running through, or a ring where three or more stretches meet.
+  const st = S('g', { class: 'sch-stations' });
+  const lbl = S('g', { class: 'map-labels sch-labels' });
+  const fs = 11; // label size in px
+  const showAll = scale >= 26, minLabel = showAll ? 0 : scale >= 13 ? 1 : 2;
+  const gap = sch.gap || 0.2;
+  const lineHalf = Math.max(SCH_LINE_W / 2, u(1.5));
+  // Labels are placed so they do not cover a line, a station or another label: each tries its usual
+  // side first, then the others; one that fits nowhere is left out (shown again when zoomed in).
+  const cell = Math.max(0.5, u(24));
+  const grid = () => {
+    const m = new Map();
+    const each = (b, f) => { for (let i = Math.floor(b[0] / cell); i <= Math.floor(b[2] / cell); i++) for (let j = Math.floor(b[1] / cell); j <= Math.floor(b[3] / cell); j++) f(`${i},${j}`); };
+    return {
+      add(b) { each(b, k => { let a = m.get(k); if (!a) m.set(k, (a = [])); a.push(b); }); },
+      hits(b) { let hit = false; each(b, k => { if (!hit) for (const o of m.get(k) || []) if (o[0] < b[2] && o[2] > b[0] && o[1] < b[3] && o[3] > b[1]) { hit = true; break; } }); return hit; },
+    };
+  };
+  const solid = grid(), words = grid();
+  solid.add([vb[0] + vb[2] - u(66), vb[1] - 1, vb[0] + vb[2] + 1, vb[1] + u(134)]); // the zoom buttons
+  const inView = b => b[0] >= vb[0] + u(3) && b[2] <= vb[0] + vb[2] - u(3) && b[1] >= vb[1] + u(3) && b[3] <= vb[1] + vb[3] - u(3);
+  for (const [id, pieces] of Object.entries(sch.lines)) {
+    if (!trackedLine(id) || (lineFilter && id !== lineFilter)) continue;
+    const step = Math.max(0.12, u(4));
+    for (const f of pieces) for (let i = 2; i < f.length; i += 2) {
+      const [x0, y0, x1, y1] = [f[i - 2], f[i - 1], f[i], f[i + 1]], n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / step));
+      for (let k = 0; k <= n; k++) { const x = x0 + ((x1 - x0) * k) / n, y = y0 + ((y1 - y0) * k) / n; solid.add([x - lineHalf, y - lineHalf, x + lineHalf, y + lineHalf]); }
+    }
+  }
+  const ctx2d = document.createElement('canvas').getContext('2d');
+  ctx2d.font = `500 ${fs}px ${getComputedStyle(document.body).fontFamily}`;
+  const textW = text => u(ctx2d.measureText(text).width + 1);
+  const F = u(fs);
+  // Where a label goes on one side of a marker reaching ex across and ey up and down, with the boxes it covers.
+  const spot = (side, name, x, y, ex, ey, ring, more = 0) => {
+    const w = textW(name), pad = u(4) + more;
+    if (side === 'ur' || side === 'dl') {
+      const k = ring ? 0.72 : 1, sgn = side === 'ur' ? 1 : -1;
+      const tx = x + sgn * (ex * k + pad * 0.7), ty = y - sgn * (ey * k + pad * 0.7);
+      const boxes = [], h = F * 0.32;
+      for (let d = F * 0.45; d <= w - h + 1e-9 || boxes.length === 0; d += F * 0.45) {
+        const cx = tx + sgn * d * 0.7071, cy = ty - sgn * d * 0.7071;
+        boxes.push([cx - h, cy - h, cx + h, cy + h]);
+      }
+      return { attrs: { transform: `translate(${tx} ${ty}) rotate(-45)`, dy: F * 0.35, 'text-anchor': side === 'dl' ? 'end' : null }, boxes };
+    }
+    const corner = side.length === 2, cx = corner ? ex * 0.75 : ex, cy = corner ? ey * 0.75 : ey;
+    const right = side === 'r' || side === 'ar' || side === 'br', left = side === 'l' || side === 'al' || side === 'bl';
+    const lx = right ? x + cx + pad : left ? x - cx - pad : x;
+    const anchor = right ? 'start' : left ? 'end' : 'middle';
+    const base = side === 'r' || side === 'l' ? y + F * 0.35 : side[0] === 'a' ? y - cy - pad * 0.6 - F * 0.2 : y + cy + pad * 0.6 + F * 0.75;
+    const x0 = anchor === 'start' ? lx : anchor === 'end' ? lx - w : lx - w / 2;
+    const boxes = [], n = Math.max(1, Math.round(w / F)); // in pieces, so a crossing can be measured
+    for (let i = 0; i < n; i++) boxes.push([x0 + (w * i) / n, base - F * 0.75, x0 + (w * (i + 1)) / n, base + F * 0.22]);
+    return { attrs: { x: lx, y: base, 'text-anchor': anchor }, boxes };
+  };
+  const toLabel = [];
+  for (const [name, x, y, width, ls, level, side, angle = 0, ring = 0] of sch.stations) {
+    const on = ls.split(' ').filter(trackedLine);
+    if (!on.length) continue;
+    const dim = lineFilter && !on.includes(lineFilter);
+    const half = ((width - 1) * gap + SCH_LINE_W) / 2 + 0.06;
+    const r = Math.min(0.42, half + 0.04);
+    const sw = Math.max(0.04, u(1)), cls = `${ring ? 'ix' : ''}${dim ? ' dim' : ''}`.trim() || null;
+    const c = ring
+      ? S('circle', { cx: x, cy: y, r, 'data-name': name, class: cls, 'stroke-width': sw })
+      : S('rect', { x: -0.12, y: -half, width: 0.24, height: 2 * half, rx: 0.12, transform: `translate(${x} ${y}) rotate(${angle})`, 'data-name': name, class: cls, 'stroke-width': sw });
+    const tip = [{ value: name.replace(/\s+\(.*\)$/, '') }, { label: on.join(' · '), muted: true }];
+    c.addEventListener('pointermove', ev => showTip(tip, ev.clientX, ev.clientY));
+    c.addEventListener('pointerleave', hideTip);
+    st.append(c);
+    const a = (angle * Math.PI) / 180;
+    const ex = ring ? r : Math.abs(0.12 * Math.cos(a)) + Math.abs(half * Math.sin(a));
+    const ey = ring ? r : Math.abs(0.12 * Math.sin(a)) + Math.abs(half * Math.cos(a));
+    const mx = Math.max(ex, u(2)) + u(1), my = Math.max(ey, u(2)) + u(1);
+    solid.add([x - mx, y - my, x + mx, y + my]);
+    const chosen = lineFilter && on.includes(lineFilter) && scale >= 6;
+    if (dim || (level < minLabel && !chosen)) continue;
+    const flat = Math.abs(Math.cos(a)) > 0.92, upright = Math.abs(Math.sin(a)) > 0.92; // on a level or an upright line
+    const order = flat ? ['ur', 'dl', 'a', 'b', 'ar', 'br', 'al', 'bl'] : upright ? ['r', 'l', 'ar', 'br', 'al', 'bl', 'ur', 'dl'] : ['r', 'l', 'ar', 'br', 'al', 'bl', 'a', 'b', 'ur', 'dl'];
+    // Where the lines spread wider than the ring, a label may also stand clear of them.
+    const spread = ring ? Math.max(0, half - r) : 0;
+    toLabel.push({ name, x, y, ex, ey, ring, spread, rank: level * 10 + width + (ring ? 3 : 0) + (chosen ? 100 : 0), sides: [...new Set([side, ...order])] });
+  }
+  svg.append(st);
+  // Places named in incidents (drawn over the stations, named before any station), then the bigger stations.
+  for (const o of live.overlays || []) {
+    if (lineFilter && !o.lines.includes(lineFilter)) continue;
+    for (const [x, y, name] of o.spins || []) {
+      const rr = Math.max(0.55, u(12)), tx = x + Math.max(0.6, u(12)), ty = y - Math.max(0.4, u(8));
+      svg.append(S('circle', { cx: x, cy: y, r: rr, class: `map-pin ${o.kind}`, 'stroke-width': Math.max(0.12, u(3)) }));
+      const t = S('text', { x: tx, y: ty, 'font-size': u(12), class: 'map-pin-label' });
+      t.textContent = name;
+      lbl.append(t);
+      words.add([tx, ty - F * 0.8, tx + textW(name) * 1.1, ty + F * 0.25]);
+      solid.add([x - rr, y - rr, x + rr, y + rr]);
+    }
+  }
+  toLabel.sort((a, b) => b.rank - a.rank);
+  for (const L of toLabel) {
+    let pick = null, fallback = null, least = Infinity;
+    const mores = [0, L.spread + u(3), L.spread + u(3) + gap * 1.5];
+    search: for (const more of mores) for (const side of L.sides) {
+      const sp = spot(side, L.name, L.x, L.y, L.ex, L.ey, L.ring, more);
+      if (!sp.boxes.every(inView) || sp.boxes.some(b => words.hits(b))) continue;
+      const crossings = sp.boxes.filter(b => solid.hits(b)).length;
+      if (!crossings) { pick = sp; break search; }
+      if (crossings < least) { least = crossings; fallback = sp; }
+    }
+    // A main station keeps its name even where it has to cross a line briefly (the halo keeps it readable).
+    pick ??= L.rank >= 20 && least <= 2 ? fallback : null;
+    if (!pick) continue;
+    for (const b of pick.boxes) words.add(b);
+    const t = S('text', { 'font-size': F, ...pick.attrs });
+    t.textContent = L.name;
+    lbl.append(t);
+  }
+  // Trains on the diagram: on time first, latest on top. Dots shrink with the diagram when zoomed out.
+  const cols = live.cols || [];
+  const ix = cols.indexOf('sx'), iy = cols.indexOf('sy');
+  const trains = (live.trains || []).filter(t => trackedLine(t[0]) && t[ix] != null).slice().sort((a, b) => (a[3] ?? -1) - (b[3] ?? -1));
+  const tg = S('g', { class: 'map-trains' });
+  const dotR = pax => Math.max(u(sizeOf(pax) * 0.6), sizeOf(pax) / 34);
+  for (const t of trains) {
+    const [line, , , delay, pax, fullest, , headsign] = t;
+    const dim = lineFilter && line !== lineFilter;
+    const c = S('circle', { cx: t[ix], cy: t[iy], r: dotR(pax), class: `map-train ${delayClass(delay)}${dim ? ' dim' : ''}`, 'stroke-width': Math.max(u(1), 0.03) });
     const tip = [
       { value: `${line}${headsign ? ` to ${headsign.replace(/\s+Station$/i, '')}` : ''}` },
       { label: delay == null ? 'No delay figure' : delay < 60 ? 'On time' : `${Math.round(delay / 60)} min late` },

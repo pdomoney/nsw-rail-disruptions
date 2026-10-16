@@ -477,6 +477,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .map-ov { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .map-ov.incident { stroke: var(--heat-4); opacity: 0.45; }
 .map-ov.closed { stroke: var(--plan-5); opacity: 0.9; stroke-linecap: butt; }
+.sch-lines path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.sch-lines path.dim { opacity: 0.16; }
+.sch-stations circle, .sch-stations rect { fill: var(--surface); stroke: var(--ink); }
+.sch-stations .dim { opacity: 0.3; }
+.sch-svg .map-ov.closed { stroke-linecap: butt; }
 .map-ov-case { fill: none; stroke: var(--surface); stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
 .map-stations circle { fill: var(--surface); stroke: var(--muted); stroke-width: 0.6px; vector-effect: non-scaling-stroke; }
 .map-labels text { fill: var(--ink-2); font-family: var(--font); font-weight: 500; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }

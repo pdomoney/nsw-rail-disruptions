@@ -15,6 +15,7 @@ import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from '.
 import { delayClock, CAR_LOAD } from './lib/clock.js';
 import { trackworkItems } from './lib/trackwork.js';
 import { project, projectChains, encodeChain, TrackGraph, affectedPlaces, stationKey } from './lib/netmap.js';
+import { buildSchematic, diagramSections, labelSide, trainPlacer } from './lib/schematic.js';
 import { addDays, daysBetween, iso, splitByDay, sydDate, sydMidnight, sydHour, toMs, HOUR, DAY, MIN } from './lib/time.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
@@ -534,6 +535,30 @@ function buildMap(lines, status, trackwork, ongoing) {
     stations: [...stations.entries()].map(([k, s]) => [s.name, s.xy[0], s.xy[1], [...s.lines].join(' '), labels.get(k) || 0]),
   });
 
+  // The network diagram (lib/schematic.js): its layout, and helpers to put trains and sections on it.
+  const SCH = buildSchematic();
+  const schName = new Map([...SCH.lay.pos.keys()].map(n => [stationKey(n), n]));
+  const realXY = n => stations.get(stationKey(n))?.xy;
+  const R2 = v => Math.round(v * 100) / 100;
+  const flat = pts => pts.flatMap(([x, y]) => [R2(x), R2(y)]);
+  const allPts = [...SCH.lay.pos.values()];
+  writeJson(out('data', 'schematic.json'), {
+    generatedAt: iso(now),
+    views: {
+      sydney: [-41, -33, 8, 29.5],
+      all: [Math.min(...allPts.map(p => p[0])) - 2, Math.min(...allPts.map(p => p[1])) - 2, Math.max(...allPts.map(p => p[0])) + 4, Math.max(...allPts.map(p => p[1])) + 2],
+    },
+    lines: Object.fromEntries(Object.entries(SCH.pieces).map(([l, ps]) => [l, ps.map(flat)])),
+    gap: SCH.gap,
+    cols: ['name', 'x', 'y', 'width', 'lines', 'label', 'side', 'angle', 'ring'],
+    stations: [...SCH.lay.pos].map(([n, [x, y]]) => {
+      const m = SCH.marker.get(n);
+      return [n, R2(x), R2(y), m.lines, [...(SCH.linesAt.get(n) || [])].join(' '), labels.get(stationKey(n)) || 0, labelSide(SCH, n), m.angle, m.ring ? 1 : 0];
+    }),
+  });
+  const place = trainPlacer(SCH, realXY);
+  const onDiagram = (line, x, y) => { const p = place(line, x, y); return p ? [R2(p[0]), R2(p[1])] : [null, null]; };
+
   // Trains.
   const pos = readJson(path.join(DATA_DIR, 'live', 'positions.json'), null);
   const trains = [];
@@ -548,7 +573,7 @@ function buildMap(lines, status, trackwork, ongoing) {
       if (lv.length) { pax = lv.reduce((a, l) => a + table[l], 0); fullest = Math.max(...lv); }
       else if (level != null && cars) { pax = cars * table[level]; fullest = level; }
       const [x, y] = project(lat, lon);
-      trains.push([line, x, y, delay, pax == null ? null : Math.round(pax), fullest, cars || null, headsign || null]);
+      trains.push([line, x, y, delay, pax == null ? null : Math.round(pax), fullest, cars || null, headsign || null, ...onDiagram(line, x, y)]);
       counts.trains++;
       const thr = lateThresholdSeconds(line);
       if (delay != null && delay >= thr) { counts.late5++; counts.byLine[line] = (counts.byLine[line] || 0) + 1; }
@@ -577,7 +602,13 @@ function buildMap(lines, status, trackwork, ongoing) {
       const f = stationNode(name, ls);
       if (f) pins.push([f.s.xy[0], f.s.xy[1], f.s.name]);
     }
-    overlays.push({ kind, lines: ls, title, paths, pins });
+    // The same sections on the diagram: along the corridors, on the strands of the lines affected.
+    const sp = diagramSections(SCH, places.between.map(names => names.map(n => schName.get(stationKey(n))).filter(Boolean)), ls).map(flat), spins = [];
+    for (const name of places.at) {
+      const n = schName.get(stationKey(name)), p = n && SCH.lay.pos.get(n);
+      if (p && !spins.some(q => q[2] === n)) spins.push([R2(p[0]), R2(p[1]), n]);
+    }
+    overlays.push({ kind, lines: ls, title, paths, pins, sp, spins });
   };
   const seen = new Set();
   for (const e of ongoing.filter(e => e.k === 'incident')) {
@@ -589,7 +620,7 @@ function buildMap(lines, status, trackwork, ongoing) {
     if (it.sev < 2 || !it.w.some(([f, t]) => Date.parse(f) <= now && Date.parse(t) > now)) continue;
     addOverlay('closed', it.l, it.title, it.bullets.join('\n'));
   }
-  writeJson(out('data', 'live.json'), { generatedAt: iso(now), at: pos?.at || null, cols: ['line', 'x', 'y', 'delay', 'pax', 'fullest', 'cars', 'headsign'], trains, counts, overlays });
+  writeJson(out('data', 'live.json'), { generatedAt: iso(now), at: pos?.at || null, cols: ['line', 'x', 'y', 'delay', 'pax', 'fullest', 'cars', 'headsign', 'sx', 'sy'], trains, counts, overlays });
 }
 
 // Stations for the trip page: [id, name, [lines], [lines with only some services]] sorted by name.
