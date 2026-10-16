@@ -14,7 +14,7 @@ import { readServiceDays } from './lib/service.js';
 import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from './lib/service-stats.js';
 import { delayClock, CAR_LOAD } from './lib/clock.js';
 import { trackworkItems } from './lib/trackwork.js';
-import { project, projectChains, encodeChain, TrackGraph, alertPlaces, stationKey } from './lib/netmap.js';
+import { project, projectChains, encodeChain, TrackGraph, affectedPlaces, stationKey } from './lib/netmap.js';
 import { addDays, daysBetween, iso, splitByDay, sydDate, sydMidnight, sydHour, toMs, HOUR, DAY, MIN } from './lib/time.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
@@ -564,7 +564,7 @@ function buildMap(lines, status, trackwork, ongoing) {
   };
   const overlays = [];
   const addOverlay = (kind, ls, title, text) => {
-    const places = alertPlaces(`${title}. ${text || ''}`);
+    const places = affectedPlaces(`${title}. ${text || ''}`, kind);
     const paths = [], pins = [];
     for (const names of places.between) {
       const found = names.map(n => stationNode(n, ls)).filter(x => x && x.node >= 0);
@@ -587,7 +587,7 @@ function buildMap(lines, status, trackwork, ongoing) {
   }
   for (const it of trackwork.items) {
     if (it.sev < 2 || !it.w.some(([f, t]) => Date.parse(f) <= now && Date.parse(t) > now)) continue;
-    addOverlay('closed', it.l, it.title, it.bullets.join(' '));
+    addOverlay('closed', it.l, it.title, it.bullets.join('\n'));
   }
   writeJson(out('data', 'live.json'), { generatedAt: iso(now), at: pos?.at || null, cols: ['line', 'x', 'y', 'delay', 'pax', 'fullest', 'cars', 'headsign'], trains, counts, overlays });
 }

@@ -1748,7 +1748,12 @@ function networkMap(container, { net, live, view, lineFilter, vb: zoom }) {
   // Incidents and trackwork closures.
   for (const o of live.overlays || []) {
     if (lineFilter && !o.lines.includes(lineFilter)) continue;
-    for (const p of o.paths) svg.append(S('path', { d: pathOf([p]), class: `map-ov ${o.kind}`, 'stroke-width': u(o.kind === 'incident' ? 9 : 7), 'stroke-dasharray': o.kind === 'closed' ? `${u(7)} ${u(4)}` : null }));
+    // A pale casing under each section keeps it readable on top of a highlighted line of the same colour.
+    for (const p of o.paths) {
+      const w = o.kind === 'incident' ? 9 : 7;
+      svg.append(S('path', { d: pathOf([p]), class: 'map-ov-case', 'stroke-width': u(w + 4) }));
+      svg.append(S('path', { d: pathOf([p]), class: `map-ov ${o.kind}`, 'stroke-width': u(w), 'stroke-dasharray': o.kind === 'closed' ? `${u(9)} ${u(5)}` : null }));
+    }
   }
   // Stations.
   const st = S('g', { class: 'map-stations' });

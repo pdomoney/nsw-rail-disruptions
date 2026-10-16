@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { alertPlaces, stationKey, TrackGraph, project } from '../src/lib/netmap.js';
+import { alertPlaces, affectedPlaces, stationKey, TrackGraph, project } from '../src/lib/netmap.js';
 
 test('places named in alerts', () => {
   assert.deepEqual(alertPlaces('Buses replace trains between Waterfall, Cronulla and Hurstville').between, [['Waterfall', 'Cronulla', 'Hurstville']]);
@@ -32,4 +32,24 @@ test('sections are traced along the track, across lines and along long straights
   // Preferring a line: a point between both tracks snaps to line B's when asked.
   assert.ok(g.lines[g.nearest([1001, 40], 60, ['B'])].has('B'));
   assert.deepEqual(project(-33.87, 151.0), [0, 0]);
+});
+
+test('only the closed or disrupted sections are traced, not where trains still run', () => {
+  // T4, 17 October 2026: only Waterfall to Sutherland was closed, but the second sentence names the
+  // rest of the line, which had trains.
+  const t4 = 'Buses replace trains between Waterfall and Sutherland.\nFrom 3am to 11.30am, buses replace trains between Waterfall and Sutherland.\n'
+    + 'Trains run to a changed timetable between Cronulla, Sutherland and Bondi Junction.\nPlan your trip before you travel.';
+  assert.deepEqual(affectedPlaces(t4, 'closed'), { between: [['Waterfall', 'Sutherland']], at: [] });
+  const city = 'City Circle: Trains do not run on the City Circle, or between Central and Wynyard.\nL2 and L3 light rail services run between Central and Circular Quay.\n'
+    + 'Extra trains run between Hurstville and Bondi Junction.\nMetro services also run between Sydenham, the City and Tallawong.';
+  assert.deepEqual(affectedPlaces(city, 'closed').between, [['Central', 'Wynyard']]);
+  assert.deepEqual(affectedPlaces('T8 trains do not run between Sydenham and the City.', 'closed').between, [['Sydenham', 'Central']]);
+  assert.deepEqual(affectedPlaces('Buses replace trains between Central and Bondi Junction. Trains do not stop at Wolli Creek', 'closed'),
+    { between: [['Central', 'Bondi Junction']], at: ['Wolli Creek'] });
+  assert.deepEqual(affectedPlaces('Light rail services will not run between Westmead and Parramatta Square.\nLight rail services will continue to run between Parramatta Square and Carlingford.', 'closed').between,
+    [['Westmead', 'Parramatta Square']]);
+  // Incidents: keep the disruption, drop where trains are still running.
+  assert.deepEqual(affectedPlaces('Trains are not running between Blacktown and Richmond due to a signal fault at Riverstone. Trains are running between Central and Blacktown.', 'incident'),
+    { between: [['Blacktown', 'Richmond']], at: ['Riverstone'] });
+  assert.deepEqual(affectedPlaces('Allow extra travel time between Hornsby and Berowra due to a track fault.', 'incident').between, [['Hornsby', 'Berowra']]);
 });

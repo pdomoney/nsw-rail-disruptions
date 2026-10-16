@@ -36,6 +36,30 @@ export function alertPlaces(text) {
   return { between, at };
 }
 
+// The places an alert says are affected. An alert also says where trains still run ("Trains run to a
+// changed timetable between Cronulla, Sutherland and Bondi Junction"), where extra trains or metro
+// services run, and where to change; those sentences name stations too but are not the closure.
+// - kind 'closed' (trackwork): only sentences that close something: buses replace or run instead of
+//   trains, trains do not run or do not stop, a section is closed or suspended.
+// - kind 'incident': every sentence except those that only say where trains are still running.
+// "the City" and "the City Circle" are taken as Central, so "between Sydenham and the City" is traced.
+const CLOSES = /\bbuses (?:also )?(?:replace|run)\b|\b(?:do|does|will) not (?:run|stop)\b|\bnot (?:running|stopping)\b|\bno (?:trains|services|metro|light rail|trams)\b|\bclosed\b|\bsuspended\b/i;
+const RUNS = /\b(?:runs?|running|operat(?:e|es|ing)|continue|extra stops?)\b/i;
+const TROUBLE = /\bnot\b|\bno\b|delay|replac|suspend|disrupt|cancel|reduced|extra travel time|incident|closed|stopped/i;
+export const alertSentences = text => String(text || '')
+  .split(/(?<=[.!?])\s+(?=[A-Z0-9•-])|\n+|\s+[•-]\s+/)
+  .map(s => s.replace(/^[•\s-]+/, '').trim()).filter(Boolean);
+export function affectedPlaces(text, kind) {
+  const keep = alertSentences(text).filter(s => kind === 'closed' ? CLOSES.test(s) : !(RUNS.test(s) && !TROUBLE.test(s)));
+  const between = [], at = [], seen = new Set();
+  for (const s of keep) {
+    const p = alertPlaces(s.replace(/\bthe City(?: Circle)?\b/g, 'Central'));
+    for (const names of p.between) { const k = names.join('|'); if (!seen.has(k)) { seen.add(k); between.push(names); } }
+    for (const name of p.at) if (!at.includes(name)) at.push(name);
+  }
+  return { between, at };
+}
+
 // Undirected graph of the whole network's track, with nearby points of different lines joined (so a
 // path can run from one line's track onto another's at junctions and shared corridors).
 export class TrackGraph {
