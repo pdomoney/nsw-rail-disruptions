@@ -8,7 +8,7 @@ import { ADD_INFO, FEEDS } from './config/feeds.js';
 import { tfnswGet, tfnswGetFirst } from './lib/http.js';
 import { normalizeInfo } from './lib/classify.js';
 import { applySnapshot } from './lib/tracker.js';
-import { decodeFeed, lineStats, fieldCensus, vehicleLoads } from './lib/gtfs-rt.js';
+import { decodeFeed, lineStats, fieldCensus, vehicleLoads, vehiclePositions } from './lib/gtfs-rt.js';
 import { ensureRouteMap, resolveTripLine } from './lib/gtfs-static.js';
 import { readJson, writeJson, appendLines } from './lib/store.js';
 import { appendEvents } from './lib/events.js';
@@ -57,9 +57,10 @@ async function collectRealtime(now, meta, run) {
   const loadRows = [];
   const cancellations = {};
   const service = new ServiceRecorder(DATA_DIR, now);
-  // Vehicle positions are fetched every run where they carry measured occupancy, and about once an
-  // hour elsewhere to see what they contain.
+  // Vehicle positions are fetched every run (for the network map, and measured occupancy where published);
+  // their protobuf fields are counted about once an hour.
   const probeVehicles = new Date(now).getUTCMinutes() < 5;
+  const positions = { at: iso(now), feeds: {}, trains: [] };
   const diag = (meta.realtime ||= {});
   let ok = 0, trips = 0, matched = 0;
   for (const feed of FEEDS) {
@@ -74,12 +75,18 @@ async function collectRealtime(now, meta, run) {
       if (map.stations && Object.keys(map.stations).length) {
         writeJson(p('stations', `${feed.key}.json`), { builtAt: map.builtAt, source: map.source, stations: map.stations });
       }
-      let vehicles = null;
-      if (feed.vehiclePositions && (feed.vehicleOccupancy || probeVehicles || !d.vehicles)) {
+      // Track geometry for the network map (rewritten only when the timetable changes).
+      if (map.network && Object.keys(map.network).length) {
+        writeJson(p('network', `${feed.key}.json`), { builtAt: map.builtAt, source: map.source, grid: 1e4, lines: map.network });
+      }
+      let vehicles = null, vpList = [];
+      if (feed.vehiclePositions) {
         try {
           const vp = await tfnswGetFirst(feed.vehiclePositions, { timeoutMs: 30_000, retries: 1 });
           const vfm = decodeFeed(vp.buf);
           vehicles = vehicleLoads(vfm);
+          vpList = vehiclePositions(vfm);
+          positions.feeds[feed.key] = vfm.header?.timestamp ? iso(vfm.header.timestamp * 1000) : iso(now);
           d.vehicles = { at: iso(now), endpoint: vp.path, bytes: vp.buf.length, ...vehicleSummary(vfm),
             fields: probeVehicles || !d.vehicles?.fields ? fieldCensus(vp.buf) : d.vehicles.fields };
         } catch (e) {
@@ -112,6 +119,19 @@ async function collectRealtime(now, meta, run) {
         return t ? [t[1], map.sched.services[t[1]]] : false;
       });
       service.covered(feed.key, feedTime * 1000);
+      // Where each train is, with its delay and load, for the network map.
+      const byTrip = new Map(stats.tripList.filter(t => t.tripId).map(t => [t.tripId, t]));
+      for (const v of vpList) {
+        const t = byTrip.get(v.tripId);
+        const line = t?.line || resolveTripLine({ tripId: v.tripId, routeId: v.routeId }, map, feed);
+        if (!line) continue;
+        if (t && (t.sr === 3 || t.sr === 7)) continue; // cancelled
+        const levels = t?.sum.nowLevels?.length ? t.sum.nowLevels : v.levels;
+        const level = t?.sum.nowLevel ?? v.level;
+        const cars = Math.max(t?.sum.cars || 0, v.cars || 0, levels.length) || map.sched?.trips[v.tripId]?.[5] || null;
+        positions.trains.push([feed.key, line, Math.round(v.lat * 1e5) / 1e5, Math.round(v.lon * 1e5) / 1e5, v.bearing,
+          t?.sum.running ? t.sum.delay : null, levels.join(''), level, cars, map.sched?.trips[v.tripId]?.[8] || null]);
+      }
       for (const [line, keys] of Object.entries(stats.cancelled)) {
         for (const key of keys) {
           const sd = key.split('|')[1];
@@ -124,6 +144,7 @@ async function collectRealtime(now, meta, run) {
       run.errors.push(`${feed.key}: ${e.message}`);
     }
   }
+  writeJson(p('live', 'positions.json'), { ...positions, cols: ['feed', 'line', 'lat', 'lon', 'bearing', 'delay', 'car_levels', 'level', 'cars', 'headsign'] });
   const finalised = service.finalise();
   service.save();
   if (finalised.length) run.serviceDays = finalised;

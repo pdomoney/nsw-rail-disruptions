@@ -42,7 +42,7 @@ test('extreme int32 values decode correctly', () => {
 
 test('zip and csv readers handle deflate, stored entries and quoted fields', () => {
   const files = readZip(zip);
-  assert.deepEqual(Object.keys(files).sort(), ['agency.txt', 'calendar.txt', 'calendar_dates.txt', 'occupancies.txt', 'routes.txt', 'stop_times.txt', 'stops.txt',
+  assert.deepEqual(Object.keys(files).sort(), ['agency.txt', 'calendar.txt', 'calendar_dates.txt', 'occupancies.txt', 'routes.txt', 'shapes.txt', 'stop_times.txt', 'stops.txt',
     'trips.txt', 'vehicle_categories.txt', 'vehicle_couplings.txt']);
   assert.equal(zipEntries(zip).find(e => e.name === 'stops.txt').size, files['stops.txt'].length);
   const routes = parseCsv(files['routes.txt'].toString());
@@ -190,4 +190,25 @@ test('currentDelay picks the most recent passed stop', () => {
   assert.equal(currentDelay(tu, 250), 90);
   assert.equal(currentDelay(tu, 50), 30); // not departed yet, first stop within 15 min
   assert.equal(currentDelay(tu, 400 + 11 * 60), null); // finished more than 10 minutes ago
+});
+
+test('track geometry: shapes simplified and shared track stored once per line', async () => {
+  const { decodeChain } = await import('../src/lib/geo.js');
+  const map = buildRouteMap(zip, feedCfg);
+  assert.deepEqual(Object.keys(map.network).sort(), ['BMT', 'T1']); // no shape for T9; the empty run is left out
+  const t1 = map.network.T1.map(decodeChain);
+  assert.equal(t1.length, 1);
+  // Central → Strathfield in three points; the middle point of the straight first part was dropped.
+  assert.deepEqual(t1[0].map(([la, lo]) => [la / 1e4, lo / 1e4]).sort((a, b) => a[1] - b[1]),
+    [[-33.873, 151.094], [-33.88, 151.15], [-33.8832, 151.2061]]);
+});
+
+test('vehicle positions', async () => {
+  const { vehiclePositions } = await import('../src/lib/gtfs-rt.js');
+  const v = vehiclePositions(decodeFeed(vpb));
+  assert.equal(v.length, 1);
+  assert.equal(v[0].tripId, 'T9.trip.1');
+  assert.ok(Math.abs(v[0].lat + 33.8832) < 1e-4 && Math.abs(v[0].lon - 151.2061) < 1e-4);
+  assert.equal(v[0].bearing, 90);
+  assert.deepEqual(v[0].levels, [1, 2]);
 });

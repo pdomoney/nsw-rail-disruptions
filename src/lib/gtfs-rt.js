@@ -17,6 +17,8 @@ const xEnum = ifVarint(r => Number(r.varint()));
 const xInt = ifVarint(r => r.int32());
 const xBool = ifVarint(r => r.bool());
 const xStr = (r, wt) => (wt === 2 ? r.string() : (r.skip(wt), undefined));
+const xFloat = (r, wt) => (wt === 5 ? r.float() : (r.skip(wt), undefined));
+const Position = { 1: ['lat', xFloat], 2: ['lon', xFloat], 3: ['bearing', xFloat], 5: ['speed', xFloat] };
 const xMsg = fields => (r, wt) => {
   if (wt !== 2) { r.skip(wt); return undefined; }
   const sub = r.sub();
@@ -63,6 +65,7 @@ const TripUpdate = {
 };
 const VehiclePosition = {
   1: ['trip', xMsg(TripDescriptor)],
+  2: ['position', xMsg(Position)],
   8: ['vehicle', xMsg(VehicleDescriptor)],
   5: ['timestamp', ifVarint(u64)],
   9: ['occupancy', xEnum],
@@ -203,6 +206,24 @@ export function vehicleLoads(feed) {
     const levels = consist.map(c => c.occupancy ?? c.departureOccupancy).filter(l => l != null && l <= 5);
     const level = v.occupancy != null && v.occupancy <= 5 ? v.occupancy : null;
     out.set(tripId, { levels: levels.length === consist.length ? levels : [], level, cars: consist.length, model: v.vehicle?.tfnsw?.model || null });
+  }
+  return out;
+}
+
+// Where each vehicle on a trip is: [{ tripId, routeId, lat, lon, bearing, levels, level, cars }].
+export function vehiclePositions(feed) {
+  const out = [];
+  for (const e of feed.entity || []) {
+    const v = e.vehicle;
+    const p = v?.position;
+    if (!v?.trip?.tripId || !p || !Number.isFinite(p.lat) || !Number.isFinite(p.lon) || !p.lat || !p.lon) continue;
+    const consist = (v.consist || []).filter(Boolean).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    const levels = consist.map(c => c.occupancy ?? c.departureOccupancy).filter(l => l != null && l <= 5);
+    out.push({
+      tripId: v.trip.tripId, routeId: v.trip.routeId || null, startDate: v.trip.startDate || null,
+      lat: p.lat, lon: p.lon, bearing: Number.isFinite(p.bearing) ? Math.round(p.bearing) : null,
+      levels: levels.length === consist.length ? levels : [], level: v.occupancy != null && v.occupancy <= 5 ? v.occupancy : null, cars: consist.length,
+    });
   }
   return out;
 }

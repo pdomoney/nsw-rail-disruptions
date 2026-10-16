@@ -30,7 +30,8 @@ msg('TripDescriptor', [('trip_id',1,F.TYPE_STRING,OPT,None),('start_time',2,F.TY
     ('schedule_relationship',4,F.TYPE_INT32,OPT,None),('route_id',5,F.TYPE_STRING,OPT,None),('direction_id',6,F.TYPE_UINT32,OPT,None)])
 msg('VehicleDescriptor', [('id',1,F.TYPE_STRING,OPT,None),('label',2,F.TYPE_STRING,OPT,None),
     ('tfnsw',1007,F.TYPE_MESSAGE,OPT,'.transit_realtime.TfnswVehicleDescriptor')])
-msg('VehiclePosition', [('trip',1,F.TYPE_MESSAGE,OPT,'.transit_realtime.TripDescriptor'),('timestamp',5,F.TYPE_UINT64,OPT,None),
+msg('Position', [('latitude',1,F.TYPE_FLOAT,OPT,None),('longitude',2,F.TYPE_FLOAT,OPT,None),('bearing',3,F.TYPE_FLOAT,OPT,None)])
+msg('VehiclePosition', [('trip',1,F.TYPE_MESSAGE,OPT,'.transit_realtime.TripDescriptor'),('position',2,F.TYPE_MESSAGE,OPT,'.transit_realtime.Position'),('timestamp',5,F.TYPE_UINT64,OPT,None),
     ('vehicle',8,F.TYPE_MESSAGE,OPT,'.transit_realtime.VehicleDescriptor'),('occupancy_status',9,F.TYPE_INT32,OPT,None),
     ('consist',1007,F.TYPE_MESSAGE,REP,'.transit_realtime.CarriageDescriptor')])
 msg('TripUpdate', [('trip',1,F.TYPE_MESSAGE,OPT,'.transit_realtime.TripDescriptor'),('stop_time_update',2,F.TYPE_MESSAGE,REP,'.transit_realtime.StopTimeUpdate'),
@@ -113,6 +114,7 @@ def main():
     vp.header.gtfs_realtime_version = '2.0'; vp.header.timestamp = NOW
     v = vp.entity.add(id='v1').vehicle
     v.trip.trip_id = 'T9.trip.1'; v.timestamp = NOW - 20; v.occupancy_status = 2
+    v.position.latitude = -33.8832; v.position.longitude = 151.2061; v.position.bearing = 90
     v.vehicle.id = 'set-1'; v.vehicle.tfnsw.vehicle_model = 'M'
     for pos, level in [(2, 2), (1, 1)]:
         c = v.consist.add(position_in_consist=pos, name=f'C{pos}'); c.occupancy_status = level

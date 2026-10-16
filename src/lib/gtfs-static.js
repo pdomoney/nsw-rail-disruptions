@@ -5,9 +5,10 @@ import { parseCsv, forEachCsvRow } from './csv.js';
 import { matchGtfsRoute } from './lines.js';
 import { tfnswGetFirst } from './http.js';
 import { readJson, writeJson } from './store.js';
+import { TrackBuilder } from './geo.js';
 
 // Bump when the map format changes, so cached maps are rebuilt.
-export const MAP_VERSION = 8;
+export const MAP_VERSION = 9;
 
 // "25:13:00" → 90780 (seconds after the start of the service day; may pass 24 hours)
 export function gtfsTime(t) {
@@ -25,7 +26,7 @@ function stationName(name) {
 }
 
 export function buildRouteMap(zipBuf, feed) {
-  const files = readZip(zipBuf, ['routes.txt', 'trips.txt', 'stops.txt', 'stop_times.txt', 'calendar.txt', 'calendar_dates.txt', ...EXTRA]);
+  const files = readZip(zipBuf, ['routes.txt', 'trips.txt', 'stops.txt', 'stop_times.txt', 'calendar.txt', 'calendar_dates.txt', 'shapes.txt', ...EXTRA]);
   if (!files['routes.txt']) throw new Error('routes.txt missing from bundle');
   const routes = parseCsv(files['routes.txt'].toString('utf8'),
     ['route_id', 'route_short_name', 'route_long_name', 'route_desc', 'route_color']);
@@ -69,11 +70,36 @@ export function buildRouteMap(zipBuf, feed) {
   // origin] for every trip on a tracked line. category is the train type (e.g. "B8"), cars its number of
   // carriages (null if unknown); forecast and origin (the first station's id) are filled in below.
   const trips = {};
+  const shapeLines = new Map(); // shape_id → lines whose passenger trips use it
   if (files['trips.txt']) {
-    forEachCsvRow(files['trips.txt'], ['route_id', 'service_id', 'trip_id', 'direction_id', 'vehicle_category_id', 'trip_headsign'], ([routeId, sid, tripId, dir, cat, head]) => {
+    forEachCsvRow(files['trips.txt'], ['route_id', 'service_id', 'trip_id', 'direction_id', 'vehicle_category_id', 'trip_headsign', 'shape_id'], ([routeId, sid, tripId, dir, cat, head, shape]) => {
       const line = routeMap[routeId];
-      if (line) trips[tripId] = [line, sid, null, null, dir === '' || dir == null ? null : +dir, carsOf[cat] || null, null, cat || null, head || null, null];
+      if (!line) return;
+      trips[tripId] = [line, sid, null, null, dir === '' || dir == null ? null : +dir, carsOf[cat] || null, null, cat || null, head || null, null];
+      if (shape && !/^empty train$/i.test(head || '')) {
+        if (!shapeLines.has(shape)) shapeLines.set(shape, new Set());
+        shapeLines.get(shape).add(line);
+      }
     });
+  }
+
+  // Track geometry for the network map, from the shapes the lines' trips follow.
+  let network = {};
+  if (files['shapes.txt'] && shapeLines.size) {
+    const pts = new Map();
+    forEachCsvRow(files['shapes.txt'], ['shape_id', 'shape_pt_lat', 'shape_pt_lon', 'shape_pt_sequence'], ([id, la, lo, seq]) => {
+      if (!shapeLines.has(id)) return;
+      if (!pts.has(id)) pts.set(id, []);
+      pts.get(id).push([+seq, +la, +lo]);
+    });
+    const tb = new TrackBuilder();
+    for (const [id, list] of pts) {
+      list.sort((a, b) => a[0] - b[0]);
+      const line = list.map(([, la, lo]) => [la, lo]).filter(([la, lo]) => Number.isFinite(la) && Number.isFinite(lo) && la && lo);
+      if (line.length < 2) continue;
+      for (const l of shapeLines.get(id)) tb.add(l, line);
+    }
+    network = tb.chains();
   }
 
   // Forecast occupancy (occupancies.txt, Sydney Trains): the average level over a trip's stops for
@@ -152,6 +178,7 @@ export function buildRouteMap(zipBuf, feed) {
     colors,
     stations,
     sched: { services, trips },
+    network,
     stats: {
       routes: routes.length, matchedRoutes: routes.length - unmatched.length, trips: Object.keys(trips).length,
       stations: Object.keys(stations).length, services: Object.keys(services).length, calendarDates, from, to,

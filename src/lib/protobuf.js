@@ -58,6 +58,14 @@ export class Reader {
 
   bool() { return Boolean(this.varint()); }
 
+  // 32-bit float (wire type 5).
+  float() {
+    if (this.pos + 4 > this.end) throw new Error('protobuf: truncated float');
+    const v = this.buf.readFloatLE(this.pos);
+    this.pos += 4;
+    return v;
+  }
+
   bytes() {
     const len = Number(this.varint());
     const start = this.pos;

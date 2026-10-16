@@ -10,12 +10,25 @@ BMT_1,SydneyTrains,BMT,Blue Mountains Line,Intercity Trains Network,2,F99D1C
 T9_route,SydneyTrains,T9,Northern Line,Sydney Trains Network,2,D11F2F
 RTTA_DEF,SydneyTrains,,Non Revenue,,2,
 ''',
-    'trips.txt': '''route_id,service_id,trip_id,trip_headsign,direction_id,vehicle_category_id
-T1_route,s1,T1.trip.1,"Emu Plains, via Strathfield",0,B8
-T1_route,s2,T1.trip.2,Hornsby,1,
-BMT_1,s1,BMT.trip.9,Lithgow,0,H4
-T9_route,s3,T9.trip.1,Gordon,1,B8
-RTTA_DEF,s1,X.trip,Empty,0,B8
+    'trips.txt': '''route_id,service_id,trip_id,trip_headsign,direction_id,vehicle_category_id,shape_id
+T1_route,s1,T1.trip.1,"Emu Plains, via Strathfield",0,B8,sh1
+T1_route,s2,T1.trip.2,Hornsby,1,,sh1r
+BMT_1,s1,BMT.trip.9,Lithgow,0,H4,sh1
+T9_route,s3,T9.trip.1,Gordon,1,B8,
+RTTA_DEF,s1,X.trip,Empty,0,B8,shx
+''',
+    # Central → Strathfield, with a point in a straight line that simplification drops, and the same
+    # track the other way round (shared track is stored once).
+    'shapes.txt': '''shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence
+sh1,-33.8832,151.2061,1
+sh1,-33.8800,151.1500,3
+sh1,-33.8816,151.17805,2
+sh1,-33.8730,151.0940,4
+sh1r,-33.8730,151.0940,1
+sh1r,-33.8800,151.1500,2
+sh1r,-33.8832,151.2061,3
+shx,-33.9000,151.0000,1
+shx,-33.9100,151.0100,2
 ''',
     # Train consists (Sydney Trains publishes these): an 8-car and a 4-car set.
     'vehicle_categories.txt': '''vehicle_category_id,vehicle_category_name
