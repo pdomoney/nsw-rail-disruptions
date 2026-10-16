@@ -76,7 +76,7 @@ function stateEl(kind, label) {
 }
 
 // ---------- data ----------
-const D = { meta: null, daily: null, status: null, delays: null, clock: null, line: {}, log: {}, service: null, serviceDay: {}, trackwork: null };
+const D = { meta: null, daily: null, status: null, delays: null, clock: null, line: {}, log: {}, service: null, serviceDay: {}, trackwork: null, network: null, live: null };
 async function getJson(p) {
   const r = await fetch(p, { cache: 'no-cache' });
   if (!r.ok) throw new Error(`Could not load ${p} (HTTP ${r.status})`);
@@ -1565,6 +1565,239 @@ function trackworkChart(container, { items, lines, days, selected, onLine }) {
   container.replaceChildren(svg);
 }
 
+// ---------- live map ----------
+// Every train where it is now, on the network's real track: warmer dots are later, bigger dots fuller.
+async function loadMap(force = false) {
+  if (!D.network) D.network = await getJson('data/network.json');
+  if (!D.live || force) D.live = await getJson(`data/live.json?t=${Date.now()}`);
+}
+const decode = flat => { const pts = [[flat[0], flat[1]]]; for (let i = 2; i < flat.length; i += 2) { const [x, y] = pts[pts.length - 1]; pts.push([x + flat[i], y + flat[i + 1]]); } return pts; };
+const MAP_DELAY = [
+  { max: 120, cls: 'mt-ok', label: 'On time or under 2 min late' },
+  { max: 300, cls: 'mt-2', label: '2 to 5 min late' },
+  { max: 600, cls: 'mt-5', label: '5 to 10 min late' },
+  { max: Infinity, cls: 'mt-10', label: '10 min or more late' },
+];
+const MAP_SIZE = [[200, 4, 'Under 200 people'], [600, 5.5, '200 to 600'], [1000, 7, '600 to 1,000'], [Infinity, 8.5, 'Over 1,000']];
+const LEVEL_WORDS = ['empty', 'many seats free', 'few seats free', 'standing room only', 'crowded', 'full'];
+const delayClass = d => (d == null ? 'mt-none' : MAP_DELAY.find(b => d < b.max).cls);
+const sizeOf = pax => (pax == null ? 4 : MAP_SIZE.find(([m]) => pax < m)[1]);
+
+async function viewMap(main) {
+  document.title = 'Live map | NSW Rail Disruptions';
+  await loadMap(true);
+  const q = new URLSearchParams(location.hash.split('?')[1] || '');
+  let view = q.get('view') === 'all' ? 'all' : prefs.get('mapView', 'sydney');
+  let lineFilter = q.get('line') || '';
+  const head = h('div', { class: 'map-head' });
+  const filters = h('div', { class: 'filters' });
+  const holder = h('div', { class: 'map-holder' });
+  // Zoom and pan: vb is the visible area in map units (null = the whole chosen view).
+  let vb = null;
+  let redrawTimer = null;
+  const zoomBtns = h('div', { class: 'map-zoom' },
+    h('button', { type: 'button', 'aria-label': 'Zoom in', onclick: () => zoomBy(2) }, '+'),
+    h('button', { type: 'button', 'aria-label': 'Zoom out', onclick: () => zoomBy(0.5) }, '−'),
+    h('button', { type: 'button', class: 'map-reset', onclick: () => { vb = null; drawMapOnly(); } }, 'Reset'));
+  const frame = h('div', { class: 'map-frame' }, holder, zoomBtns);
+  let geo = null; // { svg, base, W, H } from the last drawing
+  const svgPoint = (clientX, clientY) => {
+    const r = geo.svg.getBoundingClientRect();
+    const cur = vb || geo.base;
+    const k = Math.min(r.width / cur[2], r.height / cur[3]);
+    const ox = (r.width - cur[2] * k) / 2, oy = (r.height - cur[3] * k) / 2;
+    return [cur[0] + (clientX - r.left - ox) / k, cur[1] + (clientY - r.top - oy) / k, k];
+  };
+  const setVB = next => {
+    const base = geo.base;
+    const w = Math.min(base[2], Math.max(base[2] / 24, next[2]));
+    const hgt = (w * base[3]) / base[2];
+    let [x, y] = next;
+    x = Math.min(Math.max(x, base[0] - w * 0.25), base[0] + base[2] - w * 0.75);
+    y = Math.min(Math.max(y, base[1] - hgt * 0.25), base[1] + base[3] - hgt * 0.75);
+    vb = w >= base[2] - 1e-6 ? null : [x, y, w, hgt];
+    geo.svg.setAttribute('viewBox', (vb || base).join(' '));
+    geo.svg.classList.toggle('zoomed', !!vb);
+    clearTimeout(redrawTimer);
+    redrawTimer = setTimeout(drawMapOnly, 180); // redraw so dots and labels keep their size
+  };
+  const zoomAt = (factor, cx, cy) => {
+    const cur = vb || geo.base;
+    const w = cur[2] / factor, hh = cur[3] / factor;
+    setVB([cx - (cx - cur[0]) / factor, cy - (cy - cur[1]) / factor, w, hh]);
+  };
+  const zoomBy = f => { const cur = vb || geo.base; zoomAt(f, cur[0] + cur[2] / 2, cur[1] + cur[3] / 2); };
+  const attach = svg => {
+    const pts = new Map();
+    let last = null, pinch = null;
+    svg.addEventListener('dblclick', ev => { const [x, y] = svgPoint(ev.clientX, ev.clientY); zoomAt(2, x, y); });
+    svg.addEventListener('wheel', ev => {
+      if (!ev.ctrlKey && !ev.metaKey) return; // plain scrolling scrolls the page; pinch on a trackpad zooms
+      ev.preventDefault();
+      const [x, y] = svgPoint(ev.clientX, ev.clientY);
+      zoomAt(Math.exp(-ev.deltaY / 200), x, y);
+    }, { passive: false });
+    svg.addEventListener('pointerdown', ev => {
+      if (ev.pointerType === 'touch' && !vb && pts.size === 0) { pts.set(ev.pointerId, [ev.clientX, ev.clientY]); return; }
+      pts.set(ev.pointerId, [ev.clientX, ev.clientY]);
+      if (pts.size === 1 && vb) { last = [ev.clientX, ev.clientY]; svg.setPointerCapture(ev.pointerId); }
+    });
+    svg.addEventListener('pointermove', ev => {
+      if (!pts.has(ev.pointerId)) return;
+      pts.set(ev.pointerId, [ev.clientX, ev.clientY]);
+      if (pts.size === 2) {
+        const [[ax, ay], [bx, by]] = [...pts.values()];
+        const d = Math.hypot(ax - bx, ay - by), mx = (ax + bx) / 2, my = (ay + by) / 2;
+        if (pinch) {
+          const [x, y] = svgPoint(mx, my);
+          zoomAt(d / pinch, x, y);
+        }
+        pinch = d;
+        ev.preventDefault();
+      } else if (last && vb) {
+        const [, , k] = svgPoint(ev.clientX, ev.clientY);
+        const cur = vb;
+        setVB([cur[0] - (ev.clientX - last[0]) / k, cur[1] - (ev.clientY - last[1]) / k, cur[2], cur[3]]);
+        last = [ev.clientX, ev.clientY];
+      }
+    });
+    const end = ev => { pts.delete(ev.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) last = null; };
+    svg.addEventListener('pointerup', end);
+    svg.addEventListener('pointercancel', end);
+  };
+  const drawMapOnly = () => {
+    geo = networkMap(holder, { net: D.network, live: D.live, view, lineFilter, vb });
+    attach(geo.svg);
+  };
+  const legend = h('div', { class: 'map-legend' });
+  const notes = h('div');
+  mount(main,
+    h('div', { class: 'line-head' }, h('h1', {}, 'Live map')),
+    head, filters, frame, legend,
+    h('section', { class: 'section', 'aria-labelledby': 'map-notes-h' }, h('h2', { id: 'map-notes-h' }, 'Marked on the map'), notes),
+    h('p', { class: 'chart-note' }, 'Track and stations are drawn from the TfNSW timetables; train positions, delays and occupancy come from the live trip data, read every few minutes. People on board is a rough estimate from how full TfNSW says each carriage is. Light rail trams show without a load.'));
+
+  const setState = () => {
+    const p = new URLSearchParams();
+    if (view === 'all') p.set('view', 'all');
+    if (lineFilter) p.set('line', lineFilter);
+    history.replaceState(null, '', `#/map${p.toString() ? `?${p}` : ''}`);
+  };
+  const draw = () => {
+    const live = D.live, net = D.network;
+    const c = live.counts || {};
+    const top = Object.entries(c.byLine || {}).sort((a, b) => b[1] - a[1]).filter(([, n]) => n >= 2).slice(0, 3).map(([id]) => id);
+    head.replaceChildren(
+      h('p', { class: 'tw-headline' }, c.trains ? [`${c.trains.toLocaleString('en-AU')} trains, metros and trams are running. `,
+        c.late5 ? `${c.late5.toLocaleString('en-AU')} are 5 or more minutes late${top.length ? ', most on ' : '.'}` : 'Almost all are on time.',
+        ...(c.late5 && top.length ? [...badgeList(top), '.'] : [])] : 'No live positions right now.'),
+      h('p', { class: 'tw-sub' }, live.at ? `Positions at ${time(live.at)}. Each dot is a train: warmer is later, bigger is fuller.` : ''));
+    const lineIds = Object.keys(net.lines).filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
+    filters.replaceChildren(
+      segmented([['sydney', 'Sydney'], ['all', 'Whole network']], view, v => { view = v; vb = null; prefs.set('mapView', v); setState(); draw(); }, 'Map area'),
+      h('label', { class: 'field inline' }, 'Line ',
+        h('select', { onchange: ev => { lineFilter = ev.target.value; setState(); draw(); } },
+          h('option', { value: '' }, 'All lines'),
+          lineIds.map(id => { const o = h('option', { value: id }, `${id} ${lineInfo(id).name}`); if (id === lineFilter) o.selected = true; return o; }))));
+    drawMapOnly();
+    legend.replaceChildren(
+      h('div', { class: 'key' }, MAP_DELAY.map(b => h('span', {}, h('i', { class: `map-dot ${b.cls}` }), b.label)), h('span', {}, h('i', { class: 'map-dot mt-none' }), 'No delay figure')),
+      h('div', { class: 'key' }, MAP_SIZE.map(([, r, label]) => h('span', {}, h('i', { class: 'map-dot mt-ok', style: { width: `${2 * r}px`, height: `${2 * r}px` } }), label))),
+      h('div', { class: 'key' }, h('span', {}, h('i', { class: 'map-sec incident' }), 'Incident'), h('span', {}, h('i', { class: 'map-sec closed' }), 'Closed for trackwork now'),
+        h('span', { class: 'muted' }, 'Zoom with the buttons, a double-click or a pinch, and drag to move around once zoomed in.')));
+    const ov = (live.overlays || []).filter(o => !lineFilter || o.lines.includes(lineFilter));
+    notes.replaceChildren(ov.length
+      ? h('ul', { class: 'map-notes' }, ov.map(o => h('li', { class: o.kind },
+        h('span', { class: `map-sec ${o.kind}` }), h('span', {}, o.lines.filter(trackedLine).map(id => badge(id)), ' ', o.title,
+          !o.paths.length && !o.pins.length ? h('span', { class: 'muted' }, ' (no place named, so not marked)') : null))))
+      : h('p', { class: 'empty-chart' }, 'No incidents or trackwork closures right now.'));
+  };
+  draw();
+  onResize(draw);
+  pageRefresh = async () => { await loadMap(true); draw(); };
+}
+
+function networkMap(container, { net, live, view, lineFilter, vb: zoom }) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const S = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, v); return n; };
+  const [vx0, vy0, vx1, vy1] = net.views[view];
+  const pad = (vx1 - vx0) * 0.03;
+  const W = Math.max(300, container.clientWidth);
+  // The frame keeps the chosen view's shape (within the window's height); zooming changes what fits in it.
+  let base = [vx0 - pad, vy0 - pad, vx1 - vx0 + 2 * pad, vy1 - vy0 + 2 * pad];
+  const H = Math.min(Math.round((W * base[3]) / base[2]), Math.round(window.innerHeight * 0.85), 1100);
+  if (base[2] / base[3] < W / H) { const w = (base[3] * W) / H; base = [base[0] - (w - base[2]) / 2, base[1], w, base[3]]; }
+  else { const hh = (base[2] * H) / W; base = [base[0], base[1] - (hh - base[3]) / 2, base[2], hh]; }
+  const vb = zoom || base;
+  const scale = W / vb[2]; // px per map unit
+  const u = px => px / scale;
+  const zoomed = scale / (W / base[2]);
+  const svg = S('svg', { viewBox: vb.join(' '), width: W, height: H, class: `map-svg${zoom ? ' zoomed' : ''}`, role: 'img', 'aria-label': 'Map of the rail network with each running train' });
+  const pathOf = chains => chains.map(c => { const p = decode(c); return `M${p.map(([x, y]) => `${x} ${y}`).join('L')}`; }).join('');
+  // Track.
+  const track = S('g', { class: 'map-track' });
+  for (const [id, chains] of Object.entries(net.lines)) {
+    if (!trackedLine(id)) continue;
+    const lr = lineInfo(id).mode === 'lightrail';
+    track.append(S('path', { d: pathOf(chains), 'stroke-width': u(lr ? 1.6 : 2.2) }));
+  }
+  svg.append(track);
+  if (lineFilter && net.lines[lineFilter]) {
+    svg.append(S('path', { d: pathOf(net.lines[lineFilter]), class: 'map-line-hi', stroke: lineInfo(lineFilter).color, 'stroke-width': u(4) }));
+  }
+  // Incidents and trackwork closures.
+  for (const o of live.overlays || []) {
+    if (lineFilter && !o.lines.includes(lineFilter)) continue;
+    for (const p of o.paths) svg.append(S('path', { d: pathOf([p]), class: `map-ov ${o.kind}`, 'stroke-width': u(o.kind === 'incident' ? 9 : 7), 'stroke-dasharray': o.kind === 'closed' ? `${u(7)} ${u(4)}` : null }));
+  }
+  // Stations.
+  const st = S('g', { class: 'map-stations' });
+  const lbl = S('g', { class: 'map-labels' });
+  // More station names as you zoom in; fewer on small screens.
+  const minLabel = zoomed >= 3 ? 0 : zoomed >= 1.6 ? 1 : view === 'all' || W < 640 ? 2 : 1;
+  for (const [name, x, y, ls, label] of net.stations) {
+    if (lineFilter && !ls.split(' ').includes(lineFilter)) continue;
+    st.append(S('circle', { cx: x, cy: y, r: u(label ? 2.4 : 1.5) }));
+    // Light rail stops are close together: name them only when zoomed well in.
+    const tramOnly = ls.split(' ').every(l => lineInfo(l).mode === 'lightrail');
+    if (label >= minLabel && (label || !tramOnly || zoomed >= 6)) {
+      const t = S('text', { x: x + u(5), y: y + u(4), 'font-size': u(11) });
+      t.textContent = name;
+      lbl.append(t);
+    }
+  }
+  svg.append(st);
+  // Places named in incidents.
+  for (const o of live.overlays || []) {
+    if (lineFilter && !o.lines.includes(lineFilter)) continue;
+    for (const [x, y, name] of o.pins) {
+      svg.append(S('circle', { cx: x, cy: y, r: u(12), class: `map-pin ${o.kind}`, 'stroke-width': u(3) }));
+      const t = S('text', { x: x + u(12), y: y - u(8), 'font-size': u(12), class: 'map-pin-label' });
+      t.textContent = name;
+      lbl.append(t);
+    }
+  }
+  // Trains: on time first, latest on top.
+  const trains = (live.trains || []).filter(t => trackedLine(t[0])).slice().sort((a, b) => (a[3] ?? -1) - (b[3] ?? -1));
+  const tg = S('g', { class: 'map-trains' });
+  for (const [line, x, y, delay, pax, fullest, cars, headsign] of trains) {
+    const dim = lineFilter && line !== lineFilter;
+    const c = S('circle', { cx: x, cy: y, r: u(sizeOf(pax) * (W < 640 && zoomed < 2 ? 0.75 : 1)), class: `map-train ${delayClass(delay)}${dim ? ' dim' : ''}`, 'stroke-width': u(1) });
+    const tip = [
+      { value: `${line}${headsign ? ` to ${headsign.replace(/\s+Station$/i, '')}` : ''}` },
+      { label: delay == null ? 'No delay figure' : delay < 60 ? 'On time' : `${Math.round(delay / 60)} min late` },
+      { label: pax == null ? '' : `About ${(Math.round(pax / 10) * 10).toLocaleString('en-AU')} people on board${fullest != null ? `; fullest carriage: ${LEVEL_WORDS[fullest]}` : ''}`, muted: true },
+    ];
+    c.addEventListener('pointermove', ev => showTip(tip, ev.clientX, ev.clientY));
+    c.addEventListener('pointerleave', hideTip);
+    tg.append(c);
+  }
+  svg.append(tg);
+  svg.append(lbl);
+  container.replaceChildren(svg);
+  return { svg, base, W, H };
+}
+
 // ---------- trip page ----------
 // Pick two stations, see what is happening on the lines between them, then open the official
 // transportnsw.info planner with the trip filled in (this site has no journey planner of its own).
@@ -1813,7 +2046,7 @@ async function route() {
   const main = document.getElementById('main');
   const hash = location.hash || '#/';
   const navKey = hash.startsWith('#/log') ? 'log' : hash.startsWith('#/about') ? 'about' : hash.startsWith('#/trip') ? 'trip'
-    : hash.startsWith('#/service') ? 'service' : hash.startsWith('#/trackwork') ? 'trackwork' : hash.startsWith('#/line') ? '' : 'overview';
+    : hash.startsWith('#/service') ? 'service' : hash.startsWith('#/trackwork') ? 'trackwork' : hash.startsWith('#/map') ? 'map' : hash.startsWith('#/line') ? '' : 'overview';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === navKey) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let m;
@@ -1823,6 +2056,7 @@ async function route() {
     else if (hash.startsWith('#/trip')) await viewTrip(main);
     else if (hash.startsWith('#/service')) await viewService(main);
     else if (hash.startsWith('#/trackwork')) await viewTrackwork(main);
+    else if (hash.startsWith('#/map')) await viewMap(main);
     else { document.title = 'NSW Rail Disruptions'; viewOverview(main); }
   } catch (e) {
     console.error(e);
@@ -1834,7 +2068,7 @@ let lastHashPath = null;
 window.addEventListener('hashchange', () => {
   const pathOnly = location.hash.split('?')[0];
   // Filter changes on the log and service pages update the query string without re-rendering.
-  if ((pathOnly === '#/log' || pathOnly === '#/service' || pathOnly === '#/trackwork') && lastHashPath === pathOnly) return;
+  if ((pathOnly === '#/log' || pathOnly === '#/service' || pathOnly === '#/trackwork' || pathOnly === '#/map') && lastHashPath === pathOnly) return;
   lastHashPath = pathOnly;
   route().then(() => { if (!location.hash.startsWith('#/log')) window.scrollTo(0, 0); document.getElementById('main').focus({ preventScroll: true }); });
 });
@@ -1852,7 +2086,7 @@ function isStale() {
 }
 function onOverview() {
   const hash = location.hash || '#/';
-  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip|service|trackwork)/.test(hash);
+  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip|service|trackwork|map)/.test(hash);
 }
 function userIsInteracting() {
   const main = document.getElementById('main');
@@ -1892,7 +2126,7 @@ async function checkForUpdates() {
       const [daily, status, delays] = await Promise.all(['daily', 'status', 'delays'].map(n => getJson(`data/${n}.json?t=${Date.now()}`)));
       const clock = await getJson(`data/clock.json?t=${Date.now()}`).catch(() => null);
       attachService(daily);
-      Object.assign(D, { meta, daily, status, delays, clock, line: {}, log: {}, service: null, serviceDay: {}, trackwork: null });
+      Object.assign(D, { meta, daily, status, delays, clock, line: {}, log: {}, service: null, serviceDay: {}, trackwork: null, live: null });
       liveRedraw();
     } else if (redrawPending || (onOverview() && !!document.querySelector('.stale-note') !== isStale())) {
       liveRedraw();

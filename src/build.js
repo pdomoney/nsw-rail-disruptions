@@ -3,7 +3,7 @@
 //   DATA_DIR=data OUT_DIR=dist node src/build.js
 import fs from 'node:fs';
 import path from 'node:path';
-import { LINES, LINE_BY_ID, MODES, dynamicLine, lineOrder } from './config/lines.js';
+import { LINES, LINE_BY_ID, MODES, dynamicLine, lineOrder, lateThresholdSeconds } from './config/lines.js';
 import { CAUSES, reclassify } from './lib/classify.js';
 import { FEEDS } from './config/feeds.js';
 import { modeOfLineId } from './lib/lines.js';
@@ -14,6 +14,7 @@ import { readServiceDays } from './lib/service.js';
 import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from './lib/service-stats.js';
 import { delayClock, CAR_LOAD } from './lib/clock.js';
 import { trackworkItems } from './lib/trackwork.js';
+import { project, projectChains, encodeChain, TrackGraph, alertPlaces, stationKey } from './lib/netmap.js';
 import { addDays, daysBetween, iso, splitByDay, sydDate, sydMidnight, sydHour, toMs, HOUR, DAY, MIN } from './lib/time.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
@@ -265,7 +266,8 @@ function build() {
   writeJson(out('data', 'clock.json'), buildClock(service));
 
   // ---------- trackwork ahead ----------
-  writeJson(out('data', 'trackwork.json'), buildTrackwork(new Set(lines.map(l => l.id))));
+  const trackwork = buildTrackwork(new Set(lines.map(l => l.id)));
+  writeJson(out('data', 'trackwork.json'), trackwork);
 
   // ---------- status (right now) ----------
   const meta = readJson(path.join(DATA_DIR, 'state', 'meta.json'), {});
@@ -345,6 +347,7 @@ function build() {
   writeJson(out('data', 'stations.json'), buildStations(new Set(lines.map(l => l.id))));
   writeJson(out('data', 'delays.json'), delays);
   writeJson(out('data', 'status.json'), status);
+  buildMap(lines, status, trackwork, ongoing);
   const firstLive = Object.keys(coverageLive).sort()[0] || null;
   writeJson(out('data', 'meta.json'), {
     generatedAt: iso(now),
@@ -481,6 +484,112 @@ function stationNames() {
     }
   }
   return out;
+}
+
+// ---------- network map ----------
+// network.json: each line's track (projected, in 10 m units, delta-encoded chains), stations, and the
+// two views. live.json: where each train is with its delay and estimated load, and the sections of
+// track named in current incidents and trackwork.
+const MAP_LABELS = {
+  // Always labelled, and labelled in the Sydney view.
+  2: ['Central', 'Parramatta', 'Strathfield', 'Chatswood', 'Hornsby', 'Penrith', 'Liverpool', 'Campbelltown', 'Sutherland', 'Bondi Junction',
+    'Tallawong', 'Bankstown', 'Newcastle', 'Gosford', 'Wollongong', 'Lithgow', 'Goulburn', 'Bomaderry', 'Scone', 'Richmond', 'Cronulla', 'Leppington'],
+  1: ['Wynyard', 'North Sydney', 'Epping', 'Blacktown', 'Lidcombe', 'Hurstville', 'Sydenham', 'Wolli Creek', 'Olympic Park', 'Macquarie University',
+    'Westmead', 'Carlingford', 'Randwick', 'Juniors Kingsford', 'Waterfall', 'Berowra', 'Granville', 'Schofields', 'Cabramatta', 'Glenfield'],
+};
+const SYDNEY_VIEW = [[-33.575, 150.655], [-34.16, 151.29]]; // north-west and south-east corners (lat, lon)
+
+function buildMap(lines, status, trackwork, ongoing) {
+  const lineIds = new Set(lines.map(l => l.id));
+  const chains = {};
+  for (const f of listFiles(path.join(DATA_DIR, 'network'), /\.json$/)) {
+    const net = readJson(f, {});
+    for (const [line, cs] of Object.entries(net.lines || {})) {
+      if (!lineIds.has(line)) continue;
+      (chains[line] ||= []).push(...projectChains(cs, net.grid || 1e4));
+    }
+  }
+  if (!Object.keys(chains).length) return;
+  // Stations (merged by name across feeds), with labels for the main ones.
+  const labels = new Map([...MAP_LABELS[2].map(n => [stationKey(n), 2]), ...MAP_LABELS[1].map(n => [stationKey(n), 1])]);
+  const stations = new Map();
+  for (const f of listFiles(path.join(DATA_DIR, 'stations'), /\.json$/)) {
+    for (const st of Object.values(readJson(f, {})?.stations || {})) {
+      const ls = (st.l || []).filter(l => lineIds.has(l));
+      if (!st.n || !st.la || !ls.length) continue;
+      const k = stationKey(st.n);
+      const cur = stations.get(k);
+      if (cur) { for (const l of ls) cur.lines.add(l); continue; }
+      stations.set(k, { name: st.n.replace(/\s+(Station|Light Rail)$/i, '').trim(), xy: project(st.la, st.lo), lines: new Set(ls) });
+    }
+  }
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const cs of Object.values(chains)) for (const c of cs) for (const [x, y] of c) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  const [sa, sb] = [project(...SYDNEY_VIEW[0]), project(...SYDNEY_VIEW[1])];
+  writeJson(out('data', 'network.json'), {
+    generatedAt: iso(now),
+    unit: 10,
+    views: { sydney: [sa[0], sa[1], sb[0], sb[1]], all: [x0, y0, x1, y1] },
+    lines: Object.fromEntries(Object.entries(chains).map(([l, cs]) => [l, cs.map(encodeChain)])),
+    stations: [...stations.entries()].map(([k, s]) => [s.name, s.xy[0], s.xy[1], [...s.lines].join(' '), labels.get(k) || 0]),
+  });
+
+  // Trains.
+  const pos = readJson(path.join(DATA_DIR, 'live', 'positions.json'), null);
+  const trains = [];
+  const counts = { trains: 0, late5: 0, late10: 0, byLine: {} };
+  if (pos && now - Date.parse(pos.at) < 30 * MIN) {
+    for (const [, line, lat, lon, , delay, carLevels, level, cars, headsign] of pos.trains || []) {
+      if (!lineIds.has(line) || /^empty train$/i.test(headsign || '')) continue;
+      const mode = LINE_BY_ID[line]?.mode === 'metro' ? 'metro' : 'train';
+      const table = CAR_LOAD[mode];
+      const lv = String(carLevels || '').split('').map(Number).filter(n => n >= 0 && n <= 5);
+      let pax = null, fullest = null;
+      if (lv.length) { pax = lv.reduce((a, l) => a + table[l], 0); fullest = Math.max(...lv); }
+      else if (level != null && cars) { pax = cars * table[level]; fullest = level; }
+      const [x, y] = project(lat, lon);
+      trains.push([line, x, y, delay, pax == null ? null : Math.round(pax), fullest, cars || null, headsign || null]);
+      counts.trains++;
+      const thr = lateThresholdSeconds(line);
+      if (delay != null && delay >= thr) { counts.late5++; counts.byLine[line] = (counts.byLine[line] || 0) + 1; }
+      if (delay != null && delay >= 600) counts.late10++;
+    }
+  }
+
+  // Sections and places named in current incidents and in trackwork happening now.
+  const graph = new TrackGraph(chains);
+  const stationNode = (name, ls) => {
+    const s = stations.get(stationKey(name));
+    return s ? { s, node: graph.nearest(s.xy, 80, ls) } : null;
+  };
+  const overlays = [];
+  const addOverlay = (kind, ls, title, text) => {
+    const places = alertPlaces(`${title}. ${text || ''}`);
+    const paths = [], pins = [];
+    for (const names of places.between) {
+      const found = names.map(n => stationNode(n, ls)).filter(x => x && x.node >= 0);
+      for (let i = 1; i < found.length; i++) {
+        const p = graph.path(found[i - 1].node, found[i].node);
+        if (p && p.length > 1) paths.push(encodeChain(p));
+      }
+    }
+    for (const name of places.at) {
+      const f = stationNode(name, ls);
+      if (f) pins.push([f.s.xy[0], f.s.xy[1], f.s.name]);
+    }
+    overlays.push({ kind, lines: ls, title, paths, pins });
+  };
+  const seen = new Set();
+  for (const e of ongoing.filter(e => e.k === 'incident')) {
+    if (seen.has(e.id)) continue;
+    seen.add(e.id);
+    addOverlay('incident', e.l.filter(l => lineIds.has(l)), headline(e), e.x);
+  }
+  for (const it of trackwork.items) {
+    if (it.sev < 2 || !it.w.some(([f, t]) => Date.parse(f) <= now && Date.parse(t) > now)) continue;
+    addOverlay('closed', it.l, it.title, it.bullets.join(' '));
+  }
+  writeJson(out('data', 'live.json'), { generatedAt: iso(now), at: pos?.at || null, cols: ['line', 'x', 'y', 'delay', 'pax', 'fullest', 'cars', 'headsign'], trains, counts, overlays });
 }
 
 // Stations for the trip page: [id, name, [lines], [lines with only some services]] sorted by name.
