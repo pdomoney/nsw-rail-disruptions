@@ -10,6 +10,7 @@ import { modeOfLineId } from './lib/lines.js';
 import { readAllEvents } from './lib/events.js';
 import { readJson, writeJson, listFiles, readLines, ensureDir } from './lib/store.js';
 import { parseCsv } from './lib/csv.js';
+import { buildCrowding } from './lib/crowding.js';
 import { readServiceDays } from './lib/service.js';
 import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from './lib/service-stats.js';
 import { delayClock, CAR_LOAD } from './lib/clock.js';
@@ -346,6 +347,9 @@ function build() {
   writeJson(out('data', 'service.json'), service);
   writeJson(out('data', 'daily.json'), dailyOut);
   writeJson(out('data', 'stations.json'), buildStations(new Set(lines.map(l => l.id))));
+  // Carriage occupancy by rail line and Sydney-local hour (30 days, never passenger tap counts).
+  const crowdingLines = new Set(lines.filter(l => ['train', 'metro', 'intercity'].includes(l.mode)).map(l => l.id));
+  writeJson(out('data', 'crowding.json'), buildCrowding(DATA_DIR, today, crowdingLines, { generatedAt: now }));
   writeJson(out('data', 'delays.json'), delays);
   writeJson(out('data', 'status.json'), status);
   buildMap(lines, status, trackwork, ongoing);
