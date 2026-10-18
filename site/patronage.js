@@ -142,7 +142,6 @@ export async function viewPatronage(main, meta) {
     const hotspots = ranked.flatMap(row => row.values.map((cell, hour) => ({ line: row.line, cell, hour })))
       .filter(p => p.cell?.snapshots >= 3)
       .sort((a, b) => score(b.cell) - score(a.cell));
-    const count = hotspots.reduce((s, x) => s + x.cell.snapshots, 0);
     const daysName = filters.type === 'weekday' ? 'weekdays' : filters.type === 'weekend' ? 'weekends' : 'all days';
     const metricName = filters.metric === 'standing' ? 'carriages standing or fuller' : 'average carriage occupancy index';
     const shortValue = c => filters.metric === 'standing' ? ratio(c.standing) : indexLabel(c.index);
@@ -231,7 +230,7 @@ export async function viewPatronage(main, meta) {
           title: hourLabel(hour) + ': ' + value + (point ? ', ' + fmt(point.snapshots) + ' snapshots' : ''),
           'aria-label': hourLabel(hour) + ' ' + value, 'aria-pressed': String(hour === active),
           onclick: () => selectLine(chosen, hour) },
-          el('span', { class: 'pat-bar-fill', style: '--barheight:' + Math.round(frac * 100) + '%' }),
+          point ? el('span', { class: 'pat-bar-fill', style: '--barheight:' + Math.round(frac * 100) + '%' }) : el('span', { class: 'pat-bar-no-data', 'aria-hidden': 'true' }),
           el('span', { class: 'pat-bar-hour' }, String(hour).padStart(2, '0'))));
       });
       detail.append(bars);
