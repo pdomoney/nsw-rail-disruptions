@@ -514,3 +514,37 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 :root { --map-track: #c5ccce; --map-ok: #3c4b57; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --map-track: #3a444d; --map-ok: #c9d2d9; } }
 :root[data-theme="dark"] { --map-track: #3a444d; --map-ok: #c9d2d9; }
+
+
+/* One-time release notification for Safari and installed iPhone web apps. */
+.site-update-notice {
+  max-width: 1240px;
+  margin: 12px auto 0;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px 20px;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-left: 4px solid var(--plan-5);
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: .92rem;
+}
+.site-update-notice strong { font-weight: 600; }
+.site-update-button {
+  flex: 0 0 auto;
+  background: var(--ink);
+  color: var(--surface);
+  font: 600 .9rem var(--font);
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.site-update-button:hover { opacity: .85; }
+@media (max-width: 640px) {
+  .site-update-notice { margin: 10px 16px 0; padding: 12px; flex-wrap: wrap; }
+}
