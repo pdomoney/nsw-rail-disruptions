@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { aggregateCrowding, buildCrowding } from '../src/lib/crowding.js';
-import { summariseHotspots } from '../site/patronage.js';
+import { summariseHotspots, busiestWindows } from '../site/patronage.js';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -57,4 +57,41 @@ test('Day-type and range selection cannot turn missing hours into zero occupancy
   assert.equal(weekends.T1[8].index, 3);
   assert.equal(weekends.T1[8].standing, 0.5);
   assert.equal(weekends.T1[8].snapshots, 4);
+});
+
+test('All-lines ranking includes at most one peak per line instead of only M1', () => {
+  const line = (id, cells) => {
+    const values = Array(24).fill(null);
+    for (const [hour, score, snapshots] of cells) values[hour] = {
+      index: score, standing: score / 5, snapshots, days: 3,
+    };
+    return { line: { id, name: id }, values };
+  };
+  const rows = [
+    line('M1', [[7, 2.7, 12], [8, 2.6, 12], [17, 2.5, 12]]),
+    line('T1', [[8, 1.9, 10], [18, 1.7, 10]]),
+    line('T4', [[9, 1.6, 2], [17, 1.5, 6]]),
+    line('T2', [[8, 4.0, 0]]),
+  ];
+  const all = busiestWindows(rows);
+  assert.deepEqual(all.map(p => [p.line.id, p.hour]), [['M1', 7], ['T1', 8], ['T4', 17]]);
+  assert.equal(new Set(all.map(p => p.line.id)).size, all.length);
+  const m1 = busiestWindows(rows, { lineId: 'M1' });
+  assert.deepEqual(m1.map(p => p.hour), [7, 8, 17]);
+  assert.deepEqual(busiestWindows(rows, { lineId: 'T2' }), [], 'No readings is not treated as zero');
+});
+
+test('Switching the ranking measure changes busiest-hour selection without modifying data', () => {
+  const cells = Array(24).fill(null);
+  cells[7] = { index: 3, standing: 0.15, snapshots: 10 };
+  cells[17] = { index: 2, standing: 0.75, snapshots: 10 };
+  const rows = [{ line: { id: 'T1' }, values: cells }];
+  assert.equal(busiestWindows(rows, { lineId: 'T1', metric: 'index' })[0].hour, 7);
+  assert.equal(busiestWindows(rows, { lineId: 'T1', metric: 'standing' })[0].hour, 17);
+});
+
+test('Mode-scoped ranking only includes supplied lines and ignores low sample hours', () => {
+  const mk = (id, score, n) => ({ line: { id }, values: [{ index: score, standing: 0, snapshots: n }] });
+  assert.deepEqual(busiestWindows([mk('T4', 4, 2), mk('T1', 2, 12)]).map(p => p.line.id), ['T1']);
+  assert.deepEqual(busiestWindows([], { lineId: 'M1' }), []);
 });
