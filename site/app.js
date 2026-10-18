@@ -1,6 +1,10 @@
 import { heatmap, hbars, columns, line as lineChart, onColor, showTip, hideTip, compact } from './charts.js';
 import { viewPatronage } from './patronage.js';
 
+// Replaced in the published JS asset, never in the repository source file.
+const SITE_RELEASE = '__SITE_RELEASE__';
+
+
 // ---------- formatting (always Sydney time) ----------
 const TZ = 'Australia/Sydney';
 const F = {
@@ -2267,6 +2271,53 @@ window.addEventListener('hashchange', () => {
   route().then(() => { if (!location.hash.startsWith('#/log')) window.scrollTo(0, 0); document.getElementById('main').focus({ preventScroll: true }); });
 });
 
+// ---------- Home Screen app release updates ----------
+// Site code is versioned separately from the live timetable and alert data. We never
+// reload in the middle of a user's interaction; instead offer an explicit update action.
+const SITE_RELEASE_CHECK_MS = 5 * 60_000;
+let checkingSiteRelease = false;
+let announcedSiteRelease = null;
+
+function showSiteRelease(release) {
+  if (announcedSiteRelease === release) return;
+  announcedSiteRelease = release;
+  const previous = document.getElementById('site-update-notice');
+  if (previous) previous.remove();
+  const update = h('button', {
+    type: 'button', class: 'site-update-button', onclick: () => {
+      // A new document URL forces an HTML request outside the old Home Screen
+      // app cache. The HTML then loads content-hashed JS and CSS filenames.
+      const target = new URL(window.location.href);
+      target.searchParams.set('release', release);
+      window.location.replace(target.href);
+    },
+  }, 'Update app');
+  const notice = h('aside', { id: 'site-update-notice', class: 'site-update-notice', role: 'status' },
+    h('span', {},
+      h('strong', {}, 'A newer version of NSW Rail Disruptions is available.'),
+      ' Update the app to see the latest features.'),
+    update);
+  document.querySelector('.site-header')?.after(notice);
+}
+
+async function checkSiteRelease() {
+  if (document.hidden || checkingSiteRelease) return;
+  checkingSiteRelease = true;
+  try {
+    const response = await fetch('data/site-version.json?check=' + Date.now(), { cache: 'no-store' });
+    if (!response.ok) return;
+    const manifest = await response.json();
+    // Validate the manifest before using its release in a navigation URL.
+    if (/^[0-9a-f]{16}$/.test(manifest.release) && manifest.release !== SITE_RELEASE) {
+      showSiteRelease(manifest.release);
+    }
+  } catch {
+    // Offline or a deployment in progress: retry later without blocking the site.
+  } finally {
+    checkingSiteRelease = false;
+  }
+}
+
 // ---------- live updates ----------
 // New data is published about every five minutes. While the page is open and visible, check once a
 // minute and redraw the overview (or the trip page results) in place when a newer build is available. Other pages pick up the
@@ -2345,5 +2396,12 @@ async function checkForUpdates() {
   lastHashPath = location.hash.split('?')[0];
   route();
   setInterval(checkForUpdates, CHECK_EVERY_MS);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdates(); });
+  // Initial visit, resume from Home Screen, and infrequent foreground checks.
+  // Routine five-minute data publishes do not trigger an app update prompt.
+  checkSiteRelease();
+  setInterval(checkSiteRelease, SITE_RELEASE_CHECK_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { checkForUpdates(); checkSiteRelease(); }
+  });
+  window.addEventListener('pageshow', () => { if (!document.hidden) checkSiteRelease(); });
 })();

@@ -77,6 +77,14 @@ Alert records use short keys:
 
 All times are UTC ISO-8601. The site shows them in Sydney time.
 
+## Safari and iPhone Home Screen app updates
+
+The iOS **Add to Home Screen** web app can retain a separate, older copy of page assets even when Safari is displaying the latest GitHub Pages deployment. This site does not register a service worker. During the site build, `src/lib/site-version.js` computes a code-only release fingerprint and publishes versioned JavaScript/CSS filenames, including the JavaScript module imports. Unchanged files keep the same URL and data collection runs do not generate a new app release every five minutes.
+
+The published site also has a small `data/site-version.json` manifest. The app checks it on startup, when returning to the foreground, and every five minutes while open. When the **code version** changes, a **New version available / Update app** notice appears. It does not interrupt someone's current use. Tapping **Update app** changes the document URL to include the release, preserving the current page hash, and loads the new fingerprinted assets. Network errors leave the current site untouched. Routine live-data changes continue through their existing polling code and do not trigger update prompts.
+
+**One-time migration:** Home Screen apps installed *before* this release-checker existed cannot automatically detect that the checker is available. If the old standalone app keeps showing stale navigation, remove its Home Screen icon, open the current [GitHub Pages site](https://pdomoney.github.io/nsw-rail-disruptions/) in Safari and use **Share → Add to Home Screen** again. Later code releases should then trigger the update notice without requiring reinstallation.
+
 ## Working on it locally
 
 Requires Node.js 20 or later. There are no npm dependencies.

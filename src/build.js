@@ -11,6 +11,7 @@ import { readAllEvents } from './lib/events.js';
 import { readJson, writeJson, listFiles, readLines, ensureDir } from './lib/store.js';
 import { parseCsv } from './lib/csv.js';
 import { buildCrowding } from './lib/crowding.js';
+import { publishSiteRelease } from './lib/site-version.js';
 import { readServiceDays } from './lib/service.js';
 import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from './lib/service-stats.js';
 import { delayClock, CAR_LOAD } from './lib/clock.js';
@@ -678,5 +679,6 @@ function copySite() {
 }
 
 copySite();
+publishSiteRelease(SITE_DIR, OUT_DIR, { generatedAt: now });
 build();
 console.log(`Built site in ${OUT_DIR} at ${iso(now)}`);
