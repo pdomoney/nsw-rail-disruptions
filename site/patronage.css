@@ -1,0 +1,55 @@
+/* Additive patronage/crowding view. Uses the site's existing colour tokens and typography. */
+.pat-head { padding: 42px 0 10px; }
+.pat-eyebrow { font-family: var(--font-narrow); font-weight: 700; letter-spacing: .085em; text-transform: uppercase; font-size: .78rem; color: var(--muted); }
+.pat-head h1 { font-size: clamp(2rem, 5vw, 3.3rem); margin: 0 0 12px; }
+.pat-intro { color: var(--ink-2); max-width: 68ch; font-size: 1.05rem; }
+.pat-caution { max-width: 90ch; padding: 11px 15px; background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--plan-5); border-radius: 4px; font-size: .91rem; }
+.pat-controls { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0 24px; }
+.pat-control { display: grid; gap: 4px; flex: 1 1 180px; color: var(--ink-2); font-size: .82rem; font-weight: 600; }
+.pat-control select { font: inherit; font-size: .95rem; font-weight: 500; color: var(--ink); background: var(--surface); border: 1px solid var(--rule-strong); border-radius: 6px; padding: 10px 12px; width: 100%; }
+.pat-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 10px 0 28px; }
+.pat-stat { border-top: 2px solid var(--rule-strong); padding: 10px 6px; display: grid; gap: 3px; }
+.pat-stat span { color: var(--muted); font-size: .83rem; }
+.pat-stat strong { font-family: var(--font-narrow); font-size: 1.15rem; font-weight: 700; }
+.pat-titlebar { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 14px; }
+.pat-titlebar h2 { margin-bottom: 4px; }
+.pat-titlebar p { margin: 0; font-size: .89rem; max-width: 72ch; }
+.pat-legend { display: flex; align-items: center; gap: 3px; font-size: .79rem; color: var(--muted); }
+.pat-swatch { width: 17px; height: 15px; background: color-mix(in srgb, var(--plan-5) var(--hotpct), var(--surface)); border: 1px solid var(--rule); }
+.pat-matrix { margin: 12px 0 28px; }
+.pat-table-scroll { overflow: auto; max-width: 100%; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+.pat-table { border-collapse: separate; border-spacing: 2px; min-width: 1080px; width: 100%; background: var(--surface); text-align: center; }
+.pat-table th, .pat-table td { padding: 0; font-variant-numeric: tabular-nums; }
+.pat-table thead th { font-family: var(--font-narrow); font-size: .77rem; color: var(--muted); padding: 9px 0; }
+.pat-table .pat-line-col { width: 206px; min-width: 206px; text-align: left; padding: 5px 7px; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+.pat-table tbody th { font-family: var(--font); font-weight: 600; font-size: .84rem; }
+.pat-table tbody th a { color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 7px; }
+.pat-table tbody th a:hover { text-decoration: underline; }
+.pat-line-mark { display: inline-block; width: 6px; height: 23px; border-radius: 2px; flex: none; }
+.pat-cell { cursor: pointer; padding: 8px 0; width: 100%; min-width: 32px; border: none; border-radius: 3px; background: color-mix(in srgb, var(--plan-5) var(--hotpct), var(--surface)); color: var(--ink); font: 600 .79rem var(--font-narrow); }
+.pat-cell:hover, .pat-cell[aria-pressed="true"] { outline: 2px solid var(--focus); outline-offset: -2px; }
+.pat-limited { opacity: .55; text-decoration: underline dotted; text-underline-offset: 3px; }
+.pat-missing { color: var(--muted); background: var(--page); }
+.pat-row-selected th { box-shadow: inset 3px 0 var(--focus); }
+.pat-lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 28px; margin: 18px 0 30px; }
+.pat-top h2, .pat-detail h2, .pat-method h2 { margin-bottom: 10px; }
+.pat-top-list { padding: 0; margin: 0; list-style: none; border-top: 1px solid var(--rule); }
+.pat-top-list li { border-bottom: 1px solid var(--rule); }
+.pat-top-list button { background: transparent; border: none; padding: 9px 4px; color: var(--ink); cursor: pointer; width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 55px 53px 75px; gap: 6px; align-items: center; text-align: left; font-family: var(--font); }
+.pat-top-list button:hover { background: var(--surface-2); }
+.pat-top-list strong { font-family: var(--font-narrow); text-align: right; }
+.pat-top-list small { text-align: right; color: var(--muted); font-size: .75rem; }
+.pat-top-line { font-size: .91rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pat-detail { min-width: 0; }
+.pat-detail p { font-size: .9rem; }
+.pat-bars { height: 200px; display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 2px; border-bottom: 1px solid var(--rule-strong); }
+.pat-bar-item { background: transparent; border: none; border-radius: 2px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; cursor: pointer; min-width: 0; padding: 0; }
+.pat-bar-fill { display: block; width: 100%; min-height: 2px; height: var(--barheight); max-height: calc(100% - 21px); background: var(--plan-4); border-radius: 2px 2px 0 0; }
+.pat-bar-item:hover .pat-bar-fill, .pat-bar-item.active .pat-bar-fill { background: var(--heat-5); }
+.pat-bar-item.active { box-shadow: inset 0 0 0 1px var(--focus); }
+.pat-bar-hour { color: var(--muted); font: .62rem var(--font-narrow); height: 20px; padding-top: 3px; }
+.pat-method { margin: 25px 0; border-top: 1px solid var(--rule-strong); padding-top: 22px; max-width: 90ch; }
+.pat-method p { color: var(--ink-2); font-size: .91rem; }
+.pat-empty { padding: 48px 0; }
+@media (max-width: 850px) { .pat-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pat-lower { grid-template-columns: 1fr; } }
+@media (max-width: 530px) { .pat-head { padding-top: 24px; } .pat-stat strong { font-size: 1rem; } .pat-top-list button { grid-template-columns: minmax(0, 1fr) 44px 45px 63px; } }
