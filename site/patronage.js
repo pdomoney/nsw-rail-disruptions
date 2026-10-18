@@ -117,6 +117,33 @@ export async function viewPatronage(main, meta) {
       'These are carriage occupancy levels (0 empty to 5 full), not Opal tap counts, station entries, or passenger totals. Sydney Trains data can be predicted while Metro can be measured.'));
   const controls = el('div', { class: 'pat-controls' });
   const output = el('div', { class: 'pat-output' });
+  // Keep the picker and chips mounted between refreshes, preserving iPhone focus,
+  // VoiceOver position and the horizontal scroll when changing lines.
+  const summaryHost = el('div');
+  const matrixHost = el('div');
+  const linePicker = el('section', { class: 'pat-line-picker', 'aria-label': 'Choose line for crowding comparison' });
+  const lineSelect = el('select', { 'aria-label': 'Choose a train or metro line' });
+  lineSelect.addEventListener('change', () => selectLine(lineSelect.value));
+  const chooser = el('label', { class: 'pat-control' }, el('span', {}, 'Choose a train or metro line'), lineSelect);
+  const tabs = el('div', { class: 'pat-line-tabs', role: 'group', 'aria-label': 'Quick line selection' });
+  const tabById = new Map();
+  for (const line of [{ id: 'all', name: 'All lines', mode: 'all' }, ...rail]) {
+    const btn = el('button', {
+      type: 'button', class: 'pat-line-tab',
+      'aria-label': line.id === 'all' ? 'Compare all lines' : lineName(line),
+      'aria-pressed': 'false',
+      onclick: () => selectLine(line.id),
+    }, line.id === 'all' ? 'All lines' : line.id);
+    tabById.set(line.id, btn);
+    tabs.append(btn);
+  }
+  linePicker.append(
+    el('div', { class: 'pat-line-picker-heading' },
+      el('h2', {}, 'Explore another line'),
+      el('p', { class: 'muted' }, 'Select a rail line to see its busiest hours and full 24-hour profile.')),
+    chooser, tabs);
+  const lowerHost = el('div', { class: 'pat-lower' });
+  output.append(summaryHost, matrixHost, linePicker, lowerHost);
   const source = el('section', { class: 'pat-method' },
     el('h2', {}, 'What this measures'),
     el('p', {}, 'The transport feed reports carriages as empty, many seats available, few seats available, standing room, crowded or full. The occupancy index averages these levels (0–5) across reporting carriages at each snapshot, then averages snapshots within the chosen hour. The standing-or-higher percentage represents carriages at levels 3–5. Each snapshot has equal weight.'),
@@ -220,32 +247,27 @@ export async function viewPatronage(main, meta) {
     const matrix = el('section', { class: 'pat-matrix', 'aria-label': 'Hourly crowding comparison' },
       title, el('div', { class: 'pat-table-scroll', tabindex: '0', 'aria-label': 'Scroll to see all 24 hours' }, table));
 
-    // Put the line picker immediately above both panels: on small screens the heatmap
-    // sits far above this section and is not a discoverable line-selection control.
-    const chooser = control('Choose a train or metro line',
-      [['all', 'All lines · one peak per line'], ...visible.map(l => {
+    // Refresh accessible options for the active mode/range without replacing the
+    // select itself. Keep horizontally scrolled quick-choice buttons mounted too.
+    lineSelect.replaceChildren(
+      ...[['all', 'All lines · one peak per line'], ...visible.map(l => {
         const hours = results[l.id] || [];
-        const reporting = hours.filter(c => c?.snapshots >= 3).length;
+        const reporting = hours.some(c => c?.snapshots >= 3);
         const suffix = reporting ? '' : hours.some(Boolean) ? ' (limited readings)' : ' (no occupancy readings)';
         return [l.id, lineName(l) + suffix];
-      })], filters.line || 'all', v => selectLine(v));
-    const tabs = el('div', { class: 'pat-line-tabs', role: 'group', 'aria-label': 'Quick line selection' });
-    const choices = [{ id: 'all', name: 'All lines', color: null }, ...visible];
-    for (const l of choices) {
+      })].map(([id, label]) => el('option', { value: id }, label)));
+    lineSelect.value = filters.line || 'all';
+    for (const l of [{ id: 'all', mode: 'all' }, ...rail]) {
+      const chip = tabById.get(l.id);
       const observed = l.id === 'all' || (results[l.id] || []).some(Boolean);
-      tabs.append(el('button', {
-        type: 'button', class: 'pat-line-tab' + (observed ? '' : ' pat-tab-no-data'),
-        'aria-label': l.id === 'all' ? 'Compare all lines' : lineName(l) + (observed ? '' : ', no occupancy readings'),
-        'aria-pressed': String((filters.line || 'all') === l.id),
-        title: l.id === 'all' ? 'Show one busiest hour per line' : lineName(l) + (observed ? '' : ' · no occupancy readings'),
-        onclick: () => selectLine(l.id),
-      }, l.id === 'all' ? 'All lines' : l.id));
+      chip.hidden = l.id !== 'all' && filters.mode !== 'all' && l.mode !== filters.mode;
+      chip.classList.toggle('pat-tab-no-data', !observed);
+      chip.setAttribute('aria-pressed', String((filters.line || 'all') === l.id));
+      chip.title = l.id === 'all' ? 'Show one busiest hour per line'
+        : lineName(byId.get(l.id)) + (observed ? '' : ' · no occupancy readings');
+      chip.setAttribute('aria-label', l.id === 'all' ? 'Compare all lines'
+        : lineName(byId.get(l.id)) + (observed ? '' : ', no occupancy readings'));
     }
-    const linePicker = el('section', { class: 'pat-line-picker', 'aria-label': 'Choose line for crowding comparison' },
-      el('div', { class: 'pat-line-picker-heading' },
-        el('div', {}, el('h2', {}, 'Explore another line'),
-          el('p', { class: 'muted' }, 'Select a rail line to see its busiest hours and its full 24-hour profile.'))),
-      chooser, tabs);
 
     const top = el('section', { class: 'pat-top' }, el('h2', {}, 'Busiest observed windows'),
       el('p', { class: 'muted' }, filters.line
@@ -291,7 +313,9 @@ export async function viewPatronage(main, meta) {
       detail.append(bars);
     } else detail.append(el('p', {}, 'No data for the selected rail services.'));
 
-    output.replaceChildren(summary, matrix, linePicker, el('div', { class: 'pat-lower' }, top, detail));
+    summaryHost.replaceChildren(summary);
+    matrixHost.replaceChildren(matrix);
+    lowerHost.replaceChildren(top, detail);
   }
   paint();
 }
