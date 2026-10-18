@@ -70,6 +70,24 @@ function resultValue(cell, metric) {
   return metric === 'standing' ? cell.standing : cell.index;
 }
 
+// Public for regression tests. In the all-lines view, show each line's busiest supported
+// hour once instead of allowing a single line to occupy every spot in the ranking.
+// The line-specific view shows up to eight hours from just that line.
+export function busiestWindows(rows, { metric = 'index', lineId = null, limit = 8 } = {}) {
+  const ranked = rows.flatMap(row => row.values.map((cell, hour) => ({
+    line: row.line, cell, hour,
+  }))).filter(p => p.cell?.snapshots >= 3 && (!lineId || p.line.id === lineId))
+    .sort((a, b) => (resultValue(b.cell, metric) - resultValue(a.cell, metric))
+      || a.hour - b.hour || a.line.id.localeCompare(b.line.id));
+  if (lineId) return ranked.slice(0, limit);
+  const seenLines = new Set();
+  return ranked.filter(p => {
+    if (seenLines.has(p.line.id)) return false;
+    seenLines.add(p.line.id);
+    return true;
+  }).slice(0, limit);
+}
+
 export async function viewPatronage(main, meta) {
   document.title = 'Crowding hotspots · NSW Rail Disruptions';
   main.replaceChildren(el('p', { class: 'loading', role: 'status' }, 'Loading crowding observations…'));
@@ -99,6 +117,33 @@ export async function viewPatronage(main, meta) {
       'These are carriage occupancy levels (0 empty to 5 full), not Opal tap counts, station entries, or passenger totals. Sydney Trains data can be predicted while Metro can be measured.'));
   const controls = el('div', { class: 'pat-controls' });
   const output = el('div', { class: 'pat-output' });
+  // Keep the picker and chips mounted between refreshes, preserving iPhone focus,
+  // VoiceOver position and the horizontal scroll when changing lines.
+  const summaryHost = el('div');
+  const matrixHost = el('div');
+  const linePicker = el('section', { class: 'pat-line-picker', 'aria-label': 'Choose line for crowding comparison' });
+  const lineSelect = el('select', { 'aria-label': 'Choose a train or metro line' });
+  lineSelect.addEventListener('change', () => selectLine(lineSelect.value));
+  const chooser = el('label', { class: 'pat-control' }, el('span', {}, 'Choose a train or metro line'), lineSelect);
+  const tabs = el('div', { class: 'pat-line-tabs', role: 'group', 'aria-label': 'Quick line selection' });
+  const tabById = new Map();
+  for (const line of [{ id: 'all', name: 'All lines', mode: 'all' }, ...rail]) {
+    const btn = el('button', {
+      type: 'button', class: 'pat-line-tab',
+      'aria-label': line.id === 'all' ? 'Compare all lines' : lineName(line),
+      'aria-pressed': 'false',
+      onclick: () => selectLine(line.id),
+    }, line.id === 'all' ? 'All lines' : line.id);
+    tabById.set(line.id, btn);
+    tabs.append(btn);
+  }
+  linePicker.append(
+    el('div', { class: 'pat-line-picker-heading' },
+      el('h2', {}, 'Explore another line'),
+      el('p', { class: 'muted' }, 'Select a rail line to see its busiest hours and full 24-hour profile.')),
+    chooser, tabs);
+  const lowerHost = el('div', { class: 'pat-lower' });
+  output.append(summaryHost, matrixHost, linePicker, lowerHost);
   const source = el('section', { class: 'pat-method' },
     el('h2', {}, 'What this measures'),
     el('p', {}, 'The transport feed reports carriages as empty, many seats available, few seats available, standing room, crowded or full. The occupancy index averages these levels (0–5) across reporting carriages at each snapshot, then averages snapshots within the chosen hour. The standing-or-higher percentage represents carriages at levels 3–5. Each snapshot has equal weight.'),
@@ -110,8 +155,9 @@ export async function viewPatronage(main, meta) {
       ' from Transport for NSW.'));
   main.replaceChildren(header, controls, output, source);
 
-  function selectLine(id, hour) {
-    filters.line = id;
+  function selectLine(id, hour = null) {
+    filters.line = id === 'all' ? null : id;
+    // A new line starts at its own busiest supported hour, not the previous line's hour.
     filters.hour = hour;
     paint();
   }
@@ -127,7 +173,12 @@ export async function viewPatronage(main, meta) {
 
   function paint() {
     const results = summariseHotspots(data, { days: Number(filters.period), dayType: filters.type });
-    const visible = rail.filter(l => (filters.mode === 'all' || l.mode === filters.mode));
+    const visible = rail.filter(l => filters.mode === 'all' || l.mode === filters.mode);
+    // A mode change must never leave the line picker pointing to a hidden line.
+    if (filters.line && !visible.some(l => l.id === filters.line)) {
+      filters.line = null;
+      filters.hour = null;
+    }
     const cells = visible.map(l => ({
       line: l,
       values: results[l.id] || Array(24).fill(null),
@@ -142,6 +193,7 @@ export async function viewPatronage(main, meta) {
     const hotspots = ranked.flatMap(row => row.values.map((cell, hour) => ({ line: row.line, cell, hour })))
       .filter(p => p.cell?.snapshots >= 3)
       .sort((a, b) => score(b.cell) - score(a.cell));
+    const displayedWindows = busiestWindows(cells, { metric: filters.metric, lineId: filters.line });
     const daysName = filters.type === 'weekday' ? 'weekdays' : filters.type === 'weekend' ? 'weekends' : 'all days';
     const metricName = filters.metric === 'standing' ? 'carriages standing or fuller' : 'average carriage occupancy index';
     const shortValue = c => filters.metric === 'standing' ? ratio(c.standing) : indexLabel(c.index);
@@ -195,22 +247,47 @@ export async function viewPatronage(main, meta) {
     const matrix = el('section', { class: 'pat-matrix', 'aria-label': 'Hourly crowding comparison' },
       title, el('div', { class: 'pat-table-scroll', tabindex: '0', 'aria-label': 'Scroll to see all 24 hours' }, table));
 
+    // Refresh accessible options for the active mode/range without replacing the
+    // select itself. Keep horizontally scrolled quick-choice buttons mounted too.
+    lineSelect.replaceChildren(
+      ...[['all', 'All lines · one peak per line'], ...visible.map(l => {
+        const hours = results[l.id] || [];
+        const reporting = hours.some(c => c?.snapshots >= 3);
+        const suffix = reporting ? '' : hours.some(Boolean) ? ' (limited readings)' : ' (no occupancy readings)';
+        return [l.id, lineName(l) + suffix];
+      })].map(([id, label]) => el('option', { value: id }, label)));
+    lineSelect.value = filters.line || 'all';
+    for (const l of [{ id: 'all', mode: 'all' }, ...rail]) {
+      const chip = tabById.get(l.id);
+      const observed = l.id === 'all' || (results[l.id] || []).some(Boolean);
+      chip.hidden = l.id !== 'all' && filters.mode !== 'all' && l.mode !== filters.mode;
+      chip.classList.toggle('pat-tab-no-data', !observed);
+      chip.setAttribute('aria-pressed', String((filters.line || 'all') === l.id));
+      chip.title = l.id === 'all' ? 'Show one busiest hour per line'
+        : lineName(byId.get(l.id)) + (observed ? '' : ' · no occupancy readings');
+      chip.setAttribute('aria-label', l.id === 'all' ? 'Compare all lines'
+        : lineName(byId.get(l.id)) + (observed ? '' : ', no occupancy readings'));
+    }
+
     const top = el('section', { class: 'pat-top' }, el('h2', {}, 'Busiest observed windows'),
-      el('p', { class: 'muted' }, 'Highest recorded average occupancy among hours with at least three snapshots. Not a station ranking.'));
-    if (!hotspots.length) top.append(el('p', {}, 'Not enough carriage-level observations for this period and day type.'));
+      el('p', { class: 'muted' }, filters.line
+        ? 'Busiest times on ' + lineName(byId.get(filters.line)) + ', with at least three snapshots per hour.'
+        : 'One busiest hour per reporting line, so a single line cannot fill the list. Minimum three snapshots per hour.'));
+    if (!displayedWindows.length) top.append(el('p', {}, filters.line
+      ? 'No supported hourly readings for this line in the chosen period. Try Last 30 days or All days. This does not mean trains were empty.'
+      : 'No lines have enough carriage-level observations in the chosen period.'));
     else {
       const list = el('ol', { class: 'pat-top-list' });
-      hotspots.slice(0, 8).forEach(p => list.append(el('li', {},
+      displayedWindows.forEach(p => list.append(el('li', {},
         el('button', { type: 'button', onclick: () => selectLine(p.line.id, p.hour) },
-          el('span', { class: 'pat-top-line' }, p.line.id + ' ' + p.line.name),
+          el('span', { class: 'pat-top-line', title: lineName(p.line) }, lineName(p.line)),
           el('span', {}, hourLabel(p.hour)),
           el('strong', {}, shortValue(p.cell)),
           el('small', {}, fmt(p.cell.snapshots) + ' snapshots')))));
       top.append(list);
     }
 
-    const chosen = (filters.line && byId.has(filters.line) && (!filters.mode || filters.mode === 'all' || byId.get(filters.line).mode === filters.mode))
-      ? filters.line : hotspots[0]?.line.id;
+    const chosen = filters.line || hotspots[0]?.line.id;
     const detail = el('section', { class: 'pat-detail' }, el('h2', {}, chosen ? lineName(byId.get(chosen)) + ' hourly profile' : 'Line profile'));
     if (chosen) {
       const values = results[chosen] || Array(24).fill(null);
@@ -236,7 +313,9 @@ export async function viewPatronage(main, meta) {
       detail.append(bars);
     } else detail.append(el('p', {}, 'No data for the selected rail services.'));
 
-    output.replaceChildren(summary, matrix, el('div', { class: 'pat-lower' }, top, detail));
+    summaryHost.replaceChildren(summary);
+    matrixHost.replaceChildren(matrix);
+    lowerHost.replaceChildren(top, detail);
   }
   paint();
 }
