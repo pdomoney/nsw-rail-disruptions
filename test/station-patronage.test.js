@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { normalizeStationPatronage, buildStationPatronage, SOURCE_URLS, stationKey } from '../src/lib/station-patronage.js';
 import { patronageRows } from '../site/station-patronage.js';
 
@@ -113,3 +114,33 @@ test('station name matching trims suffix but does not assume interchange line at
   assert.equal(stationKey('North Ryde Station'), stationKey('North Ryde'));
   assert.notEqual(stationKey('Kings Cross'), stationKey('Town Hall'));
 });
+
+test('full static build with no Opal input keeps the existing site and publishes explicit unavailable status', () => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'nrd-site-build-'));
+  try {
+    const input = path.join(folder, 'data');
+    const output = path.join(folder, 'dist');
+    fs.mkdirSync(input);
+    const process = spawnSync(processExecPath(), [path.resolve('src/build.js')], {
+      cwd: path.resolve('.'),
+      env: { ...globalProcessEnv(), DATA_DIR: input, OUT_DIR: output, BUILD_NOW: '2026-10-19T04:00:00Z' },
+      encoding: 'utf8', timeout: 30000,
+    });
+    assert.equal(process.status, 0, process.stderr + '\n' + process.stdout);
+    const opal = JSON.parse(fs.readFileSync(path.join(output, 'data', 'station-patronage.json'), 'utf8'));
+    assert.equal(opal.available, false);
+    assert.deepEqual(opal.typical, {});
+    assert.ok(fs.existsSync(path.join(output, 'data', 'meta.json')));
+    assert.ok(fs.existsSync(path.join(output, 'data', 'crowding.json')));
+    assert.ok(fs.existsSync(path.join(output, 'data', 'site-version.json')));
+    const html = fs.readFileSync(path.join(output, 'index.html'), 'utf8');
+    assert.ok(html.includes('href="#/stations"'));
+    assert.match(html, /station-patronage\.[a-f0-9]{12}\.css/);
+    const assets = fs.readdirSync(output);
+    assert.ok(assets.some(f => /^station-patronage\.[a-f0-9]{12}\.js$/.test(f)));
+    assert.ok(assets.some(f => /^app\.[a-f0-9]{12}\.js$/.test(f)));
+  } finally { fs.rmSync(folder, { recursive: true, force: true }); }
+});
+
+function processExecPath() { return process.execPath; }
+function globalProcessEnv() { return process.env; }
