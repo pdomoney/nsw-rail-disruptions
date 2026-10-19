@@ -84,7 +84,7 @@ test('editing a child JavaScript module changes the published app filename and i
       fs.cpSync(source, modified, { recursive: true });
       fs.cpSync(source, out, { recursive: true });
       const a = publishSiteRelease(source, original);
-      fs.appendFileSync(path.join(modified, changed), '\\n// changed module\\n');
+      fs.appendFileSync(path.join(modified, changed), '\n// changed module\n');
       const b = publishSiteRelease(modified, out);
       const publishedApp = fs.readFileSync(path.join(out, b.stamped['app.js']), 'utf8');
       const html = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
@@ -94,6 +94,8 @@ test('editing a child JavaScript module changes the published app filename and i
       assert.ok(publishedApp.includes("from './" + b.stamped[changed] + "'"));
       assert.ok(html.includes('src="' + b.stamped['app.js'] + '"'));
       assert.ok(!html.includes(a.stamped['app.js']));
+      const syntax = spawnSync(process.execPath, ['--check', path.join(out, b.stamped['app.js'])], { encoding: 'utf8' });
+      assert.equal(syntax.status, 0, syntax.stderr);
     } finally {
       for (const dir of [modified, original, out]) fs.rmSync(dir, { force: true, recursive: true });
     }
