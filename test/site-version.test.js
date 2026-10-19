@@ -68,10 +68,35 @@ test('changing a stylesheet produces new version and refreshes its HTML referenc
     const b = publishSiteRelease(modified, out);
     assert.notEqual(a.release, b.release);
     assert.notEqual(a.stamped['styles.css'], b.stamped['styles.css']);
-    assert.equal(a.stamped['app.js'], b.stamped['app.js'], 'unchanged JS should reuse same URL');
+    assert.notEqual(a.stamped['app.js'], b.stamped['app.js'], 'release-aware JS bytes must get a fresh filename');
     assert.ok(fs.readFileSync(path.join(out, 'index.html'), 'utf8').includes(b.stamped['styles.css']));
   } finally {
     for (const dir of [modified, original, out]) fs.rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test('editing a child JavaScript module changes the published app filename and import', () => {
+  for (const changed of ['charts.js', 'patronage.js']) {
+    const modified = fs.mkdtempSync(path.join(os.tmpdir(), 'nrd-module-source-'));
+    const original = createOutput();
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'nrd-module-build-'));
+    try {
+      fs.cpSync(source, modified, { recursive: true });
+      fs.cpSync(source, out, { recursive: true });
+      const a = publishSiteRelease(source, original);
+      fs.appendFileSync(path.join(modified, changed), '\\n// changed module\\n');
+      const b = publishSiteRelease(modified, out);
+      const publishedApp = fs.readFileSync(path.join(out, b.stamped['app.js']), 'utf8');
+      const html = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
+      assert.notEqual(a.release, b.release, 'module change must change release: ' + changed);
+      assert.notEqual(a.stamped[changed], b.stamped[changed], 'module URL must change: ' + changed);
+      assert.notEqual(a.stamped['app.js'], b.stamped['app.js'], 'parent app URL must change: ' + changed);
+      assert.ok(publishedApp.includes("from './" + b.stamped[changed] + "'"));
+      assert.ok(html.includes('src="' + b.stamped['app.js'] + '"'));
+      assert.ok(!html.includes(a.stamped['app.js']));
+    } finally {
+      for (const dir of [modified, original, out]) fs.rmSync(dir, { force: true, recursive: true });
+    }
   }
 });
 
