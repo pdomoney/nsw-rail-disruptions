@@ -87,7 +87,6 @@ export async function viewStationPatronage(main, meta) {
   const allowed = new Set(lineItems.map(l => l.id));
   stations = stations.filter(st => st[2]?.some(id => allowed.has(id)))
     .map(st => [st[0], st[1].replace(/\s+Station$/i, ''), st[2].filter(id => allowed.has(id)), st[3]]);
-  const stationById = new Map(stations.map(st => [st[0], st]));
   const years = data.coverage?.years || [], months = data.coverage?.months || [];
   const f = { period: years.length ? 'typical' : 'monthly', year: years.at(-1) || '2023',
     day: 'weekday', hour: '8', month: months.at(-1) || '', metric: 'entries',
@@ -132,6 +131,12 @@ export async function viewStationPatronage(main, meta) {
     return;
   }
 
+  if (data.coverage?.unmatchedCount) {
+    heading.append(node('p', { class: 'sp-warning' },
+      node('strong', {}, 'Incomplete station matching: '),
+      number(data.coverage.unmatchedCount) + ' source station names could not be uniquely matched and were excluded. The data importer must reconcile these names before figures are accepted.'));
+  }
+
   function renderControls() {
     form.replaceChildren(
       field('Dataset', [
@@ -152,8 +157,6 @@ export async function viewStationPatronage(main, meta) {
   function render() {
     renderControls();
     const rows = patronageRows(data, stations, f);
-    const focused = stationById.get(f.station);
-    const chosen = rows.find(x => x.id === f.station) || rows[0] || null;
     const metric = f.metric === 'total' ? 'entries plus exits' : f.metric;
     const sample = f.period === 'typical';
     const periodDescription = sample
@@ -163,7 +166,9 @@ export async function viewStationPatronage(main, meta) {
     const headline = node('section', { class: 'sp-overview' },
       cardValue('Data period', periodDescription, sample ? 'Historical typical-day average' : 'Monthly Opal totals'),
       cardValue('Stations with records', number(rows.length), 'Within the selected rail-line filter'),
-      cardValue('Reported ' + metric, number(totals), 'Sum of unique station records, not allocated line passengers'));
+      cardValue('Reported ' + metric, number(totals), f.metric === 'total'
+        ? 'Entries + exits counts tap events, not unique people'
+        : 'One count per station; not passengers assigned to each line'));
     const search = node('input', { type: 'search', placeholder: 'Filter station names…',
       'aria-label': 'Filter station names', value: f.search,
       oninput: e => { f.search = e.target.value; /* retain keyboard focus below */ updateResults(); } });
@@ -204,7 +209,8 @@ export async function viewStationPatronage(main, meta) {
       if (sample) {
         const hours = data.typical?.[f.year]?.[f.day]?.[selected.id] || {};
         const profile = node('div', { class: 'sp-hourly', role: 'group', 'aria-label': 'Historical hourly entries and exits' });
-        const max = Math.max(1, ...Object.values(hours).flat());
+        const max = Math.max(1, ...Object.values(hours).map(v =>
+          f.metric === 'exits' ? v[1] : f.metric === 'total' ? v[0] + v[1] : v[0]));
         for (let h = 0; h < 24; h++) {
           const counts = hours[h];
           const n = counts ? (f.metric === 'exits' ? counts[1] : f.metric === 'total' ? counts[0] + counts[1] : counts[0]) : null;
