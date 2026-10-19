@@ -11,6 +11,7 @@ import { readAllEvents } from './lib/events.js';
 import { readJson, writeJson, listFiles, readLines, ensureDir } from './lib/store.js';
 import { parseCsv } from './lib/csv.js';
 import { buildCrowding } from './lib/crowding.js';
+import { buildStationPatronage } from './lib/station-patronage.js';
 import { publishSiteRelease } from './lib/site-version.js';
 import { readServiceDays } from './lib/service.js';
 import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from './lib/service-stats.js';
@@ -347,7 +348,20 @@ function build() {
   dailyOut.service = svcDaily;
   writeJson(out('data', 'service.json'), service);
   writeJson(out('data', 'daily.json'), dailyOut);
-  writeJson(out('data', 'stations.json'), buildStations(new Set(lines.map(l => l.id))));
+  const stationCatalogue = buildStations(new Set(lines.map(l => l.id)));
+  writeJson(out('data', 'stations.json'), stationCatalogue);
+  // Opal-derived station counts never come from GTFS vehicle occupancy.
+  // Missing or unvalidated inputs produce an explicitly unavailable dataset.
+  // Errors must not interrupt the 5-minute collection and alert publishing.
+  let stationPatronage;
+  try {
+    stationPatronage = buildStationPatronage(DATA_DIR, stationCatalogue);
+  } catch (e) {
+    stationPatronage = { available: false, reason: 'Station import rejected: ' + e.message,
+      typical: {}, monthly: {}, coverage: { years: [], months: [], stationCount: 0 } };
+    console.warn('Station patronage dataset rejected: ' + e.message);
+  }
+  writeJson(out('data', 'station-patronage.json'), stationPatronage);
   // Carriage occupancy by rail line and Sydney-local hour (30 days, never passenger tap counts).
   const crowdingLines = new Set(lines.filter(l => ['train', 'metro', 'intercity'].includes(l.mode)).map(l => l.id));
   writeJson(out('data', 'crowding.json'), buildCrowding(DATA_DIR, today, crowdingLines, { generatedAt: now }));
