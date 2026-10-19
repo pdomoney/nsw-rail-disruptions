@@ -1,5 +1,6 @@
 import { heatmap, hbars, columns, line as lineChart, onColor, showTip, hideTip, compact } from './charts.js';
 import { viewPatronage } from './patronage.js';
+import { viewStationPatronage } from './station-patronage.js';
 
 // Replaced in the published JS asset, never in the repository source file.
 const SITE_RELEASE = '__SITE_RELEASE__';
@@ -2243,7 +2244,7 @@ async function route() {
   const main = document.getElementById('main');
   const hash = location.hash || '#/';
   const navKey = hash.startsWith('#/log') ? 'log' : hash.startsWith('#/about') ? 'about' : hash.startsWith('#/trip') ? 'trip'
-    : hash.startsWith('#/service') ? 'service' : hash.startsWith('#/crowding') ? 'crowding' : hash.startsWith('#/trackwork') ? 'trackwork' : hash.startsWith('#/map') ? 'map' : hash.startsWith('#/line') ? '' : 'overview';
+    : hash.startsWith('#/service') ? 'service' : hash.startsWith('#/crowding') ? 'crowding' : hash.startsWith('#/stations') ? 'stations' : hash.startsWith('#/trackwork') ? 'trackwork' : hash.startsWith('#/map') ? 'map' : hash.startsWith('#/line') ? '' : 'overview';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === navKey) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let m;
@@ -2253,6 +2254,7 @@ async function route() {
     else if (hash.startsWith('#/trip')) await viewTrip(main);
     else if (hash.startsWith('#/service')) await viewService(main);
     else if (hash.startsWith('#/crowding')) await viewPatronage(main, D.meta);
+    else if (hash.startsWith('#/stations')) await viewStationPatronage(main, D.meta);
     else if (hash.startsWith('#/trackwork')) await viewTrackwork(main);
     else if (hash.startsWith('#/map')) await viewMap(main);
     else { document.title = 'NSW Rail Disruptions'; viewOverview(main); }
@@ -2331,7 +2333,7 @@ function isStale() {
 }
 function onOverview() {
   const hash = location.hash || '#/';
-  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip|service|trackwork|map|crowding)/.test(hash);
+  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip|service|trackwork|map|crowding|stations)/.test(hash);
 }
 function userIsInteracting() {
   const main = document.getElementById('main');
