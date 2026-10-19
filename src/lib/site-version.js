@@ -34,20 +34,25 @@ export function publishSiteRelease(siteDir, outputDir, { generatedAt = Date.now(
     if (!digests[file]) throw new Error('Required static site asset missing: ' + file);
   }
 
-  // Use filename hashes, not query strings, to avoid intermediary caches ignoring query keys.
+  // Hash the *published bytes*, not just the source files. app.js embeds both
+  // imported module filenames and the release ID. If a dependency changes alone,
+  // its parent app filename MUST change too, or iOS may reuse a cached app.js that
+  // imports an obsolete dependency. Dependency files are stamped first.
   const stamped = {};
-  for (const name of baseFiles) {
+  for (const name of baseFiles.filter(name => name !== 'app.js')) {
+    const content = fs.readFileSync(path.join(siteDir, name));
     const ext = path.extname(name);
-    const newName = name.slice(0, -ext.length) + '.' + digests[name] + ext;
+    const newName = name.slice(0, -ext.length) + '.' + hash(content).slice(0, 12) + ext;
     stamped[name] = newName;
-    let content = fs.readFileSync(path.join(siteDir, name), 'utf8');
-    if (name === 'app.js') {
-      content = replaceOnce(content, "from './charts.js'", "from './" + 'charts.' + digests['charts.js'] + ".js'", name);
-      content = replaceOnce(content, "from './patronage.js'", "from './" + 'patronage.' + digests['patronage.js'] + ".js'", name);
-      content = replaceOnce(content, '__SITE_RELEASE__', release, name);
-    }
     fs.writeFileSync(path.join(outputDir, newName), content);
   }
+
+  let app = fs.readFileSync(path.join(siteDir, 'app.js'), 'utf8');
+  app = replaceOnce(app, "from './charts.js'", "from './" + stamped['charts.js'] + "'", 'app.js');
+  app = replaceOnce(app, "from './patronage.js'", "from './" + stamped['patronage.js'] + "'", 'app.js');
+  app = replaceOnce(app, '__SITE_RELEASE__', release, 'app.js');
+  stamped['app.js'] = 'app.' + hash(app).slice(0, 12) + '.js';
+  fs.writeFileSync(path.join(outputDir, stamped['app.js']), app);
 
   let html = fs.readFileSync(path.join(siteDir, 'index.html'), 'utf8');
   for (const name of ['styles.css', 'patronage.css']) {
