@@ -4,6 +4,7 @@
 set -euo pipefail
 DEST="$1"
 SOURCE="https://transportnsw.info/sydney-trains-network-map"
+OFFICIAL_MAP_PNG_INPUT="${OFFICIAL_MAP_PNG_INPUT:-}"
 OFFICIAL_MAP_PREVIEW_UNVERIFIED="${OFFICIAL_MAP_PREVIEW_UNVERIFIED:-0}"
 FILE="tfnsw-sydney-rail-2024.png"
 TMP="$(mktemp -d)"
