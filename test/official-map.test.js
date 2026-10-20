@@ -86,7 +86,7 @@ test('2024 route list is limited to printed T1-T9 and M1, with no fabricated Int
 test('train marker projection uses printed line-specific city strands at interchanges',()=>{
   assert.notDeepEqual(OFFICIAL_LINE_STOPS.T1.Central, OFFICIAL_LINE_STOPS.M1.Central);
   assert.ok(align.T1.some(e=>e.from==='Central'&&e.to==='Town Hall'));
-  assert.ok(align.M1.some(e=>e.from==='Chatswood') || align.M1.some(e=>e.from==='Epping'));
+  assert.ok(align.M1.some(e=>e.from==='Tallawong'&&e.to==='Rouse Hill'), 'fixture includes a validated Metro segment');
   const t1=align.T1.find(e=>e.from==='Central'&&e.to==='Town Hall');
   assert.deepEqual(t1.pdfA,OFFICIAL_LINE_STOPS.T1.Central);
   assert.deepEqual(t1.pdfB,OFFICIAL_LINE_STOPS.T1['Town Hall']);
