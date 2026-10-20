@@ -1602,6 +1602,7 @@ async function viewMap(main) {
     ? q.get('map') : prefs.get('mapKind', 'official');
   if (!['official','track','diagram'].includes(kind)) kind = 'official';
   let officialAvailable = null;
+  let officialFallback = false;
   await loadMap(true, kind);
   // The geographic view uses TfNSW coordinates and a street basemap. An offline/CDN
   // failure preserves the existing vector track view as a usable fallback.
@@ -1620,6 +1621,7 @@ async function viewMap(main) {
   }
   if (kind === 'official' && !(await checkOfficialMap())) {
     kind='diagram';
+    officialFallback=true;
     await loadMap(false,'diagram');
     console.warn('Official TfNSW map not available; using original schematic instead.');
   }
@@ -1800,12 +1802,14 @@ async function viewMap(main) {
         if (kind === 'official' && !(await checkOfficialMap())) {
           showSelectedMapItem('Official image unavailable','The source PDF background has not been verified on this deployment. The custom schematic is still available.');
           kind = 'diagram';
+          officialFallback=true;
         }
         if (kind === 'track' && !geographicReady) {
           try { await loadLeaflet(); geographicReady = true; }
           catch (e) { console.warn('Using offline track drawing:', e.message); }
         }
         await loadMap(false,kind);
+        if (kind==='official') officialFallback=false;
         prefs.set('mapKind',kind);
         setState(); draw();
       }, 'Kind of map'),
@@ -1821,6 +1825,10 @@ async function viewMap(main) {
           h('option', { value: '' }, 'All lines'),
           lineIds.map(id => { const o = h('option', { value: id }, `${id} ${lineInfo(id).name}`); if (id === lineFilter) o.selected = true; return o; }))));
     drawMapOnly();
+    if (officialFallback) {
+      head.append(h('p', { class:'tw-sub' },
+        'The verified original TfNSW map image is not available on this deployment, so the custom diagram is shown instead.'));
+    }
     if (kind === 'official' && geo?.positioned != null) {
       mapLabel.append(h('small', {}, geo.positioned + ' live vehicles positioned · ' +
         geo.unmatched + ' excluded where alignment is uncertain'));
