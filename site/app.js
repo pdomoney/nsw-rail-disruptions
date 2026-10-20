@@ -1807,7 +1807,8 @@ async function viewMap(main) {
         prefs.set('mapKind',kind);
         setState(); draw();
       }, 'Kind of map'),
-      segmented([['sydney', 'Sydney'], ['city', 'City centre'], ['all', 'Whole network']], view, v => {
+      segmented(kind === 'official' ? [['sydney','Published map'],['city','City centre']]
+        : [['sydney', 'Sydney'], ['city', 'City centre'], ['all', 'Whole network']], view, v => {
         view = v; vb = null; prefs.set('mapView', v); setState(); draw();
       }, 'Map area'),
       ...(kind === 'diagram' ? [segmented([['light', 'Classic map'], ['dark', 'Night map']], diagramStyle, v => {
