@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSchematic, corridorPath, diagramSections, labelSide, LINE_ROUTES, offsetLine, pointAt, polyLen, trainPlacer } from '../src/lib/schematic.js';
+import { buildSchematic, corridorPath, diagramSections, labelSide, LINE_ROUTES, terminalCallouts, offsetLine, pointAt, polyLen, trainPlacer } from '../src/lib/schematic.js';
 
 const S = buildSchematic();
 const near = (a, b, eps = 0.011) => Math.abs(a[0] - b[0]) <= eps && Math.abs(a[1] - b[1]) <= eps;
@@ -82,4 +82,14 @@ test('a section named in an alert is drawn on the affected lines only', () => {
   const ic = diagramSections(S, [['Hornsby', 'Asquith']], ['CCN']);
   assert.deepEqual(ic, [S.lay.edges.get(S.key('Hornsby', 'Asquith')).pts]);
   assert.deepEqual(diagramSections(S, [['Central', 'Nowhere']], ['T1']), []);
+});
+
+test('network diagram termini correspond to stations in the connected schematic', () => {
+  const ends = terminalCallouts(S.lay);
+  for (const [line, name, x, y] of ends) {
+    assert.ok(S.seqs[line].some(route => route[0] === name || route.at(-1) === name || route.includes(name)), line + ' / ' + name);
+    assert.deepEqual([x, y], S.lay.pos.get(name));
+  }
+  assert.ok(ends.some(e => e[0] === 'T4' && e[1] === 'Bondi Junction'));
+  assert.ok(ends.some(e => e[0] === 'M1' && e[1] === 'Tallawong'));
 });
