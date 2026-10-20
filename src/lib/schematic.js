@@ -10,64 +10,118 @@
 // runs, so the inner network is not crowded with them, but their trains still show on the shared track.
 // Light rail is not on the diagram.
 
+// TfNSW-inspired octilinear schematic, not a geographically accurate map or
+// reproduction of the TfNSW artwork. The relative corridor arrangement follows
+// familiar network-map landmarks. North points up, the CBD sits to the east,
+// Richmond / Western corridors to the west, and southern branches below.
+// These are diagram coordinates; live positions are independently mapped via
+// official GTFS stations to the nearest route segment.
 export const SCHEMATIC_VIEWS = {
-  // Coordinates here are hand-authored diagram units, not GPS or geographic positions.
-  city: [-5.8, -13.4, 7.8, 6.5],
-  sydney: [-41, -33, 8, 29.5],
+  city: [69, 39, 103, 92],
+  sydney: [7, 6, 103, 136],
 };
+export const DIAGRAM_LAYOUT_VERSION = 2;
 
 export const NODES = {
-  // City
-  'Central': [0, 0], 'Town Hall': [-2, -2.5], 'Wynyard': [-2, -4.5], 'Circular Quay': [0, -6.5], 'St James': [2, -4.5], 'Museum': [2, -2.5],
-  'Martin Place': [0, -3.5], 'Barangaroo': [-1, -4.8], 'Victoria Cross': [-1, -8.2], 'Crows Nest': [-1, -10.4],
-  'Kings Cross': [3.5, -3.5], 'Bondi Junction': [6.5, -3.5],
-  'Redfern': [-1, 1], 'Sydenham': [-1, 4.6], 'Wolli Creek': [-1, 7], 'International Airport': [1, 5],
-  // North
-  'Chatswood': [-2, -13], 'Hornsby': [-4, -27], 'Berowra': [-4, -31.8], 'Epping': [-13, -8.6], 'Tallawong': [-27, -8.6],
-  // West
-  'Strathfield': [-13, 1], 'Lidcombe': [-16.6, 1], 'Olympic Park': [-16.6, -1.4], 'Granville': [-20.2, 1], 'Harris Park': [-21.4, 1],
-  'Parramatta': [-22.6, 1], 'Blacktown': [-29.8, 1], 'Richmond': [-36, -10.2], 'Emu Plains': [-39.4, 1],
-  // South west
-  'Regents Park': [-16.6, 3.4], 'Bankstown': [-14.2, 5.8], 'Merrylands': [-20.2, 2.2], 'Cabramatta': [-20.2, 8.2],
-  'Liverpool': [-20.2, 10.6], 'Glenfield': [-20.2, 13], 'Leppington': [-25, 13], 'Macarthur': [-20.2, 20.2],
-  // South
-  'Hurstville': [-1, 15.4], 'Sutherland': [-1, 22.6], 'Cronulla': [6.2, 22.6], 'Waterfall': [-1, 27.4],
-  // Intercity
-  'Lithgow': [-64.6, 1], 'Bathurst': [-68.2, 1],
-  'Gosford': [-4, -43], 'Hamilton': [14, -66], 'Newcastle Interchange': [15.6, -66], 'Maitland': [4, -78], 'Scone': [-6, -92], 'Dungog': [4, -88],
-  'Wollongong': [-1, 49], 'Coniston': [-1, 50.2], 'Port Kembla': [4.6, 50.2], 'Bomaderry (Nowra)': [-1, 65.8],
-  'Goulburn': [-36.3, 36.3],
+  // Harbour / City Circle. Deliberately large so stations are not crammed together.
+  'Central': [78, 65],
+  'Town Hall': [80, 61],
+  'Wynyard': [80, 57],
+  'Circular Quay': [85, 54],
+  'St James': [87, 57],
+  'Museum': [87, 61],
+  'Martin Place': [84, 58],
+  'Barangaroo': [77, 54],
+  'Victoria Cross': [76, 48],
+  'Crows Nest': [73, 45],
+  'Kings Cross': [91, 58],
+  'Bondi Junction': [100, 58],
+  'Redfern': [77, 69],
+  'Sydenham': [77, 79],
+  'Wolli Creek': [77, 84],
+  'International Airport': [90, 82],
+
+  // North Shore rises from the Harbour, the northern route meets Epping.
+  'Chatswood': [70, 39],
+  'Gordon': [63, 32],
+  'Hornsby': [57, 23],
+  'Berowra': [57, 11],
+  'Epping': [55, 35],
+  'Tallawong': [18, 35],
+
+  // Western rail spine approaching the CBD, Richmond branch to the north-west.
+  'Strathfield': [53, 70],
+  'Lidcombe': [45, 70],
+  'Olympic Park': [45, 62],
+  'Granville': [39, 67],
+  'Harris Park': [35, 64],
+  'Parramatta': [32, 61],
+  'Blacktown': [24, 55],
+  'Richmond': [12, 31],
+  'Emu Plains': [10, 55],
+
+  // South Western routes spread below Lidcombe and Parramatta.
+  'Regents Park': [45, 78],
+  'Bankstown': [55, 85],
+  'Merrylands': [36, 74],
+  'Cabramatta': [34, 91],
+  'Liverpool': [34, 100],
+  'Glenfield': [35, 109],
+  'Leppington': [17, 110],
+  'Campbelltown': [35, 121],
+  'Macarthur': [35, 127],
+
+  // Eastern Suburbs and Illawarra occupy their recognisable eastern column.
+  'Hurstville': [77, 97],
+  'Sutherland': [77, 116],
+  'Cronulla': [99, 116],
+  'Waterfall': [77, 132],
+
+  // Intercity continuations are outside the principal Sydney view.
+  'Lithgow': [-36, 55],
+  'Bathurst': [-45, 55],
+  'Gosford': [57, -13],
+  'Hamilton': [74, -43],
+  'Newcastle Interchange': [78, -43],
+  'Maitland': [62, -54],
+  'Scone': [49, -73],
+  'Dungog': [71, -66],
+  'Wollongong': [77, 151],
+  'Coniston': [77, 153],
+  'Port Kembla': [91, 153],
+  'Bomaderry (Nowra)': [77, 185],
+  'Goulburn': [35, 165],
 };
 
 export const CORRIDORS = [
   // City Circle, and the Eastern Suburbs line through Town Hall and Martin Place.
-  ['Central', [-2, -2], 'Town Hall', 'Wynyard', 'Circular Quay', 'St James', 'Museum', [2, -2], 'Central'],
-  ['Town Hall', [-1, -3.5], 'Martin Place', 'Kings Cross', 'Edgecliff', 'Bondi Junction'],
+  ['Central', 'Town Hall', 'Wynyard', 'Circular Quay', 'St James', 'Museum', 'Central'],
+  ['Town Hall', 'Martin Place', 'Kings Cross', 'Edgecliff', 'Bondi Junction'],
   // North Shore and Northern lines, and on to Newcastle.
   ['Wynyard', 'Milsons Point', 'North Sydney', 'Waverton', 'Wollstonecraft', 'St Leonards', 'Artarmon', 'Chatswood',
-    'Roseville', 'Lindfield', 'Killara', 'Gordon', 'Pymble', 'Turramurra', 'Warrawee', 'Wahroonga', 'Waitara', [-2, -25], 'Hornsby'],
+    'Roseville', 'Lindfield', 'Killara', 'Gordon', 'Pymble', 'Turramurra', 'Warrawee', 'Wahroonga', 'Waitara', 'Hornsby'],
   ['Strathfield', 'North Strathfield', 'Concord West', 'Rhodes', 'Meadowbank', 'West Ryde', 'Denistone', 'Eastwood', 'Epping',
-    'Cheltenham', 'Beecroft', 'Pennant Hills', 'Thornleigh', 'Normanhurst', [-13, -18], 'Hornsby'],
+    'Cheltenham', 'Beecroft', 'Pennant Hills', 'Thornleigh', 'Normanhurst', 'Hornsby'],
   ['Hornsby', 'Asquith', 'Mount Colah', 'Mount Kuring-gai', 'Berowra', 'Cowan', 'Hawkesbury River', 'Wondabyne', 'Woy Woy', 'Koolewong',
     'Tascott', 'Point Clare', 'Gosford', 'Narara', 'Niagara Park', 'Lisarow', 'Ourimbah', 'Tuggerah', 'Wyong', 'Warnervale', 'Wyee',
-    [-4, -48], 'Morisset', 'Dora Creek', 'Awaba', 'Fassifern', 'Booragul', 'Teralba', 'Cockle Creek', 'Cardiff', 'Kotara', 'Adamstown', 'Broadmeadow', 'Hamilton', 'Newcastle Interchange'],
-  ['Hamilton', [14, -68], 'Waratah', 'Warabrook', 'Sandgate', 'Hexham', 'Tarro', 'Beresfield', 'Thornton', 'Metford', 'Victoria Street', 'East Maitland', 'High Street', 'Maitland',
-    'Telarah', 'Lochinvar', 'Greta', 'Branxton', 'Singleton', 'Muswellbrook', 'Aberdeen', [-6, -88], 'Scone'],
+    'Morisset', 'Dora Creek', 'Awaba', 'Fassifern', 'Booragul', 'Teralba', 'Cockle Creek', 'Cardiff', 'Kotara', 'Adamstown', 'Broadmeadow', 'Hamilton', 'Newcastle Interchange'],
+  ['Hamilton', 'Waratah', 'Warabrook', 'Sandgate', 'Hexham', 'Tarro', 'Beresfield', 'Thornton', 'Metford', 'Victoria Street', 'East Maitland', 'High Street', 'Maitland',
+    'Telarah', 'Lochinvar', 'Greta', 'Branxton', 'Singleton', 'Muswellbrook', 'Aberdeen', 'Scone'],
   ['Maitland', 'Mindaribba', 'Paterson', 'Hilldale', 'Martins Creek', 'Wallarobba', 'Wirragulla', 'Dungog'],
   // Metro.
   ['Tallawong', 'Rouse Hill', 'Kellyville', 'Bella Vista', 'Norwest', 'Hills Showground', 'Castle Hill', 'Cherrybrook', 'Epping',
-    'Macquarie University', 'Macquarie Park', 'North Ryde', [-8.6, -13], 'Chatswood'],
-  ['Chatswood', [-1, -12], 'Crows Nest', 'Victoria Cross', 'Barangaroo', [0, -3.8], 'Martin Place', 'Gadigal', 'Central', 'Waterloo', [0, 3.6], 'Sydenham'],
+    'Macquarie University', 'Macquarie Park', 'North Ryde', 'Chatswood'],
+  ['Chatswood', 'Crows Nest', 'Victoria Cross', 'Barangaroo', 'Martin Place', 'Gadigal', 'Central', 'Waterloo', 'Sydenham'],
   // Inner West and Western lines, Richmond and the Blue Mountains.
   ['Central', 'Redfern', 'Macdonaldtown', 'Newtown', 'Stanmore', 'Petersham', 'Lewisham', 'Summer Hill', 'Ashfield', 'Croydon', 'Burwood', 'Strathfield',
     'Homebush', 'Flemington', 'Lidcombe', 'Auburn', 'Clyde', 'Granville', 'Harris Park', 'Parramatta', 'Westmead', 'Wentworthville', 'Pendle Hill',
     'Toongabbie', 'Seven Hills', 'Blacktown', 'Doonside', 'Rooty Hill', 'Mount Druitt', 'St Marys', 'Werrington', 'Kingswood', 'Penrith', 'Emu Plains',
     'Lapstone', 'Glenbrook', 'Blaxland', 'Warrimoo', 'Valley Heights', 'Springwood', 'Faulconbridge', 'Linden', 'Woodford', 'Hazelbrook', 'Lawson',
     'Bullaburra', 'Wentworth Falls', 'Leura', 'Katoomba', 'Medlow Bath', 'Blackheath', 'Mount Victoria', 'Bell', 'Zig Zag', 'Lithgow', 'Rydal', 'Tarana', 'Bathurst'],
-  ['Blacktown', 'Marayong', 'Quakers Hill', 'Schofields', 'Riverstone', [-29.8, -4], 'Vineyard', 'Mulgrave', 'Windsor', 'Clarendon', 'East Richmond', 'Richmond'],
+  ['Blacktown', 'Marayong', 'Quakers Hill', 'Schofields', 'Riverstone', 'Vineyard', 'Mulgrave', 'Windsor', 'Clarendon', 'East Richmond', 'Richmond'],
   ['Lidcombe', 'Olympic Park'],
   // South west: via Regents Park, via Granville and Harris Park, to Liverpool, Leppington and Campbelltown.
-  ['Lidcombe', 'Berala', 'Regents Park', 'Sefton', [-16.6, 4.6], 'Chester Hill', 'Leightonfield', 'Villawood', 'Carramar', 'Cabramatta'],
+  ['Lidcombe', 'Berala', 'Regents Park', 'Sefton', 'Chester Hill', 'Leightonfield', 'Villawood', 'Carramar', 'Cabramatta'],
   ['Regents Park', 'Birrong', 'Yagoona', 'Bankstown'],
   ['Granville', 'Merrylands', 'Guildford', 'Yennora', 'Fairfield', 'Canley Vale', 'Cabramatta', 'Warwick Farm', 'Liverpool', 'Casula', 'Glenfield',
     'Macquarie Fields', 'Ingleburn', 'Minto', 'Leumeah', 'Campbelltown', 'Macarthur',
@@ -76,9 +130,9 @@ export const CORRIDORS = [
   ['Harris Park', 'Merrylands'],
   ['Glenfield', 'Edmondson Park', 'Leppington'],
   // South: Airport, East Hills, Illawarra, Cronulla and the South Coast.
-  ['Central', [1, 1], 'Green Square', 'Mascot', 'Domestic Airport', 'International Airport', 'Wolli Creek'],
-  ['Wolli Creek', [-2.2, 8.2], 'Turrella', 'Bardwell Park', 'Bexley North', 'Kingsgrove', 'Beverly Hills', 'Narwee', 'Riverwood', 'Padstow', 'Revesby', 'Panania',
-    'East Hills', 'Holsworthy', [-15.4, 8.2], 'Glenfield'],
+  ['Central', 'Green Square', 'Mascot', 'Domestic Airport', 'International Airport', 'Wolli Creek'],
+  ['Wolli Creek', 'Turrella', 'Bardwell Park', 'Bexley North', 'Kingsgrove', 'Beverly Hills', 'Narwee', 'Riverwood', 'Padstow', 'Revesby', 'Panania',
+    'East Hills', 'Holsworthy', 'Glenfield'],
   ['Redfern', 'Erskineville', 'St Peters', 'Sydenham', 'Tempe', 'Wolli Creek', 'Arncliffe', 'Banksia', 'Rockdale', 'Kogarah', 'Carlton', 'Allawah', 'Hurstville',
     'Penshurst', 'Mortdale', 'Oatley', 'Como', 'Jannali', 'Sutherland', 'Loftus', 'Engadine', 'Heathcote', 'Waterfall',
     'Helensburgh', 'Otford', 'Stanwell Park', 'Coalcliff', 'Scarborough', 'Wombarra', 'Coledale', 'Austinmer', 'Thirroul', 'Bulli', 'Woonona', 'Bellambi',
@@ -135,6 +189,18 @@ function slice(pts, d0, d1) {
   out.push(pointAt(pts, d1));
   return out;
 }
+// Complete a path with an axis-aligned stretch and a diagonal stretch
+// when arbitrary hand-placed anchor positions are not naturally octilinear.
+export function octilinearSegment(a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const x = Math.abs(dx), y = Math.abs(dy);
+  if (x < 1e-8 && y < 1e-8) return [a];
+  if (x < 1e-8 || y < 1e-8 || Math.abs(x - y) < 1e-8) return [a, b];
+  const middle = x > y
+    ? [a[0] + Math.sign(dx) * (x - y), a[1]]
+    : [a[0], a[1] + Math.sign(dy) * (y - x)];
+  return [a, middle, b];
+}
 const r2 = p => [Math.round(p[0] * 100) / 100, Math.round(p[1] * 100) / 100];
 
 // Lay out the corridors: every station's position, and each pair of neighbouring stations' shape.
@@ -158,9 +224,15 @@ export function layout() {
       if (Array.isArray(item)) { corners.push({ at: between.length, pt: item }); continue; }
       if (!NODES[item]) { between.push(item); continue; }
       // A run from fixedName to item through `between`, bending at the corners.
-      const shape = [fixedPt];
-      corners.forEach(k => shape.push(k.pt));
-      shape.push(NODES[item]);
+      const controls = [fixedPt, ...corners.map(k => k.pt), NODES[item]];
+      // Route successive anchors with 0°, 45° or 90° segments. This permits
+      // hand-placed station hubs without accidentally creating arbitrary angles.
+      const shape = [controls[0]];
+      for (const target of controls.slice(1)) {
+        for (const p of octilinearSegment(shape.at(-1), target).slice(1)) {
+          if (segLen(shape.at(-1), p) > 1e-7) shape.push(p);
+        }
+      }
       const L = polyLen(shape), n = between.length + 1;
       const dist = k => (L * k) / n;
       const names = [fixedName, ...between, item];
