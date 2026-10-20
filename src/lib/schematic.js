@@ -12,7 +12,7 @@
 
 export const SCHEMATIC_VIEWS = {
   // Coordinates here are hand-authored diagram units, not GPS or geographic positions.
-  city: [-5.8, -10.9, 8.6, 6.5],
+  city: [-5.8, -13.4, 8.6, 6.5],
   sydney: [-41, -33, 8, 29.5],
 };
 
