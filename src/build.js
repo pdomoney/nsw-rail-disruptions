@@ -534,7 +534,8 @@ function buildMap(lines, status, trackwork, ongoing) {
   }
   if (!Object.keys(chains).length) return;
   // Stations (merged by name across feeds), with labels for the main ones.
-  const labels = new Map([...MAP_LABELS[2].map(n => [stationKey(n), 2]), ...MAP_LABELS[1].map(n => [stationKey(n), 1])]);
+  // Priority 2 must win when a CBD station appears in both label sets.
+  const labels = new Map([...MAP_LABELS[1].map(n => [stationKey(n), 1]), ...MAP_LABELS[2].map(n => [stationKey(n), 2])]);
   const stations = new Map();
   for (const f of listFiles(path.join(DATA_DIR, 'stations'), /\.json$/)) {
     for (const st of Object.values(readJson(f, {})?.stations || {})) {
