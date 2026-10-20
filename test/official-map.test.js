@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OFFICIAL_MAP, OFFICIAL_STOPS, OFFICIAL_CORRIDORS, normaliseStop,
-  projectToSegment, buildOfficialAlignment, locateOfficialTrain, OFFICIAL_LINE_STOPS } from '../site/official-map.js';
+  projectToSegment, buildOfficialAlignment, locateOfficialTrain, OFFICIAL_LINE_STOPS, officialDisruptionPins } from '../site/official-map.js';
 
 const stops=[
   ['Tallawong Station',100,100,'M1',1],
@@ -91,4 +91,17 @@ test('train marker projection uses printed line-specific city strands at interch
   assert.deepEqual(t1.pdfA,OFFICIAL_LINE_STOPS.T1.Central);
   assert.deepEqual(t1.pdfB,OFFICIAL_LINE_STOPS.T1['Town Hall']);
   assert.ok(Math.abs(t1.pdfA[0]-OFFICIAL_LINE_STOPS.M1.Central[0])>20);
+});
+
+test('official map marks only explicitly named disrupted stations; no inferred corridors',()=>{
+  const alert={kind:'incident',title:'Track issue near Chatswood',
+    lines:['T1','M1'],
+    pins:[[0,0,'Chatswood Station'],[0,0,'Nonexistent place']],
+    spins:[[0,0,'Chatswood'],[0,0,'Central']]};
+  const pins=officialDisruptionPins({overlays:[alert]});
+  assert.deepEqual(pins.map(p=>p.name),['Chatswood','Central']);
+  assert.equal(pins[0].kind,'incident');
+  assert.equal(pins[0].title,alert.title);
+  assert.deepEqual(officialDisruptionPins({overlays:[alert]},'T4'),[]);
+  assert.deepEqual(officialDisruptionPins({overlays:[]}),[]);
 });
