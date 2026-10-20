@@ -1708,6 +1708,8 @@ async function viewMap(main) {
     const plotCount = kind === 'diagram' && projectedIndex !== -1
       ? liveTrains.filter(t => t[projectedIndex] != null && (!lineFilter || t[0] === lineFilter)).length
       : liveTrains.filter(t => !lineFilter || t[0] === lineFilter).length;
+    frame.classList.toggle('map-frame-diagram', kind === 'diagram');
+    frame.classList.toggle('map-frame-city', kind === 'diagram' && view === 'city');
     mapLabel.replaceChildren(
       h('strong', {}, kind === 'diagram' ? 'SYDNEY TRAIN + METRO' : 'GEOGRAPHIC RAIL MAP'),
       h('span', {}, kind === 'diagram'
@@ -1932,9 +1934,20 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, theme 
   const [vx0, vy0, vx1, vy1] = sch.views[view];
   const W = Math.max(300, container.clientWidth);
   let base = [vx0, vy0, vx1 - vx0, vy1 - vy0];
-  const H = Math.min(Math.round((W * base[3]) / base[2]), Math.round(window.innerHeight * 0.85), 1100);
-  if (base[2] / base[3] < W / H) { const w = (base[3] * W) / H; base = [base[0] - (w - base[2]) / 2, base[1], w, base[3]]; }
-  else { const hh = (base[2] * H) / W; base = [base[0], base[1] - (hh - base[3]) / 2, base[2], hh]; }
+  // The Sydney network map is a portrait document, unlike the geographic map.
+  // Do not force it into a viewport-height landscape letterbox: that was the
+  // primary reason the prior diagram looked like compressed spaghetti.
+  const naturalHeight = Math.round((W * base[3]) / base[2]);
+  const H = view === 'city'
+    ? Math.min(1200, Math.max(580, naturalHeight))
+    : Math.min(1600, Math.max(W < 640 ? 570 : 900, naturalHeight));
+  if (base[2] / base[3] < W / H) {
+    const w = (base[3] * W) / H;
+    base = [base[0] - (w - base[2]) / 2, base[1], w, base[3]];
+  } else {
+    const hh = (base[2] * H) / W;
+    base = [base[0], base[1] - (hh - base[3]) / 2, base[2], hh];
+  }
   const vb = zoom || base;
   const scale = W / vb[2]; // px per diagram unit
   const u = px => px / scale;
