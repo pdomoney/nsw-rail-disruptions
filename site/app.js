@@ -1960,7 +1960,7 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, theme 
   // Stations: a rounded bar across the lines running through, or a ring where three or more stretches meet.
   const st = S('g', { class: 'sch-stations' });
   const lbl = S('g', { class: 'map-labels sch-labels' });
-  const fs = 11; // label size in px
+  const fs = W < 600 ? 12.5 : 13.5; // legible station names, even at default overview zoom
   // City centre mode deliberately surfaces suburban/CBD station names at phone
   // scale; the label-collision engine will suppress overlaps rather than hiding
   // virtually the entire city behind an arbitrary zoom threshold.
@@ -1991,7 +1991,7 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, theme 
     }
   }
   const ctx2d = document.createElement('canvas').getContext('2d');
-  ctx2d.font = `500 ${fs}px ${getComputedStyle(document.body).fontFamily}`;
+  ctx2d.font = `650 ${fs}px ${getComputedStyle(document.body).fontFamily}`;
   const textW = text => u(ctx2d.measureText(text).width + 1);
   const F = u(fs);
   // Where a label goes on one side of a marker reaching ex across and ey up and down, with the boxes it covers.
