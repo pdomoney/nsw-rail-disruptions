@@ -75,9 +75,12 @@ for (const view of ['sydney','city']) {
  for (const [line, name, x, y] of terminalCallouts(S.lay)) {
    if (x < left || x > right || y < top || y > bottom) continue;
    const c = LINE_BY_ID[line]?.color || '#365c70';
-   svg.push('<g><rect x="' + (x-1.5) + '" y="' + (y-2.9) +
+   // Stations with two terminating lines get separate tags, as in the app.
+   const below = line === 'T5' && (name === 'Richmond' || name === 'Leppington');
+   const by = below ? y + 1.35 : y - 2.9;
+   svg.push('<g><rect x="' + (x-1.5) + '" y="' + by +
     '" rx=".4" width="3" height="1.75" fill="' + escape(c) +
-    '"/><text x="' + x + '" y="' + (y-1.6) +
+    '"/><text x="' + x + '" y="' + (by+1.3) +
     '" font-size="1.2" font-family="Arial,sans-serif" font-weight="700" fill="white" text-anchor="middle">' +
     escape(line) + '</text></g>');
  }
