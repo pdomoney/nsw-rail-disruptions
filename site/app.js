@@ -1622,12 +1622,14 @@ async function viewMap(main) {
   let geo = null; // { svg, base, W, H } from the last SVG drawing
   let geographic = null; // Leaflet instance for the real-world map
   const selectedTrain = h('div', { class: 'map-selected-train', role: 'status', 'aria-live': 'polite' });
-  const showSelectedTrain = label => selectedTrain.replaceChildren(
-    h('strong', {}, 'Moving train / metro'),
-    h('p', {}, label));
-  const showSelectedStation = (name, lines) => selectedTrain.replaceChildren(
-    h('strong', {}, 'Fixed station / stop'),
-    h('p', {}, name + ' · Served by ' + lines.join(', ')));
+  const showSelectedMapItem = (title, message) => selectedTrain.replaceChildren(
+    h('div', {}, h('strong', {}, title), h('p', {}, message)),
+    h('button', { type: 'button', class: 'map-selection-close', 'aria-label': 'Close map details',
+      onclick: () => selectedTrain.replaceChildren() }, '×'));
+  const showSelectedTrain = label => showSelectedMapItem('Moving train / metro', label);
+  const showSelectedStation = (name, lines) => showSelectedMapItem('Fixed station / stop',
+    name + ' · Served by ' + lines.join(', '));
+  frame.append(selectedTrain);
   const svgPoint = (clientX, clientY) => {
     const r = geo.svg.getBoundingClientRect();
     const cur = vb || geo.base;
@@ -1716,7 +1718,7 @@ async function viewMap(main) {
   const notes = h('div');
   mount(main,
     h('div', { class: 'line-head' }, h('h1', {}, 'Live map')),
-    head, filters, frame, selectedTrain, legend,
+    head, filters, frame, legend,
     h('section', { class: 'section', 'aria-labelledby': 'map-notes-h' }, h('h2', { id: 'map-notes-h' }, 'Marked on the map'), notes),
     h('p', { class: 'chart-note' }, 'Geographic map: real stop positions, route shapes and reported live vehicle positions from TfNSW GTFS, over OpenStreetMap streets and coastline (subject to map-tile availability). A train is a solid vehicle icon with a line code; a station is an open circle. Tap either for details. The network diagram is a separate, schematic interpretation inspired by TfNSW’s published map, not official map artwork and not geographically to scale. On it, moving trains are positioned approximately between matched stations. No train position is inferred when the live feed is absent.'));
 
