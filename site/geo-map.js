@@ -42,14 +42,22 @@ export function loadLeaflet() {
     link.href = SOURCE + 'leaflet.css';
     link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
     link.crossOrigin = 'anonymous';
+    let cssReady = false, jsReady = false;
+    const timer = setTimeout(() => reject(new Error('Map library unavailable')), 10000);
+    const ready = () => {
+      if (!cssReady || !jsReady) return;
+      clearTimeout(timer);
+      window.L?.map ? resolve(window.L) : reject(new Error('Map library did not initialise'));
+    };
+    link.onload = () => { cssReady = true; ready(); };
+    link.onerror = () => { clearTimeout(timer); reject(new Error('Map stylesheet unavailable')); };
     document.head.append(link);
     const script = document.createElement('script');
     script.src = SOURCE + 'leaflet.js';
     script.async = true;
     script.crossOrigin = 'anonymous';
     script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-    const timer = setTimeout(() => reject(new Error('Map library unavailable')), 9000);
-    script.onload = () => { clearTimeout(timer); window.L?.map ? resolve(window.L) : reject(new Error('Map library did not initialise')); };
+    script.onload = () => { jsReady = true; ready(); };
     script.onerror = () => { clearTimeout(timer); reject(new Error('Map library unavailable')); };
     document.head.append(script);
   }).catch(e => { loadingLeaflet = null; throw e; });
@@ -154,7 +162,7 @@ export function createGeographicMap(container, { net, live, view, lineFilter, co
           '<span class="geo-vehicle-line">' + cssSafe(line) + '</span></span>' });
       const description = trainDescription({ line, destination: headsign, delay, passengers: pax, fullness: fullest });
       const item = L.marker(p, { icon, keyboard: true, title: 'Moving train: ' + description });
-      item.bindPopup(popup('Train / Metro ' + line,
+      item.bindPopup(popup('Moving service ' + line,
         [headsign ? 'Destination: ' + headsign.replace(/\s+Station$/i, '') : 'Destination not reported',
           delay == null ? 'Delay not available' : delay < 60 ? 'On time' : Math.round(delay / 60) + ' minutes late',
           pax == null ? 'Estimated occupancy unavailable' : 'Approximately ' + (Math.round(pax / 10) * 10).toLocaleString('en-AU') + ' people aboard (estimate)',
