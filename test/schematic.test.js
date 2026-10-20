@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSchematic, corridorPath, diagramSections, labelSide, LINE_ROUTES, terminalCallouts, offsetLine, pointAt, polyLen, trainPlacer } from '../src/lib/schematic.js';
+import { buildSchematic, corridorPath, diagramSections, labelSide, LINE_ROUTES, terminalCallouts, SCHEMATIC_VIEWS, offsetLine, pointAt, polyLen, trainPlacer } from '../src/lib/schematic.js';
 
 const S = buildSchematic();
 const near = (a, b, eps = 0.011) => Math.abs(a[0] - b[0]) <= eps && Math.abs(a[1] - b[1]) <= eps;
@@ -92,4 +92,17 @@ test('network diagram termini correspond to stations in the connected schematic'
   }
   assert.ok(ends.some(e => e[0] === 'T4' && e[1] === 'Bondi Junction'));
   assert.ok(ends.some(e => e[0] === 'M1' && e[1] === 'Tallawong'));
+});
+
+test('City centre focus shows every key CBD and inner-Sydney connection at a useful scale', () => {
+  const [x0, y0, x1, y1] = SCHEMATIC_VIEWS.city;
+  assert.ok(x1 - x0 < 20 && y1 - y0 < 20, 'City view must actually zoom, not be the entire NSW network');
+  const hubs = ['Central', 'Town Hall', 'Wynyard', 'Circular Quay', 'Martin Place', 'Barangaroo',
+    'Victoria Cross', 'Crows Nest', 'Chatswood', 'Waterloo', 'Gadigal', 'Sydenham', 'Bondi Junction'];
+  for (const station of hubs) {
+    const [x, y] = S.lay.pos.get(station);
+    assert.ok(x >= x0 && x <= x1 && y >= y0 && y <= y1, station + ' missing from City centre view');
+  }
+  assert.ok(SCHEMATIC_VIEWS.sydney[0] < x0 && SCHEMATIC_VIEWS.sydney[2] >= x1);
+  assert.ok(S.gap >= 0.28, 'Parallel lines need visible separation at overview scale');
 });

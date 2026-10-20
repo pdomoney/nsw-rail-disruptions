@@ -10,6 +10,12 @@
 // runs, so the inner network is not crowded with them, but their trains still show on the shared track.
 // Light rail is not on the diagram.
 
+export const SCHEMATIC_VIEWS = {
+  // Coordinates here are hand-authored diagram units, not GPS or geographic positions.
+  city: [-5.8, -13.4, 7.8, 6.5],
+  sydney: [-41, -33, 8, 29.5],
+};
+
 export const NODES = {
   // City
   'Central': [0, 0], 'Town Hall': [-2, -2.5], 'Wynyard': [-2, -4.5], 'Circular Quay': [0, -6.5], 'St James': [2, -4.5], 'Museum': [2, -2.5],
@@ -220,7 +226,7 @@ export function offsetLine(pts, d) {
 
 // The diagram: station positions, each line drawn as offset pieces where lines share track, and the
 // lookups the build uses to place trains and sections on it.
-export function buildSchematic({ gap = 0.2 } = {}) {
+export function buildSchematic({ gap = 0.31 } = {}) {
   const lay = layout();
   const seqs = lineSequences(lay);
   const key = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);

@@ -71,3 +71,110 @@
 /* On both SVG maps, stations are keyboard and tap selectable without resembling vehicles. */
 .map-station-select { cursor: pointer; }
 .map-station-select:hover, .map-station-select:focus-visible { stroke: var(--focus) !important; stroke-width: 2px; outline: none; }
+
+
+/* Network schematic RC2: transit-paper presentation independent from the site's dark mode.
+   Intent: make the railway diagram immediately legible, even at the default overview zoom. */
+.sch-svg.sch-theme-light {
+  background: #f5f8fa;
+  border-radius: 8px;
+}
+.sch-svg.sch-theme-light .sch-lines path {
+  opacity: .96;
+}
+.sch-svg.sch-theme-light .sch-lines path.dim { opacity: .12; }
+.sch-svg.sch-theme-light .sch-stations circle,
+.sch-svg.sch-theme-light .sch-stations rect {
+  fill: #fff;
+  stroke: #263d4b;
+  stroke-width: .10;
+}
+.sch-svg.sch-theme-light .sch-stations .ix {
+  fill: #fff;
+  stroke: #183746;
+  stroke-width: .14;
+}
+.sch-svg.sch-theme-light .map-labels text {
+  fill: #233744;
+  stroke: #f5f8fa;
+  stroke-width: 3.9px;
+  font-weight: 650;
+}
+.sch-svg.sch-theme-light .map-labels .map-pin-label {
+  fill: #a32b28;
+  font-weight: 750;
+}
+.sch-svg.sch-theme-light .map-ov-case { stroke: #f5f8fa; }
+.sch-svg.sch-theme-light .map-vehicle-shell { fill: #2f5666; stroke: #fff; }
+.sch-svg.sch-theme-light .map-vehicle-code { fill: #fff; }
+.sch-svg.sch-theme-light .map-vehicle-windshield { fill: #fff; }
+.sch-svg.sch-theme-light .map-station-select:hover,
+.sch-svg.sch-theme-light .map-station-select:focus-visible {
+  stroke: #075eae !important;
+}
+.sch-svg.sch-theme-dark {
+  background: #151d27;
+}
+.sch-svg.sch-theme-dark .sch-stations circle,
+.sch-svg.sch-theme-dark .sch-stations rect {
+  fill: #151d27;
+  stroke: #e3ebf0;
+}
+.sch-svg.sch-theme-dark .map-labels text {
+  fill: #e6edf2;
+  stroke: #151d27;
+  stroke-width: 3.6px;
+  font-weight: 620;
+}
+.sch-svg.sch-theme-dark .map-ov-case { stroke: #151d27; }
+.sch-svg.sch-theme-dark .map-vehicle-windshield { fill: #fff; }
+.sch-svg.sch-theme-dark .map-vehicle-shell { stroke: #151d27; }
+.sch-svg .sch-terminal-label rect { stroke: #fff; stroke-width: .065; }
+.sch-svg .sch-terminal-label text { font-weight: 800; }
+
+.map-corner-label {
+  pointer-events: none;
+  position: absolute;
+  top: 18px;
+  left: 19px;
+  z-index: 400;
+  max-width: min(65%, 350px);
+  padding: 10px 13px 9px;
+  border-radius: 7px;
+  background: #f5f8fbea;
+  color: #273b49;
+  box-shadow: 0 2px 6px #0002;
+  border: 1px solid #c8d5dc;
+}
+.map-corner-label strong {
+  display: block;
+  font: 800 clamp(.85rem, 1.8vw, 1.12rem) var(--font-narrow);
+  letter-spacing: .065em;
+}
+.map-corner-label span {
+  display: block;
+  color: #546b78;
+  font: 600 .7rem var(--font-narrow);
+  letter-spacing: .055em;
+  margin-top: 3px;
+}
+.map-holder:has(.sch-theme-dark) + .map-corner-label {
+  background: #1c2731ed;
+  color: #f1f5f8;
+  border-color: #526270;
+}
+.map-holder:has(.sch-theme-dark) + .map-corner-label span { color: #b8c6d0; }
+@media (max-width: 600px) {
+  .map-corner-label { top: 9px; left: 9px; padding: 8px 9px; max-width: 68%; }
+  .map-corner-label strong { font-size: .75rem; }
+  .map-corner-label span { font-size: .58rem; }
+}
+
+.map-corner-label small {
+  display: block; margin-top: 6px; color: #4c616c;
+  font: 650 .72rem var(--font-narrow); letter-spacing: .01em;
+}
+.map-holder:has(.sch-theme-dark) + .map-corner-label small { color: #e1eaf1; }
+@media (max-width: 600px) {
+  .map-corner-label small { font-size: .6rem; }
+}

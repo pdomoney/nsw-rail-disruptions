@@ -1603,7 +1603,9 @@ async function viewMap(main) {
   if (kind === 'track') {
     try { await loadLeaflet(); geographicReady = true; } catch (e) { console.warn('Using offline track drawing:', e.message); }
   }
-  let view = q.get('view') === 'all' ? 'all' : prefs.get('mapView', 'sydney');
+  let view = ['city', 'sydney', 'all'].includes(q.get('view')) ? q.get('view') : prefs.get('mapView', 'sydney');
+  if (!['city', 'sydney', 'all'].includes(view)) view = 'sydney';
+  let diagramStyle = prefs.get('mapDiagramStyle', 'light') === 'dark' ? 'dark' : 'light';
   let lineFilter = q.get('line') || '';
   const head = h('div', { class: 'map-head' });
   const filters = h('div', { class: 'filters' });
@@ -1618,7 +1620,8 @@ async function viewMap(main) {
       if (geographic) geographic.reset();
       else { vb = null; drawMapOnly(); }
     } }, 'Reset'));
-  const frame = h('div', { class: 'map-frame' }, holder, zoomBtns);
+  const mapLabel = h('div', { class: 'map-corner-label', 'aria-hidden': 'true' });
+  const frame = h('div', { class: 'map-frame' }, holder, mapLabel, zoomBtns);
   let geo = null; // { svg, base, W, H } from the last SVG drawing
   let geographic = null; // Leaflet instance for the real-world map
   const selectedTrain = h('div', { class: 'map-selected-train', role: 'status', 'aria-live': 'polite' });
@@ -1699,6 +1702,20 @@ async function viewMap(main) {
     svg.addEventListener('pointercancel', end);
   };
   const drawMapOnly = () => {
+    const liveTrains = D.live?.trains || [];
+    const cols = D.live?.cols || [];
+    const projectedIndex = cols.indexOf('sx');
+    const plotCount = kind === 'diagram' && projectedIndex !== -1
+      ? liveTrains.filter(t => t[projectedIndex] != null && (!lineFilter || t[0] === lineFilter)).length
+      : liveTrains.filter(t => !lineFilter || t[0] === lineFilter).length;
+    mapLabel.replaceChildren(
+      h('strong', {}, kind === 'diagram' ? 'SYDNEY TRAIN + METRO' : 'GEOGRAPHIC RAIL MAP'),
+      h('span', {}, kind === 'diagram'
+        ? (view === 'city' ? 'CITY CENTRE · NETWORK SCHEMATIC' : view === 'all' ? 'WHOLE NETWORK · NOT TO SCALE' : 'SYDNEY NETWORK · NOT TO SCALE')
+        : 'TfNSW STATIONS + REPORTED LIVE VEHICLES'),
+      h('small', {}, plotCount
+        ? `${plotCount.toLocaleString('en-AU')} reported vehicles ${kind === 'diagram' ? 'placed on the diagram' : 'with mapped coordinates'}`
+        : kind === 'diagram' ? 'No mapped vehicle positions reported' : 'No live vehicle positions reported'));
     if (kind === 'track' && geographicReady && window.L?.map) {
       const colors = Object.fromEntries(D.meta.lines.map(l => [l.id, l.color]));
       if (!geographic) geographic = createGeographicMap(holder, {
@@ -1710,7 +1727,8 @@ async function viewMap(main) {
     }
     if (geographic) { geographic.destroy(); geographic = null; }
     geo = kind === 'diagram'
-      ? schematicMap(holder, { sch: D.schematic, live: D.live, view, lineFilter, vb, onTrainSelect: showSelectedTrain, onStationSelect: showSelectedStation })
+      ? schematicMap(holder, { sch: D.schematic, live: D.live, view, lineFilter, vb, theme: diagramStyle,
+        onTrainSelect: showSelectedTrain, onStationSelect: showSelectedStation })
       : networkMap(holder, { net: D.network, live: D.live, view, lineFilter, vb, onTrainSelect: showSelectedTrain, onStationSelect: showSelectedStation });
     attach(geo.svg);
   };
@@ -1725,7 +1743,7 @@ async function viewMap(main) {
   const setState = () => {
     const p = new URLSearchParams();
     if (kind === 'diagram') p.set('map', 'diagram');
-    if (view === 'all') p.set('view', 'all');
+    if (view !== 'sydney') p.set('view', view);
     if (lineFilter) p.set('line', lineFilter);
     history.replaceState(null, '', `#/map${p.toString() ? `?${p}` : ''}`);
   };
@@ -1748,7 +1766,12 @@ async function viewMap(main) {
         }
         setState(); draw();
       }, 'Kind of map'),
-      segmented([['sydney', 'Sydney'], ['all', 'Whole network']], view, v => { view = v; vb = null; prefs.set('mapView', v); setState(); draw(); }, 'Map area'),
+      segmented([['sydney', 'Sydney'], ['city', 'City centre'], ['all', 'Whole network']], view, v => {
+        view = v; vb = null; prefs.set('mapView', v); setState(); draw();
+      }, 'Map area'),
+      ...(kind === 'diagram' ? [segmented([['light', 'Classic map'], ['dark', 'Night map']], diagramStyle, v => {
+        diagramStyle = v; prefs.set('mapDiagramStyle', v); drawMapOnly();
+      }, 'Diagram background')] : []),
       h('label', { class: 'field inline' }, 'Line ',
         h('select', { onchange: ev => { lineFilter = ev.target.value; setState(); draw(); } },
           h('option', { value: '' }, 'All lines'),
@@ -1902,8 +1925,8 @@ function networkMap(container, { net, live, view, lineFilter, vb: zoom, onTrainS
 
 // The network diagram: this site's own schematic of the lines (lib/schematic.js), with each train placed
 // between the two stations it is between, and the same incidents and closures.
-const SCH_LINE_W = 0.16;   // a line's width in diagram units (about a fifth of the gap between stations)
-function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, onTrainSelect, onStationSelect }) {
+const SCH_LINE_W = 0.23;   // bolder line strands, separated by a larger schematic gap
+function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, theme = 'light', onTrainSelect, onStationSelect }) {
   const NS = 'http://www.w3.org/2000/svg';
   const S = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, v); return n; };
   const [vx0, vy0, vx1, vy1] = sch.views[view];
@@ -1915,7 +1938,7 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, onTrai
   const vb = zoom || base;
   const scale = W / vb[2]; // px per diagram unit
   const u = px => px / scale;
-  const svg = S('svg', { viewBox: vb.join(' '), width: W, height: H, class: `map-svg sch-svg${zoom ? ' zoomed' : ''}`, role: 'img', 'aria-label': 'Network diagram with each running train' });
+  const svg = S('svg', { viewBox: vb.join(' '), width: W, height: H, class: `map-svg sch-svg sch-theme-${theme === 'dark' ? 'dark' : 'light'}${zoom ? ' zoomed' : ''}`, role: 'img', 'aria-label': 'Network diagram with each running train' });
   const pathOf = flats => flats.map(f => { let d = `M${f[0]} ${f[1]}`; for (let i = 2; i < f.length; i += 2) d += `L${f[i]} ${f[i + 1]}`; return d; }).join('');
   // Lines, each in its colour; a chosen line stays bright and the rest fade.
   const lines = S('g', { class: 'sch-lines' });
@@ -1937,8 +1960,12 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, onTrai
   // Stations: a rounded bar across the lines running through, or a ring where three or more stretches meet.
   const st = S('g', { class: 'sch-stations' });
   const lbl = S('g', { class: 'map-labels sch-labels' });
-  const fs = 11; // label size in px
-  const showAll = scale >= 26, minLabel = showAll ? 0 : scale >= 13 ? 1 : 2;
+  const fs = W < 600 ? 12.5 : 13.5; // legible station names, even at default overview zoom
+  // City centre mode deliberately surfaces suburban/CBD station names at phone
+  // scale; the label-collision engine will suppress overlaps rather than hiding
+  // virtually the entire city behind an arbitrary zoom threshold.
+  const showAll = scale >= 25;
+  const minLabel = view === 'city' ? (scale >= 17 ? 0 : 1) : showAll ? 0 : scale >= 10 ? 1 : 2;
   const gap = sch.gap || 0.2;
   const lineHalf = Math.max(SCH_LINE_W / 2, u(1.5));
   // Labels are placed so they do not cover a line, a station or another label: each tries its usual
@@ -1964,7 +1991,7 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, onTrai
     }
   }
   const ctx2d = document.createElement('canvas').getContext('2d');
-  ctx2d.font = `500 ${fs}px ${getComputedStyle(document.body).fontFamily}`;
+  ctx2d.font = `650 ${fs}px ${getComputedStyle(document.body).fontFamily}`;
   const textW = text => u(ctx2d.measureText(text).width + 1);
   const F = u(fs);
   // Where a label goes on one side of a marker reaching ex across and ey up and down, with the boxes it covers.
@@ -2063,9 +2090,10 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, onTrai
   // language without copying artwork. Suppressed at overview zoom to avoid crowding
   // on small iPhone screens, except for an explicitly selected line.
   const ends = S('g', { class: 'sch-termini' });
-  if (scale >= 16 || lineFilter) for (const [line, name, x, y] of sch.terminals || []) {
+  // Line codes are visible at overview zoom, not only after zooming manually.
+  if (scale >= 5 || lineFilter) for (const [line, name, x, y] of sch.terminals || []) {
     if (lineFilter && line !== lineFilter) continue;
-    if (scale < 16 && !lineFilter) continue;
+    if (view === 'city' && !['T4', 'M1', 'T1', 'T2', 'T8'].includes(line)) continue;
     const right = x >= 0;
     const xOffset = u(right ? 18 : -18);
     const yOffset = u(line === 'T5' && (name === 'Richmond' || name === 'Leppington') ? 19 : -17);
