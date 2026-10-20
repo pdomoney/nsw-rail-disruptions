@@ -169,3 +169,12 @@
   .map-corner-label strong { font-size: .75rem; }
   .map-corner-label span { font-size: .58rem; }
 }
+
+.map-corner-label small {
+  display: block; margin-top: 6px; color: #4c616c;
+  font: 650 .72rem var(--font-narrow); letter-spacing: .01em;
+}
+.map-holder:has(.sch-theme-dark) + .map-corner-label small { color: #e1eaf1; }
+@media (max-width: 600px) {
+  .map-corner-label small { font-size: .6rem; }
+}
