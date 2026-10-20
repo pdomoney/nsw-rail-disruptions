@@ -1702,11 +1702,20 @@ async function viewMap(main) {
     svg.addEventListener('pointercancel', end);
   };
   const drawMapOnly = () => {
+    const liveTrains = D.live?.trains || [];
+    const cols = D.live?.cols || [];
+    const projectedIndex = cols.indexOf('sx');
+    const plotCount = kind === 'diagram' && projectedIndex !== -1
+      ? liveTrains.filter(t => t[projectedIndex] != null && (!lineFilter || t[0] === lineFilter)).length
+      : liveTrains.filter(t => !lineFilter || t[0] === lineFilter).length;
     mapLabel.replaceChildren(
       h('strong', {}, kind === 'diagram' ? 'SYDNEY TRAIN + METRO' : 'GEOGRAPHIC RAIL MAP'),
       h('span', {}, kind === 'diagram'
         ? (view === 'city' ? 'CITY CENTRE · NETWORK SCHEMATIC' : view === 'all' ? 'WHOLE NETWORK · NOT TO SCALE' : 'SYDNEY NETWORK · NOT TO SCALE')
-        : 'TfNSW STATIONS + REPORTED LIVE VEHICLES'));
+        : 'TfNSW STATIONS + REPORTED LIVE VEHICLES'),
+      h('small', {}, plotCount
+        ? `${plotCount.toLocaleString('en-AU')} reported vehicles ${kind === 'diagram' ? 'placed on the diagram' : 'with mapped coordinates'}`
+        : kind === 'diagram' ? 'No mapped vehicle positions reported' : 'No live vehicle positions reported'));
     if (kind === 'track' && geographicReady && window.L?.map) {
       const colors = Object.fromEntries(D.meta.lines.map(l => [l.id, l.color]));
       if (!geographic) geographic = createGeographicMap(holder, {
