@@ -37,15 +37,40 @@ for (const view of ['sydney','city']) {
       '" stroke-width=".3" stroke-linejoin="round" stroke-linecap="round"/>');
    }
  }
+ const stationLabels = [];
  for (const [name, [x,y]] of S.lay.pos) {
    if (x < left || x > right || y < top || y > bottom) continue;
    const m = S.marker.get(name);
    const r = m.ring ? .48 : .22;
    svg.push('<circle cx="' + x + '" cy="' + y + '" r="' + r +
       '" stroke="#273f4b" stroke-width=".13" fill="white"/>');
-   if (labels.has(name)) svg.push('<text x="' + (x + .6) + '" y="' + (y - .5) +
-    '" font-family="Arial,sans-serif" font-weight="600" font-size="1.1" fill="#243a49">' +
-      escape(name) + '</text>');
+   if (labels.has(name)) stationLabels.push({ name, x, y });
+ }
+ // The actual app uses a canvas collision engine. This independent SVG review
+ // approximates its label selection to avoid falsely making the CBD look worse
+ // through overlapping preview-only labels.
+ const font = view === 'city' ? .68 : 1.12;
+ const important = new Set(['Central','Town Hall','Wynyard','Circular Quay','Martin Place',
+   'Chatswood','Strathfield','Parramatta','Epping','Hornsby','Sydenham','Bondi Junction',
+   'Liverpool','Sutherland','Glenfield','Wolli Creek']);
+ const occupied = [];
+ stationLabels.sort((a,b) => Number(important.has(b.name)) - Number(important.has(a.name)));
+ for (const { name, x, y } of stationLabels) {
+   const tw = name.length * font * .54, margin = font * .35;
+   const placements = [
+     {x:x+.65, y:y-.32, anchor:'start', box:[x+.65,y-.32-font,x+.65+tw,y-.32+margin]},
+     {x:x-.65, y:y-.32, anchor:'end', box:[x-.65-tw,y-.32-font,x-.65,y-.32+margin]},
+     {x:x, y:y-.75, anchor:'middle', box:[x-tw/2,y-.75-font,x+tw/2,y-.75+margin]},
+     {x:x, y:y+1.15, anchor:'middle', box:[x-tw/2,y+1.15-font,x+tw/2,y+1.15+margin]},
+   ];
+   const p = placements.find(q => q.box[0]>left+.2 && q.box[2]<right-.2 && q.box[1]>top+.2 &&
+     q.box[3]<bottom-.2 && occupied.every(b => b[2]<q.box[0] || b[0]>q.box[2] ||
+       b[3]<q.box[1] || b[1]>q.box[3]));
+   if (!p) continue;
+   occupied.push(p.box);
+   svg.push('<text x="' + p.x + '" y="' + p.y + '" text-anchor="' + p.anchor +
+     '" font-family="Arial,sans-serif" font-weight="600" font-size="' + font +
+     '" fill="#243a49">' + escape(name) + '</text>');
  }
  for (const [line, name, x, y] of terminalCallouts(S.lay)) {
    if (x < left || x > right || y < top || y > bottom) continue;
