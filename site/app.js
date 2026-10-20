@@ -1791,7 +1791,9 @@ async function viewMap(main) {
         c.late5 ? `${c.late5.toLocaleString('en-AU')} are 5 or more minutes late${top.length ? ', most on ' : '.'}` : 'Almost all are on time.',
         ...(c.late5 && top.length ? [...badgeList(top), '.'] : [])] : 'No live positions right now.'),
       h('p', { class: 'tw-sub' }, live.at ? `Positions at ${time(live.at)}. Train-shaped icons are moving services; open circles are stations. Tap to inspect.` : ''));
-    const lineIds = Object.keys((kind === 'track' ? net : D.schematic).lines).filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
+    const lineIds = Object.keys((kind === 'track' ? net : D.schematic).lines)
+      .filter(id => trackedLine(id) && (kind !== 'official' || /^T[1-9]$|^M1$/.test(id)))
+      .sort((a, b) => orderOf(a) - orderOf(b));
     filters.replaceChildren(
       segmented([['official', 'TfNSW original + live'], ['track', 'Geographic map'], ['diagram', 'Custom diagram']], kind, async v => {
         kind = v; vb = null;
