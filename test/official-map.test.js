@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OFFICIAL_MAP, OFFICIAL_STOPS, OFFICIAL_CORRIDORS, normaliseStop,
-  projectToSegment, buildOfficialAlignment, locateOfficialTrain } from '../site/official-map.js';
+  projectToSegment, buildOfficialAlignment, locateOfficialTrain, OFFICIAL_LINE_STOPS } from '../site/official-map.js';
 
 const stops=[
   ['Tallawong Station',100,100,'M1',1],
@@ -10,6 +10,8 @@ const stops=[
   ['Epping Station',400,120,'M1 T9',1],
   ['Chatswood Station',550,140,'M1 T1 T9',2],
   ['Central Station',700,300,'M1 T1 T2 T4 T8',2],
+  ['Town Hall Station',720,260,'T1 T2 T3 T4 T8',2],
+  ['Wynyard Station',740,220,'T1 T2 T3 T8',2],
   ['Strathfield Station',400,300,'T1 T2 T3 T9',2],
   ['Parramatta Station',300,300,'T1 T2 T5',2],
   ['Blacktown Station',200,300,'T1 T5',2],
@@ -79,4 +81,14 @@ test('2024 route list is limited to printed T1-T9 and M1, with no fabricated Int
  const ids=Object.keys(OFFICIAL_CORRIDORS).sort();
  assert.ok(ids.includes('M1')&&ids.includes('T6'));
  assert.ok(!ids.includes('BMT')&&!ids.includes('SCO')&&!ids.includes('L1'));
+});
+
+test('train marker projection uses printed line-specific city strands at interchanges',()=>{
+  assert.notDeepEqual(OFFICIAL_LINE_STOPS.T1.Central, OFFICIAL_LINE_STOPS.M1.Central);
+  assert.ok(align.T1.some(e=>e.from==='Central'&&e.to==='Town Hall'));
+  assert.ok(align.M1.some(e=>e.from==='Chatswood') || align.M1.some(e=>e.from==='Epping'));
+  const t1=align.T1.find(e=>e.from==='Central'&&e.to==='Town Hall');
+  assert.deepEqual(t1.pdfA,OFFICIAL_LINE_STOPS.T1.Central);
+  assert.deepEqual(t1.pdfB,OFFICIAL_LINE_STOPS.T1['Town Hall']);
+  assert.ok(Math.abs(t1.pdfA[0]-OFFICIAL_LINE_STOPS.M1.Central[0])>20);
 });
