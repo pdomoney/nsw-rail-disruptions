@@ -17,6 +17,15 @@ An open, read-only record of delays, outages and service interruptions on Sydney
 
 It is an independent project and is not affiliated with Transport for NSW. For live travel information use [transportnsw.info](https://transportnsw.info/alerts).
 
+## Network diagram readability update
+
+The diagram now uses an independent, high-contrast **Classic map** canvas by default, even if the rest of the website is in dark mode. A **Night map** option is available for users who prefer the earlier appearance.
+
+- Use **Sydney** for the complete suburban network, **City centre** for readable CBD and inner-suburban stops (including Chatswood, Town Hall, Wynyard, Central, Sydenham and Bondi Junction), or **Whole network** for the intercity branches.
+- The map has thicker, more widely separated line strands, clearer interchange markers and larger station names. High-priority CBD stations receive label priority and coloured terminus identifiers appear at overview zoom, rather than requiring extra manual zoom.
+- A compact legend in the map frame identifies the rendering mode and how many live vehicle positions have been placed on the diagram. Zero reported vehicle positions are described explicitly; fixed station markers are never mistaken for moving trains.
+- Train-shaped glyphs are moving services only. Fixed stations remain rings/bars. Select either for information. The schematic remains **not geographically to scale**; switch to **Geographic map** to view real TfNSW stops and vehicle coordinates over streets.
+
 ## Geographic and diagram maps
 
 The **Geographic map** and **Network diagram** are different visualisations:
