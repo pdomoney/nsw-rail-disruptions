@@ -23,12 +23,12 @@ test('real site HTML refers to fingerprinted CSS and JS, including both imported
     const manifest = JSON.parse(fs.readFileSync(path.join(out, 'data/site-version.json'), 'utf8'));
     assert.equal(manifest.release, release);
     assert.equal(manifest.generatedAt, new Date(10_000).toISOString());
-    for (const asset of ['app.js', 'styles.css', 'patronage.css', 'station-patronage.css']) {
+    for (const asset of ['app.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css']) {
       assert.ok(html.includes(stamped[asset]), 'HTML must reference ' + stamped[asset]);
       assert.ok(fs.existsSync(path.join(out, stamped[asset])));
       assert.ok(!html.includes('="' + asset + '"'), 'HTML must not use stale ' + asset);
     }
-    for (const asset of ['charts.js', 'patronage.js', 'station-patronage.js']) {
+    for (const asset of ['charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js']) {
       assert.ok(app.includes("from './" + stamped[asset] + "'"), 'App import must be versioned: ' + asset);
       assert.ok(fs.existsSync(path.join(out, stamped[asset])));
     }
@@ -76,7 +76,7 @@ test('changing a stylesheet produces new version and refreshes its HTML referenc
 });
 
 test('editing a child JavaScript module changes the published app filename and import', () => {
-  for (const changed of ['charts.js', 'patronage.js', 'station-patronage.js']) {
+  for (const changed of ['charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js']) {
     const modified = fs.mkdtempSync(path.join(os.tmpdir(), 'nrd-module-source-'));
     const original = createOutput();
     const out = fs.mkdtempSync(path.join(os.tmpdir(), 'nrd-module-build-'));
