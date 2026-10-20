@@ -1,6 +1,7 @@
 import { heatmap, hbars, columns, line as lineChart, onColor, showTip, hideTip, compact } from './charts.js';
 import { viewPatronage } from './patronage.js';
 import { loadLeaflet, createGeographicMap, trainDescription } from './geo-map.js';
+import { drawOfficialOverlay, OFFICIAL_MAP } from './official-map.js';
 import { viewStationPatronage } from './station-patronage.js';
 
 // Replaced in the published JS asset, never in the repository source file.
@@ -1575,8 +1576,10 @@ function trackworkChart(container, { items, lines, days, selected, onLine }) {
 // ---------- live map ----------
 // Every train where it is now, on the network's real track: warmer dots are later, bigger dots fuller.
 async function loadMap(force = false, kind = 'track') {
-  if (kind === 'diagram') { if (!D.schematic) D.schematic = await getJson('data/schematic.json'); }
-  else if (!D.network) D.network = await getJson('data/network.json');
+  if ((kind === 'diagram' || kind === 'official') && !D.schematic)
+    D.schematic = await getJson('data/schematic.json');
+  if ((kind === 'track' || kind === 'official') && !D.network)
+    D.network = await getJson('data/network.json');
   if (!D.live || force) D.live = await getJson(`data/live.json?t=${Date.now()}`);
 }
 const decode = flat => { const pts = [[flat[0], flat[1]]]; for (let i = 2; i < flat.length; i += 2) { const [x, y] = pts[pts.length - 1]; pts.push([x + flat[i], y + flat[i + 1]]); } return pts; };
@@ -1594,14 +1597,33 @@ const sizeOf = pax => (pax == null ? 4 : MAP_SIZE.find(([m]) => pax < m)[1]);
 async function viewMap(main) {
   document.title = 'Live map | NSW Rail Disruptions';
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
-  // Two maps: the real track, or the network diagram (straight lines, evenly spaced stations).
-  let kind = q.get('map') === 'diagram' ? 'diagram' : q.get('map') === 'track' ? 'track' : prefs.get('mapKind', 'track');
+  // Three presentations: actual TfNSW PDF overlay, geographical map, custom diagram.
+  let kind = ['official','track','diagram'].includes(q.get('map'))
+    ? q.get('map') : prefs.get('mapKind', 'official');
+  if (!['official','track','diagram'].includes(kind)) kind = 'official';
+  let officialAvailable = null;
+  let officialFallback = false;
   await loadMap(true, kind);
   // The geographic view uses TfNSW coordinates and a street basemap. An offline/CDN
   // failure preserves the existing vector track view as a usable fallback.
   let geographicReady = false;
   if (kind === 'track') {
     try { await loadLeaflet(); geographicReady = true; } catch (e) { console.warn('Using offline track drawing:', e.message); }
+  }
+  // A missing official background must NEVER display floating trains on a blank canvas.
+  async function checkOfficialMap() {
+    if (officialAvailable !== null) return officialAvailable;
+    try {
+      const response = await fetch(OFFICIAL_MAP.image, { method:'HEAD', cache:'no-store' });
+      officialAvailable = response.ok && (response.headers.get('content-type') || '').startsWith('image/');
+    } catch { officialAvailable = false; }
+    return officialAvailable;
+  }
+  if (kind === 'official' && !(await checkOfficialMap())) {
+    kind='diagram';
+    officialFallback=true;
+    await loadMap(false,'diagram');
+    console.warn('Official TfNSW map not available; using original schematic instead.');
   }
   let view = ['city', 'sydney', 'all'].includes(q.get('view')) ? q.get('view') : prefs.get('mapView', 'sydney');
   if (!['city', 'sydney', 'all'].includes(view)) view = 'sydney';
@@ -1708,16 +1730,26 @@ async function viewMap(main) {
     const plotCount = kind === 'diagram' && projectedIndex !== -1
       ? liveTrains.filter(t => t[projectedIndex] != null && (!lineFilter || t[0] === lineFilter)).length
       : liveTrains.filter(t => !lineFilter || t[0] === lineFilter).length;
-    frame.classList.toggle('map-frame-diagram', kind === 'diagram');
-    frame.classList.toggle('map-frame-city', kind === 'diagram' && view === 'city');
+    frame.classList.toggle('map-frame-diagram', kind !== 'track');
+    frame.classList.toggle('map-frame-city', kind !== 'track' && view === 'city');
     mapLabel.replaceChildren(
-      h('strong', {}, kind === 'diagram' ? 'SYDNEY RAIL NETWORK · LAYOUT V' + (D.schematic?.layoutVersion || 1) : 'GEOGRAPHIC RAIL MAP'),
-      h('span', {}, kind === 'diagram'
-        ? (view === 'city' ? 'CITY CENTRE · NETWORK SCHEMATIC' : view === 'all' ? 'WHOLE NETWORK · NOT TO SCALE' : 'SYDNEY NETWORK · NOT TO SCALE')
-        : 'TfNSW STATIONS + REPORTED LIVE VEHICLES'),
+      h('strong', {}, kind === 'official' ? 'OFFICIAL TfNSW RAIL MAP' :
+        kind === 'diagram' ? 'CUSTOM RAIL DIAGRAM · V' + (D.schematic?.layoutVersion || 1) : 'GEOGRAPHIC RAIL MAP'),
+      h('span', {}, kind === 'official' ? '2024 PUBLISHED MAP · LIVE OVERLAY APPROXIMATE'
+        : kind === 'diagram'
+          ? (view === 'city' ? 'CITY CENTRE · NETWORK SCHEMATIC' : view === 'all' ? 'WHOLE NETWORK · NOT TO SCALE' : 'SYDNEY NETWORK · NOT TO SCALE')
+          : 'TfNSW STATIONS + REPORTED LIVE VEHICLES'),
       h('small', {}, plotCount
         ? `${plotCount.toLocaleString('en-AU')} reported vehicles ${kind === 'diagram' ? 'placed on the diagram' : 'with mapped coordinates'}`
         : kind === 'diagram' ? 'No mapped vehicle positions reported' : 'No live vehicle positions reported'));
+    if (kind === 'official' && officialAvailable) {
+      if (geographic) { geographic.destroy(); geographic=null; }
+      geo = drawOfficialOverlay(holder, { network:D.network, live:D.live,
+        view:view === 'all'?'sydney':view,lineFilter,vb,
+        onTrainSelect:showSelectedTrain,onStationSelect:showSelectedStation });
+      attach(geo.svg);
+      return;
+    }
     if (kind === 'track' && geographicReady && window.L?.map) {
       const colors = Object.fromEntries(D.meta.lines.map(l => [l.id, l.color]));
       if (!geographic) geographic = createGeographicMap(holder, {
@@ -1740,11 +1772,14 @@ async function viewMap(main) {
     h('div', { class: 'line-head' }, h('h1', {}, 'Live map')),
     head, filters, frame, legend,
     h('section', { class: 'section', 'aria-labelledby': 'map-notes-h' }, h('h2', { id: 'map-notes-h' }, 'Marked on the map'), notes),
-    h('p', { class: 'chart-note' }, 'Geographic map: real stop positions, route shapes and reported live vehicle positions from TfNSW GTFS, over OpenStreetMap streets and coastline (subject to map-tile availability). A train is a solid vehicle icon with a line code; a station is an open circle. Tap either for details. The network diagram is a separate, schematic interpretation inspired by TfNSW’s published map, not official map artwork and not geographically to scale. On it, moving trains are positioned approximately between matched stations. No train position is inferred when the live feed is absent.'));
+    h('p', { class: 'chart-note' },
+      'Official background: © 2024 Transport for NSW, Sydney rail network, CC BY 4.0. Source: ',
+      h('a', { href:'https://transportnsw.info/sydney-trains-network-map', target:'_blank', rel:'noopener noreferrer' }, 'original TfNSW PDF'),
+      '. Live train symbols are separately added approximate placements from GTFS data. The printed 2024 routes may differ from current services. Geographical map: real stop positions, route shapes and reported live vehicle positions from TfNSW GTFS, over OpenStreetMap streets and coastline (subject to map-tile availability). A train is a solid vehicle icon with a line code; a station is an open circle. Tap either for details. The network diagram is a separate, schematic interpretation inspired by TfNSW’s published map, not official map artwork and not geographically to scale. On it, moving trains are positioned approximately between matched stations. No train position is inferred when the live feed is absent.'));
 
   const setState = () => {
     const p = new URLSearchParams();
-    if (kind === 'diagram') p.set('map', 'diagram');
+    if (kind === 'diagram' || kind === 'official') p.set('map', kind);
     if (view !== 'sydney') p.set('view', view);
     if (lineFilter) p.set('line', lineFilter);
     history.replaceState(null, '', `#/map${p.toString() ? `?${p}` : ''}`);
@@ -1758,17 +1793,28 @@ async function viewMap(main) {
         c.late5 ? `${c.late5.toLocaleString('en-AU')} are 5 or more minutes late${top.length ? ', most on ' : '.'}` : 'Almost all are on time.',
         ...(c.late5 && top.length ? [...badgeList(top), '.'] : [])] : 'No live positions right now.'),
       h('p', { class: 'tw-sub' }, live.at ? `Positions at ${time(live.at)}. Train-shaped icons are moving services; open circles are stations. Tap to inspect.` : ''));
-    const lineIds = Object.keys((kind === 'diagram' ? D.schematic : net).lines).filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
+    const lineIds = Object.keys((kind === 'track' ? net : D.schematic).lines)
+      .filter(id => trackedLine(id) && (kind !== 'official' || /^T[1-9]$|^M1$/.test(id)))
+      .sort((a, b) => orderOf(a) - orderOf(b));
     filters.replaceChildren(
-      segmented([['track', 'Geographic map'], ['diagram', 'Network diagram']], kind, async v => {
-        kind = v; vb = null; prefs.set('mapKind', v); await loadMap(false, v);
+      segmented([['official', 'TfNSW original + live'], ['track', 'Geographic map'], ['diagram', 'Custom diagram']], kind, async v => {
+        kind = v; vb = null;
+        if (kind === 'official' && !(await checkOfficialMap())) {
+          showSelectedMapItem('Official image unavailable','The source PDF background has not been verified on this deployment. The custom schematic is still available.');
+          kind = 'diagram';
+          officialFallback=true;
+        }
         if (kind === 'track' && !geographicReady) {
           try { await loadLeaflet(); geographicReady = true; }
           catch (e) { console.warn('Using offline track drawing:', e.message); }
         }
+        await loadMap(false,kind);
+        if (kind==='official') officialFallback=false;
+        prefs.set('mapKind',kind);
         setState(); draw();
       }, 'Kind of map'),
-      segmented([['sydney', 'Sydney'], ['city', 'City centre'], ['all', 'Whole network']], view, v => {
+      segmented(kind === 'official' ? [['sydney','Published map'],['city','City centre']]
+        : [['sydney', 'Sydney'], ['city', 'City centre'], ['all', 'Whole network']], view, v => {
         view = v; vb = null; prefs.set('mapView', v); setState(); draw();
       }, 'Map area'),
       ...(kind === 'diagram' ? [segmented([['light', 'Classic map'], ['dark', 'Night map']], diagramStyle, v => {
@@ -1779,13 +1825,23 @@ async function viewMap(main) {
           h('option', { value: '' }, 'All lines'),
           lineIds.map(id => { const o = h('option', { value: id }, `${id} ${lineInfo(id).name}`); if (id === lineFilter) o.selected = true; return o; }))));
     drawMapOnly();
+    if (officialFallback) {
+      head.append(h('p', { class:'tw-sub' },
+        'The verified original TfNSW map image is not available on this deployment, so the custom diagram is shown instead.'));
+    }
+    if (kind === 'official' && geo?.positioned != null) {
+      mapLabel.append(h('small', {}, geo.positioned + ' live vehicles positioned · ' +
+        geo.unmatched + ' excluded where alignment is uncertain'));
+    }
     legend.replaceChildren(
       h('div', { class: 'key map-symbol-key' },
         h('span', {}, h('i', { class: 'map-key-vehicle' }, '▰'), ' Moving train / metro'),
         h('span', {}, h('i', { class: 'map-key-station' }), ' Station / stop')),
       h('div', { class: 'key' }, MAP_DELAY.map(b => h('span', {}, h('i', { class: `map-dot ${b.cls}` }), b.label)), h('span', {}, h('i', { class: 'map-dot mt-none' }), 'No delay figure')),
       h('div', { class: 'key' }, h('span', {}, h('i', { class: 'map-sec incident' }), 'Incident'), h('span', {}, h('i', { class: 'map-sec closed' }), 'Closed for trackwork now'),
-        h('span', { class: 'muted' }, kind === 'diagram'
+        h('span', { class: 'muted' }, kind === 'official'
+          ? '© Transport for NSW, 2024 map (CC BY). Moving train icons are our approximate overlays, not official map symbols. An unmatched service is not displayed.'
+          : kind === 'diagram'
           ? 'TfNSW-style line colours and distinct station stops. Light rail is only on the geographic map. Zoom in for additional names.'
           : geographic ? 'Geographically placed stations and services over OpenStreetMap. Pinch or drag; use +/− to zoom. Tap trains or stations for details.'
             : 'Offline street-map fallback. Tracks and stations still use TfNSW geographic positions.')));
@@ -1803,7 +1859,7 @@ async function viewMap(main) {
     if (geographic) { geographic.destroy(); geographic = null; }
   };
   onResize(() => { if (geographic) geographic.resize(); else draw(); });
-  pageRefresh = async () => { await loadMap(true, kind); draw(); };
+  pageRefresh = async () => { await loadMap(true,kind==='official'?'diagram':kind); draw(); };
 }
 
 function svgTrainMarker(S, { x, y, line, delay, pax, headsign, fullest, units, compact, dim, select }) {

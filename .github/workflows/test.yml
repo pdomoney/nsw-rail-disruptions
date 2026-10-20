@@ -15,6 +15,19 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      - name: Verify and render published TfNSW PDF background
+        run: |
+          if ! command -v pdftoppm >/dev/null || ! command -v pdftotext >/dev/null; then
+            sudo apt-get -qq update
+            sudo apt-get -y -qq install poppler-utils
+          fi
+          OFFICIAL_MAP_PREVIEW_UNVERIFIED="1" OFFICIAL_MAP_PNG_INPUT="" bash scripts/render-official-map.sh test-artifacts/assets
+      - name: Upload original map rendition for calibration review
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-tfnsw-map-background
+          path: test-artifacts/assets/tfnsw-sydney-rail-2024.png
+          retention-days: 21
       - name: Render network layout review previews
         run: node scripts/preview-network.js
       - name: Attach network diagram previews
