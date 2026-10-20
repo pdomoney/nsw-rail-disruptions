@@ -512,11 +512,14 @@ function stationNames() {
 // track named in current incidents and trackwork.
 const MAP_LABELS = {
   // Always labelled, and labelled in the Sydney view.
-  2: ['Central', 'Parramatta', 'Strathfield', 'Chatswood', 'Hornsby', 'Penrith', 'Liverpool', 'Campbelltown', 'Sutherland', 'Bondi Junction',
+  2: ['Central', 'Town Hall', 'Wynyard', 'Circular Quay', 'Martin Place', 'Redfern', 'Barangaroo',
+    'Victoria Cross', 'Crows Nest', 'Gadigal', 'Waterloo', 'Parramatta', 'Strathfield', 'Chatswood',
+    'Hornsby', 'Penrith', 'Liverpool', 'Campbelltown', 'Sutherland', 'Bondi Junction',
     'Tallawong', 'Bankstown', 'Newcastle', 'Gosford', 'Wollongong', 'Lithgow', 'Goulburn', 'Bomaderry', 'Scone', 'Richmond', 'Cronulla', 'Leppington'],
   1: ['Wynyard', 'North Sydney', 'Epping', 'Blacktown', 'Lidcombe', 'Hurstville', 'Sydenham', 'Wolli Creek', 'Olympic Park', 'Macquarie University',
     'Westmead', 'Carlingford', 'Randwick', 'Juniors Kingsford', 'Waterfall', 'Berowra', 'Granville', 'Schofields', 'Cabramatta', 'Glenfield'],
 };
+const CITY_VIEW = [[-33.815, 151.172], [-33.935, 151.26]]; // geographically bounded CBD / inner suburbs
 const SYDNEY_VIEW = [[-33.575, 150.655], [-34.16, 151.29]]; // north-west and south-east corners (lat, lon)
 
 function buildMap(lines, status, trackwork, ongoing) {
@@ -546,10 +549,11 @@ function buildMap(lines, status, trackwork, ongoing) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const cs of Object.values(chains)) for (const c of cs) for (const [x, y] of c) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   const [sa, sb] = [project(...SYDNEY_VIEW[0]), project(...SYDNEY_VIEW[1])];
+  const [ca, cb] = [project(...CITY_VIEW[0]), project(...CITY_VIEW[1])];
   writeJson(out('data', 'network.json'), {
     generatedAt: iso(now),
     unit: 10,
-    views: { sydney: [sa[0], sa[1], sb[0], sb[1]], all: [x0, y0, x1, y1] },
+    views: { city: [ca[0], ca[1], cb[0], cb[1]], sydney: [sa[0], sa[1], sb[0], sb[1]], all: [x0, y0, x1, y1] },
     lines: Object.fromEntries(Object.entries(chains).map(([l, cs]) => [l, cs.map(encodeChain)])),
     stations: [...stations.entries()].map(([k, s]) => [s.name, s.xy[0], s.xy[1], [...s.lines].join(' '), labels.get(k) || 0]),
   });
@@ -564,6 +568,7 @@ function buildMap(lines, status, trackwork, ongoing) {
   writeJson(out('data', 'schematic.json'), {
     generatedAt: iso(now),
     views: {
+      city: [-5.8, -10.9, 8.6, 6.5],
       sydney: [-41, -33, 8, 29.5],
       all: [Math.min(...allPts.map(p => p[0])) - 2, Math.min(...allPts.map(p => p[1])) - 2, Math.max(...allPts.map(p => p[0])) + 4, Math.max(...allPts.map(p => p[1])) + 2],
     },
