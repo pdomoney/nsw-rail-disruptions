@@ -1623,8 +1623,11 @@ async function viewMap(main) {
   let geographic = null; // Leaflet instance for the real-world map
   const selectedTrain = h('div', { class: 'map-selected-train', role: 'status', 'aria-live': 'polite' });
   const showSelectedTrain = label => selectedTrain.replaceChildren(
-    h('strong', {}, 'Selected moving service'),
+    h('strong', {}, 'Moving train / metro'),
     h('p', {}, label));
+  const showSelectedStation = (name, lines) => selectedTrain.replaceChildren(
+    h('strong', {}, 'Fixed station / stop'),
+    h('p', {}, name + ' · Served by ' + lines.join(', ')));
   const svgPoint = (clientX, clientY) => {
     const r = geo.svg.getBoundingClientRect();
     const cur = vb || geo.base;
@@ -1705,8 +1708,8 @@ async function viewMap(main) {
     }
     if (geographic) { geographic.destroy(); geographic = null; }
     geo = kind === 'diagram'
-      ? schematicMap(holder, { sch: D.schematic, live: D.live, view, lineFilter, vb, onTrainSelect: showSelectedTrain })
-      : networkMap(holder, { net: D.network, live: D.live, view, lineFilter, vb, onTrainSelect: showSelectedTrain });
+      ? schematicMap(holder, { sch: D.schematic, live: D.live, view, lineFilter, vb, onTrainSelect: showSelectedTrain, onStationSelect: showSelectedStation })
+      : networkMap(holder, { net: D.network, live: D.live, view, lineFilter, vb, onTrainSelect: showSelectedTrain, onStationSelect: showSelectedStation });
     attach(geo.svg);
   };
   const legend = h('div', { class: 'map-legend' });
@@ -1808,7 +1811,7 @@ function svgTrainMarker(S, { x, y, line, delay, pax, headsign, fullest, units, c
   return group;
 }
 
-function networkMap(container, { net, live, view, lineFilter, vb: zoom, onTrainSelect }) {
+function networkMap(container, { net, live, view, lineFilter, vb: zoom, onTrainSelect, onStationSelect }) {
   const NS = 'http://www.w3.org/2000/svg';
   const S = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, v); return n; };
   const [vx0, vy0, vx1, vy1] = net.views[view];
@@ -1853,7 +1856,14 @@ function networkMap(container, { net, live, view, lineFilter, vb: zoom, onTrainS
   const minLabel = zoomed >= 3 ? 0 : zoomed >= 1.6 ? 1 : view === 'all' || W < 640 ? 2 : 1;
   for (const [name, x, y, ls, label] of net.stations) {
     if (lineFilter && !ls.split(' ').includes(lineFilter)) continue;
-    st.append(S('circle', { cx: x, cy: y, r: u(label ? 2.4 : 1.5) }));
+    const station = S('circle', { cx: x, cy: y, r: u(label ? 2.4 : 1.5),
+      class: 'map-station-select', role: 'button', tabindex: label >= 1 || !!lineFilter ? '0' : '-1',
+      'aria-label': 'Fixed station: ' + name + '. Lines ' + ls.split(' ').join(', ') });
+    station.addEventListener('click', () => onStationSelect?.(name, ls.split(' ')));
+    station.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onStationSelect?.(name, ls.split(' ')); }
+    });
+    st.append(station);
     // Light rail stops are close together: name them only when zoomed well in.
     const tramOnly = ls.split(' ').every(l => lineInfo(l).mode === 'lightrail');
     if (label >= minLabel && (label || !tramOnly || zoomed >= 6)) {
@@ -1891,7 +1901,7 @@ function networkMap(container, { net, live, view, lineFilter, vb: zoom, onTrainS
 // The network diagram: this site's own schematic of the lines (lib/schematic.js), with each train placed
 // between the two stations it is between, and the same incidents and closures.
 const SCH_LINE_W = 0.16;   // a line's width in diagram units (about a fifth of the gap between stations)
-function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, onTrainSelect }) {
+function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, onTrainSelect, onStationSelect }) {
   const NS = 'http://www.w3.org/2000/svg';
   const S = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, v); return n; };
   const [vx0, vy0, vx1, vy1] = sch.views[view];
@@ -1989,6 +1999,14 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, onTrai
     const c = ring
       ? S('circle', { cx: x, cy: y, r, 'data-name': name, class: cls, 'stroke-width': sw })
       : S('rect', { x: -0.12, y: -half, width: 0.24, height: 2 * half, rx: 0.12, transform: `translate(${x} ${y}) rotate(${angle})`, 'data-name': name, class: cls, 'stroke-width': sw });
+    c.setAttribute('role', 'button');
+    c.setAttribute('tabindex', level >= 1 || !!lineFilter ? '0' : '-1');
+    c.setAttribute('aria-label', 'Fixed station: ' + name + '. Lines ' + on.join(', '));
+    c.classList.add('map-station-select');
+    c.addEventListener('click', () => onStationSelect?.(name, on));
+    c.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onStationSelect?.(name, on); }
+    });
     const tip = [{ value: name.replace(/\s+\(.*\)$/, '') }, { label: on.join(' · '), muted: true }];
     c.addEventListener('pointermove', ev => showTip(tip, ev.clientX, ev.clientY));
     c.addEventListener('pointerleave', hideTip);
