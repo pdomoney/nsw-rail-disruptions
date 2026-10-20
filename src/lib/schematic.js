@@ -268,6 +268,32 @@ export function buildSchematic({ gap = 0.2 } = {}) {
   return { lay, seqs, usedBy, drawnOn, pieces, piece, width, linesAt, marker, key, gap };
 }
 
+// Diagram termini emulate the official map's visual language: compact, coloured
+// line-code tags adjacent to named termini. Coordinates remain this project's own.
+export const TERMINUS_CALLOUTS = {
+  T1: ['Berowra', 'Emu Plains', 'Richmond'],
+  T2: ['Leppington'],
+  T3: ['Liverpool'],
+  T4: ['Bondi Junction', 'Cronulla'],
+  T5: ['Richmond', 'Leppington'],
+  T6: ['Bankstown'],
+  T7: ['Olympic Park'],
+  T8: ['Macarthur'],
+  T9: ['Hornsby'],
+  M1: ['Tallawong', 'Sydenham'],
+};
+export function terminalCallouts(layout) {
+  const entries = [];
+  for (const [line, termini] of Object.entries(TERMINUS_CALLOUTS)) {
+    for (const name of termini) {
+      const p = layout.pos.get(name);
+      if (!p) throw new Error('Schematic terminus missing: ' + line + ' / ' + name);
+      entries.push([line, name, ...p]);
+    }
+  }
+  return entries;
+}
+
 // Where each station's name goes first: r / l (right or left), a / b (above or below), the corners al / ar /
 // bl / br, or slanted at 45°: ur (up and to the right) and dl (down and to the left), for stations along
 // horizontal stretches. Picked from the direction of the line through the station, with these exceptions.

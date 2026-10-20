@@ -1,0 +1,73 @@
+/* Geographic rail context + unmistakable moving-vehicle markers.
+   An open ring always represents a station; a solid train silhouette is a live service. */
+.geo-map { width: 100%; height: clamp(420px, 72vh, 790px); min-height: 420px; background: var(--surface-2); z-index: 0; }
+.geo-map .leaflet-container { background: var(--surface-2); font-family: var(--font); }
+.geo-map .leaflet-popup-content { font: 500 .89rem/1.4 var(--font); min-width: 155px; }
+.geo-map .leaflet-popup-content strong { font-size: 1rem; }
+.geo-map .leaflet-popup-content p { margin: 7px 0; }
+.geo-map .leaflet-control-attribution { font-size: 10px; }
+.geo-vehicle { background: none; border: 0; }
+.geo-vehicle-symbol {
+  display: flex; align-items: center; justify-content: center; position: relative;
+  width: 32px; height: 28px; border-radius: 6px;
+  color: #fff; background: var(--map-ok);
+  border: 2px solid #fff; box-shadow: 0 2px 6px #0008;
+}
+.geo-vehicle-symbol svg { width: 19px; height: 19px; color: #fff; }
+.geo-vehicle-symbol .geo-vehicle-line {
+  position: absolute; right: -7px; bottom: -6px; padding: 1px 4px;
+  color: #fff; background: #263440; border: 1px solid #fff;
+  border-radius: 3px; font-size: 9px; font-weight: 800; line-height: 13px;
+}
+.geo-vehicle-symbol.mt-2 { background: #b77813; }
+.geo-vehicle-symbol.mt-5 { background: #c74e22; }
+.geo-vehicle-symbol.mt-10 { background: #ab1923; }
+.geo-vehicle-symbol.mt-none { background: #60717a; }
+.geo-vehicle.leaflet-marker-icon:focus-visible { outline: 3px solid #007acc; outline-offset: 3px; }
+.map-selected-train {
+  position: absolute; bottom: 35px; left: 12px; z-index: 650; width: min(92%, 470px);
+  border-left: 4px solid var(--plan-4); border-radius: 6px;
+  padding: 10px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  background: var(--surface); color: var(--ink); border-top: 1px solid var(--rule-strong);
+  box-shadow: 0 4px 18px #0003; max-height: 135px; overflow: auto;
+}
+.map-selected-train:empty { display: none; }
+.map-selected-train strong { font-size: .86rem; color: var(--muted); }
+.map-selected-train p { margin: 4px 0; font-size: .92rem; }
+.map-selection-close {
+  cursor: pointer; flex: none; min-width: 32px; min-height: 32px; border-radius: 5px;
+  border: 1px solid var(--rule-strong); color: var(--ink); background: var(--surface-2);
+  font-size: 1.3rem; line-height: 1;
+}
+.map-vehicle { cursor: pointer; outline: none; }
+.map-vehicle.dim { opacity: .16; }
+.map-vehicle-shell { fill: var(--map-ok); stroke: var(--surface); }
+.map-vehicle.mt-2 .map-vehicle-shell { fill: var(--heat-3); }
+.map-vehicle.mt-5 .map-vehicle-shell { fill: var(--heat-5); }
+.map-vehicle.mt-10 .map-vehicle-shell { fill: var(--heat-6); }
+.map-vehicle.mt-none .map-vehicle-shell { fill: var(--muted); }
+.map-vehicle-windshield { fill: var(--surface); opacity: .96; }
+.map-vehicle-light { fill: #f9ec9c; }
+.map-vehicle-code { fill: #fff; font-family: var(--font-narrow); font-weight: 800; pointer-events: none; paint-order: stroke; }
+.map-vehicle:focus-visible .map-vehicle-shell { stroke: var(--focus); stroke-width: 2.5px; }
+.map-vehicle:hover .map-vehicle-shell { stroke: var(--focus); }
+.map-symbol-key { border: 1px solid var(--rule); padding: 9px 11px; border-radius: 6px; background: var(--surface); }
+.map-key-vehicle { display: inline-flex; width: 25px; height: 22px; color: white; font-style: normal;
+  justify-content: center; align-items: center; font-size: 16px; border-radius: 5px;
+  background: var(--map-ok); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--rule-strong); }
+.map-key-station { display: inline-block; width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid var(--muted); background: var(--surface); }
+.sch-svg .sch-stations .ix { stroke-width: .12; }
+.sch-terminal-label { pointer-events: none; }
+.sch-terminal-label rect { stroke: var(--surface); stroke-width: .08; }
+.sch-terminal-label text { fill: #fff; font-family: var(--font-narrow); font-weight: 800; paint-order: normal; }
+.sch-terminal-label.dim { opacity: .18; }
+.map-frame .map-zoom { z-index: 600; }
+@media (max-width: 600px) {
+  .geo-map { height: 67vh; min-height: 400px; }
+  .map-frame .map-zoom { right: 8px; top: 8px; }
+}
+
+/* On both SVG maps, stations are keyboard and tap selectable without resembling vehicles. */
+.map-station-select { cursor: pointer; }
+.map-station-select:hover, .map-station-select:focus-visible { stroke: var(--focus) !important; stroke-width: 2px; outline: none; }

@@ -18,7 +18,7 @@ import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from '.
 import { delayClock, CAR_LOAD } from './lib/clock.js';
 import { trackworkItems } from './lib/trackwork.js';
 import { project, projectChains, encodeChain, TrackGraph, affectedPlaces, stationKey } from './lib/netmap.js';
-import { buildSchematic, diagramSections, labelSide, trainPlacer } from './lib/schematic.js';
+import { buildSchematic, diagramSections, labelSide, trainPlacer, terminalCallouts } from './lib/schematic.js';
 import { addDays, daysBetween, iso, splitByDay, sydDate, sydMidnight, sydHour, toMs, HOUR, DAY, MIN } from './lib/time.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
@@ -569,6 +569,7 @@ function buildMap(lines, status, trackwork, ongoing) {
     },
     lines: Object.fromEntries(Object.entries(SCH.pieces).map(([l, ps]) => [l, ps.map(flat)])),
     gap: SCH.gap,
+    terminals: terminalCallouts(SCH.lay),
     cols: ['name', 'x', 'y', 'width', 'lines', 'label', 'side', 'angle', 'ring'],
     stations: [...SCH.lay.pos].map(([n, [x, y]]) => {
       const m = SCH.marker.get(n);
