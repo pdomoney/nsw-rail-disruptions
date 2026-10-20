@@ -24,7 +24,7 @@ export const OFFICIAL_STOPS = Object.freeze({
   'Redfern': [736,694], 'Sydenham': [705,781], 'Waterloo': [766,709],
   'Richmond': [155,315], 'Windsor': [155,376], 'Schofields': [155,455],
   'Blacktown': [242,574], 'Parramatta': [353,648],
-  'Strathfield': [513,637], 'Lidcombe': [448,703], 'Olympic Park': [448,616],
+  'Strathfield': [513,637], 'Lidcombe': [448,703], 'Olympic Park': [468,617],
   'Granville': [384,672], 'Merrylands': [291,706],
   'Regents Park': [441,770], 'Bankstown': [479,827],
   'Cabramatta': [294,818], 'Liverpool': [294,868], 'Glenfield': [294,940],
@@ -34,6 +34,18 @@ export const OFFICIAL_STOPS = Object.freeze({
   'Wolli Creek': [690,824], 'Hurstville': [689,966],
   'Sutherland': [689,1090], 'Cronulla': [894,1101], 'Waterfall': [689,1177],
   'East Hills': [542,923],
+});
+// On the original artwork, city interchange lines run side-by-side at different
+// x coordinates. These override the station-wide tap target for the *train* icon.
+// They are not separate stations, nor geospatial lat/lon.
+export const OFFICIAL_LINE_STOPS = Object.freeze({
+  T1: { 'Central':[744,676], 'Town Hall':[744,638], 'Wynyard':[744,604] },
+  T2: { 'Central':[750,676], 'Town Hall':[750,638], 'Wynyard':[750,604] },
+  T3: { 'Central':[754,676], 'Town Hall':[754,638], 'Wynyard':[754,604] },
+  T4: { 'Central':[779,676], 'Town Hall':[781,638], 'Martin Place':[785,622] },
+  T8: { 'Central':[759,676], 'Town Hall':[759,638], 'Wynyard':[759,604] },
+  M1: { 'Central':[785,676], 'Gadigal':[785,644], 'Martin Place':[785,621],
+    'Waterloo':[768,708], 'Sydenham':[704,781] },
 });
 // Every sequence follows stations printed on the 2024 map. No extrapolation past last anchor.
 // A given train must be close to the corresponding geographical stop-to-stop line.
@@ -83,7 +95,9 @@ export function buildOfficialAlignment(network) {
         const from = route[i-1], to=route[i], a=geo.get(normaliseStop(from)), b=geo.get(normaliseStop(to));
         if (!a || !b || !OFFICIAL_STOPS[from] || !OFFICIAL_STOPS[to]) continue;
         if (!a.lines.has(id) || !b.lines.has(id)) continue;
-        edges.push({ from, to, geoA:a.xy, geoB:b.xy, pdfA:OFFICIAL_STOPS[from], pdfB:OFFICIAL_STOPS[to] });
+        const override = OFFICIAL_LINE_STOPS[id] || {};
+        edges.push({ from, to, geoA:a.xy, geoB:b.xy,
+          pdfA:override[from] || OFFICIAL_STOPS[from], pdfB:override[to] || OFFICIAL_STOPS[to] });
       }
     }
     segments[id]=edges;
