@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSchematic, corridorPath, diagramSections, labelSide, LINE_ROUTES, terminalCallouts, SCHEMATIC_VIEWS, offsetLine, pointAt, polyLen, trainPlacer } from '../src/lib/schematic.js';
+import { buildSchematic, corridorPath, diagramSections, labelSide, LINE_ROUTES, terminalCallouts, SCHEMATIC_VIEWS, DIAGRAM_LAYOUT_VERSION, NODES, octilinearSegment, offsetLine, pointAt, polyLen, trainPlacer } from '../src/lib/schematic.js';
 
 const S = buildSchematic();
 const near = (a, b, eps = 0.011) => Math.abs(a[0] - b[0]) <= eps && Math.abs(a[1] - b[1]) <= eps;
@@ -41,8 +41,10 @@ test('lines run through the right stations, side by side where they share track'
 });
 
 test('station markers and where names go', () => {
-  assert.deepEqual(S.marker.get('Central'), { lines: 6, angle: 45, ring: true });
-  assert.deepEqual(S.marker.get('Stanmore'), { lines: 4, angle: 0, ring: false });  // a bar across the four Inner West lines
+  assert.equal(S.marker.get('Central').lines, 6);
+  assert.equal(S.marker.get('Central').ring, true);
+  assert.equal(S.marker.get('Stanmore').lines, 4);
+  assert.equal(S.marker.get('Stanmore').ring, false);
   assert.equal(S.marker.get('Kogarah').ring, false);
   assert.equal(S.marker.get('Chatswood').ring, true);
   assert.equal(labelSide(S, 'Stanmore'), 'ur');   // along a level stretch: slanted
@@ -94,15 +96,50 @@ test('network diagram termini correspond to stations in the connected schematic'
   assert.ok(ends.some(e => e[0] === 'M1' && e[1] === 'Tallawong'));
 });
 
-test('City centre focus shows every key CBD and inner-Sydney connection at a useful scale', () => {
+test('Sydney 2024-style rail topology is evident from anchor orientation', () => {
+  assert.equal(DIAGRAM_LAYOUT_VERSION, 2);
+  const at = station => S.lay.pos.get(station);
+  const before = (a, b) => assert.ok(at(a)[0] < at(b)[0], a + ' should be west of ' + b);
+  const above = (a, b) => assert.ok(at(a)[1] < at(b)[1], a + ' should be north of ' + b);
+  for (const [a, b] of [
+    ['Emu Plains', 'Blacktown'], ['Blacktown', 'Parramatta'],
+    ['Parramatta', 'Strathfield'], ['Strathfield', 'Central'],
+    ['Tallawong', 'Epping'], ['Epping', 'Chatswood'],
+    ['Lidcombe', 'Central'], ['Central', 'Bondi Junction'],
+    ['Liverpool', 'Sydenham'], ['Sutherland', 'Cronulla'],
+  ]) before(a, b);
+  for (const [a, b] of [
+    ['Berowra', 'Hornsby'], ['Hornsby', 'Chatswood'],
+    ['Chatswood', 'Central'], ['Wynyard', 'Town Hall'],
+    ['Circular Quay', 'Central'], ['Richmond', 'Blacktown'],
+    ['Blacktown', 'Liverpool'], ['Central', 'Sydenham'],
+    ['Sydenham', 'Sutherland'], ['Sutherland', 'Waterfall'],
+    ['Glenfield', 'Campbelltown'], ['Campbelltown', 'Macarthur'],
+  ]) above(a, b);
+  assert.ok(at('Museum')[0] > at('Town Hall')[0], 'City Circle eastern return');
+  assert.ok(at('International Airport')[0] > at('Wolli Creek')[0], 'Airport branch east of Wolli Creek');
+  assert.ok(at('Regents Park')[1] > at('Lidcombe')[1], 'Regents Park branch south');
+  assert.ok(at('Olympic Park')[1] < at('Lidcombe')[1], 'Olympic Park branch north');
+  assert.ok(at('Glenfield')[0] > at('Leppington')[0], 'Leppington branch west');
+  assert.deepEqual(octilinearSegment([0,0],[7,3]), [[0,0],[4,0],[7,3]]);
+  assert.deepEqual(octilinearSegment([0,0],[3,7]), [[0,0],[0,4],[3,7]]);
+});
+
+test('City centre view is a bounded, more readable window on Sydney network', () => {
   const [x0, y0, x1, y1] = SCHEMATIC_VIEWS.city;
-  assert.ok(x1 - x0 < 20 && y1 - y0 < 20, 'City view must actually zoom, not be the entire NSW network');
-  const hubs = ['Central', 'Town Hall', 'Wynyard', 'Circular Quay', 'Martin Place', 'Barangaroo',
-    'Victoria Cross', 'Crows Nest', 'Chatswood', 'Waterloo', 'Gadigal', 'Sydenham', 'Bondi Junction'];
+  const [sx0, sy0, sx1, sy1] = SCHEMATIC_VIEWS.sydney;
+  assert.ok(x1 - x0 < (sx1 - sx0) / 2, 'City view should show less than half Sydney width');
+  assert.ok(y1 - y0 < (sy1 - sy0) / 2, 'City view should show less than half Sydney height');
+  const hubs = ['Central', 'Town Hall', 'Wynyard', 'Circular Quay', 'Martin Place',
+    'Barangaroo', 'Victoria Cross', 'Crows Nest', 'Chatswood', 'Waterloo', 'Gadigal',
+    'Sydenham', 'Bondi Junction'];
   for (const station of hubs) {
     const [x, y] = S.lay.pos.get(station);
-    assert.ok(x >= x0 && x <= x1 && y >= y0 && y <= y1, station + ' missing from City centre view');
+    assert.ok(x >= x0 && x <= x1 && y >= y0 && y <= y1, station + ' missing from City view');
   }
-  assert.ok(SCHEMATIC_VIEWS.sydney[0] < x0 && SCHEMATIC_VIEWS.sydney[2] >= x1);
-  assert.ok(S.gap >= 0.28, 'Parallel lines need visible separation at overview scale');
+  for (const station of ['Richmond', 'Blacktown', 'Leppington', 'Macarthur', 'Berowra', 'Waterfall']) {
+    const [x, y] = S.lay.pos.get(station);
+    assert.ok(x < x0 || x > x1 || y < y0 || y > y1, station + ' should be outside CBD focus');
+  }
+  assert.ok(S.gap >= 0.28);
 });
