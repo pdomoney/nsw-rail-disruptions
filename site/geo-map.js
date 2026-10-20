@@ -40,11 +40,14 @@ export function loadLeaflet() {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = SOURCE + 'leaflet.css';
+    link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+    link.crossOrigin = 'anonymous';
     document.head.append(link);
     const script = document.createElement('script');
     script.src = SOURCE + 'leaflet.js';
     script.async = true;
     script.crossOrigin = 'anonymous';
+    script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
     const timer = setTimeout(() => reject(new Error('Map library unavailable')), 9000);
     script.onload = () => { clearTimeout(timer); window.L?.map ? resolve(window.L) : reject(new Error('Map library did not initialise')); };
     script.onerror = () => { clearTimeout(timer); reject(new Error('Map library unavailable')); };
@@ -87,16 +90,23 @@ export function createGeographicMap(container, { net, live, view, lineFilter, co
   const paths = Object.fromEntries(Object.entries(net.lines).map(([id, chains]) =>
     [id, chains.map(decodeProjectedChain).filter(chain => chain.length > 1)]));
   let lastView = null;
+  let lastFilter = null;
   const boundsFor = name => {
     const v = net.views[name] || net.views.sydney;
     return L.latLngBounds(geographicCoordinates(v[0], v[1]), geographicCoordinates(v[2], v[3]));
   };
   function update({ live: latest, view: nextView, lineFilter: filter }) {
-    rails.clearLayers(); stations.clearLayers(); incidents.clearLayers(); vehicles.clearLayers();
+    incidents.clearLayers();
+    vehicles.clearLayers();
     if (nextView !== lastView) {
       map.fitBounds(boundsFor(nextView).pad(.03), { animate: false });
       lastView = nextView;
     }
+    // Track geometry and station positions remain stable for the lifetime of this map.
+    // Do not recreate thousands of rail segments on every five-minute live refresh.
+    if (lastFilter !== filter) {
+      rails.clearLayers(); stations.clearLayers();
+      lastFilter = filter;
     const faded = !!filter;
     for (const [id, pieces] of Object.entries(paths)) {
       if (!colors[id]) continue;
@@ -119,6 +129,7 @@ export function createGeographicMap(container, { net, live, view, lineFilter, co
         color: '#354552', fillColor: '#fff', fillOpacity: 1, weight: 1.4, renderer: canvas });
       st.bindPopup(popup(name + ' station', ['Served by: ' + served.join(', '), 'Location from TfNSW GTFS stops.']));
       st.addTo(stations);
+    }
     }
     for (const o of latest?.overlays || []) {
       if (filter && !o.lines.includes(filter)) continue;
