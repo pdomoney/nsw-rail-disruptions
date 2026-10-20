@@ -18,7 +18,7 @@ import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from '.
 import { delayClock, CAR_LOAD } from './lib/clock.js';
 import { trackworkItems } from './lib/trackwork.js';
 import { project, projectChains, encodeChain, TrackGraph, affectedPlaces, stationKey } from './lib/netmap.js';
-import { buildSchematic, diagramSections, labelSide, trainPlacer, terminalCallouts } from './lib/schematic.js';
+import { buildSchematic, diagramSections, labelSide, trainPlacer, terminalCallouts, SCHEMATIC_VIEWS } from './lib/schematic.js';
 import { addDays, daysBetween, iso, splitByDay, sydDate, sydMidnight, sydHour, toMs, HOUR, DAY, MIN } from './lib/time.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
@@ -568,8 +568,7 @@ function buildMap(lines, status, trackwork, ongoing) {
   writeJson(out('data', 'schematic.json'), {
     generatedAt: iso(now),
     views: {
-      city: [-5.8, -10.9, 8.6, 6.5],
-      sydney: [-41, -33, 8, 29.5],
+      ...SCHEMATIC_VIEWS,
       all: [Math.min(...allPts.map(p => p[0])) - 2, Math.min(...allPts.map(p => p[1])) - 2, Math.max(...allPts.map(p => p[0])) + 4, Math.max(...allPts.map(p => p[1])) + 2],
     },
     lines: Object.fromEntries(Object.entries(SCH.pieces).map(([l, ps]) => [l, ps.map(flat)])),
