@@ -1576,8 +1576,10 @@ function trackworkChart(container, { items, lines, days, selected, onLine }) {
 // ---------- live map ----------
 // Every train where it is now, on the network's real track: warmer dots are later, bigger dots fuller.
 async function loadMap(force = false, kind = 'track') {
-  if (kind === 'diagram') { if (!D.schematic) D.schematic = await getJson('data/schematic.json'); }
-  else if (!D.network) D.network = await getJson('data/network.json');
+  if ((kind === 'diagram' || kind === 'official') && !D.schematic)
+    D.schematic = await getJson('data/schematic.json');
+  if ((kind === 'track' || kind === 'official') && !D.network)
+    D.network = await getJson('data/network.json');
   if (!D.live || force) D.live = await getJson(`data/live.json?t=${Date.now()}`);
 }
 const decode = flat => { const pts = [[flat[0], flat[1]]]; for (let i = 2; i < flat.length; i += 2) { const [x, y] = pts[pts.length - 1]; pts.push([x + flat[i], y + flat[i + 1]]); } return pts; };
@@ -1618,6 +1620,7 @@ async function viewMap(main) {
   }
   if (kind === 'official' && !(await checkOfficialMap())) {
     kind='diagram';
+    await loadMap(false,'diagram');
     console.warn('Official TfNSW map not available; using original schematic instead.');
   }
   let view = ['city', 'sydney', 'all'].includes(q.get('view')) ? q.get('view') : prefs.get('mapView', 'sydney');
@@ -1800,7 +1803,7 @@ async function viewMap(main) {
           try { await loadLeaflet(); geographicReady = true; }
           catch (e) { console.warn('Using offline track drawing:', e.message); }
         }
-        if (kind !== 'official') await loadMap(false, kind);
+        await loadMap(false,kind);
         prefs.set('mapKind',kind);
         setState(); draw();
       }, 'Kind of map'),
