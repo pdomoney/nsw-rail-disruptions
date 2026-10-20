@@ -220,7 +220,7 @@ export function offsetLine(pts, d) {
 
 // The diagram: station positions, each line drawn as offset pieces where lines share track, and the
 // lookups the build uses to place trains and sections on it.
-export function buildSchematic({ gap = 0.2 } = {}) {
+export function buildSchematic({ gap = 0.31 } = {}) {
   const lay = layout();
   const seqs = lineSequences(lay);
   const key = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
