@@ -57,3 +57,7 @@
   .geo-map { height: 67vh; min-height: 400px; }
   .map-frame .map-zoom { right: 8px; top: 8px; }
 }
+
+/* On both SVG maps, stations are keyboard and tap selectable without resembling vehicles. */
+.map-station-select { cursor: pointer; }
+.map-station-select:hover, .map-station-select:focus-visible { stroke: var(--focus) !important; stroke-width: 2px; outline: none; }
