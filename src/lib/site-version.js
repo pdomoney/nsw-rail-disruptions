@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
-const baseFiles = ['app.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css'];
+const baseFiles = ['app.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css'];
 
 function filesUnder(dir, prefix = '') {
   return fs.readdirSync(path.join(dir, prefix), { withFileTypes: true })
@@ -58,7 +58,7 @@ export function publishSiteRelease(siteDir, outputDir, { generatedAt = Date.now(
   fs.writeFileSync(path.join(outputDir, stamped['app.js']), app);
 
   let html = fs.readFileSync(path.join(siteDir, 'index.html'), 'utf8');
-  for (const name of ['styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css']) {
+  for (const name of ['styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css']) {
     html = replaceOnce(html, 'href="' + name + '"', 'href="' + stamped[name] + '"', 'index.html');
   }
   html = replaceOnce(html, 'src="app.js"', 'src="' + stamped['app.js'] + '"', 'index.html');
