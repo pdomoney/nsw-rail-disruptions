@@ -119,6 +119,25 @@ export function locateOfficialTrain(train, alignment, maxDistance = 125) {
     distanceMetres:Math.round(nearest.distance*10),from,to,confidence: 'approximate'};
 }
 
+// Mark only incidents explicitly naming a station on the printed source map.
+// Corridor-wide closures remain in the incident list; we never invent a route trace.
+export function officialDisruptionPins(live, lineFilter='') {
+  const index = new Map(Object.entries(OFFICIAL_STOPS).map(([name,xy])=>[normaliseStop(name),{name,xy}]));
+  const pins=[],seen=new Set();
+  for (const overlay of live?.overlays || []) {
+    if (lineFilter && !(overlay.lines || []).includes(lineFilter)) continue;
+    for (const p of [...(overlay.pins || []),...(overlay.spins || [])]) {
+      const name=p[2], station=index.get(normaliseStop(name));
+      if (!station) continue;
+      const id=overlay.kind+'|'+station.name;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      pins.push({...station,kind:overlay.kind,title:overlay.title || 'Reported rail disruption'});
+    }
+  }
+  return pins;
+}
+
 const svgNS='http://www.w3.org/2000/svg';
 function el(tag, attrs={}) {
   const n=document.createElementNS(svgNS,tag);
@@ -155,6 +174,18 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
     stationLayer.append(c);
   }
   svg.append(stationLayer);
+  // Affected named stations only, not guessed affected corridors. The incident
+  // panel below the map retains full descriptions and unpositioned alerts.
+  const disruptions=el('g',{class:'official-disruption-markers'});
+  for (const pin of officialDisruptionPins(live,lineFilter)) {
+    const icon=el('circle',{cx:pin.xy[0],cy:pin.xy[1],r:unit(12),
+      fill:'none',stroke:pin.kind==='closed'?'#a66c15':'#ce4226',
+      'stroke-width':unit(3),class:'official-disruption',role:'img',
+      'aria-label':pin.kind+' at '+pin.name+'. '+pin.title});
+    const title=el('title');title.textContent=pin.kind+' at '+pin.name+': '+pin.title;
+    icon.append(title);disruptions.append(icon);
+  }
+  svg.append(disruptions);
   const trainLayer=el('g',{class:'official-train-markers'});
   const positioned=[];
   let unmatched=0;
