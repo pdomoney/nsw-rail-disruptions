@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
-const baseFiles = ['app.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css'];
+const baseFiles = ['app.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css'];
 
 function filesUnder(dir, prefix = '') {
   return fs.readdirSync(path.join(dir, prefix), { withFileTypes: true })
@@ -52,6 +52,7 @@ export function publishSiteRelease(siteDir, outputDir, { generatedAt = Date.now(
   app = replaceOnce(app, "from './patronage.js'", "from './" + stamped['patronage.js'] + "'", 'app.js');
   app = replaceOnce(app, "from './station-patronage.js'", "from './" + stamped['station-patronage.js'] + "'", 'app.js');
   app = replaceOnce(app, "from './geo-map.js'", "from './" + stamped['geo-map.js'] + "'", 'app.js');
+  app = replaceOnce(app, "from './official-map.js'", "from './" + stamped['official-map.js'] + "'", 'app.js');
   app = replaceOnce(app, '__SITE_RELEASE__', release, 'app.js');
   stamped['app.js'] = 'app.' + hash(app).slice(0, 12) + '.js';
   fs.writeFileSync(path.join(outputDir, stamped['app.js']), app);
