@@ -17,6 +17,22 @@ An open, read-only record of delays, outages and service interruptions on Sydney
 
 It is an independent project and is not affiliated with Transport for NSW. For live travel information use [transportnsw.info](https://transportnsw.info/alerts).
 
+## Official TfNSW map with live data overlay
+
+The **TfNSW original + live** option on the Live map uses the [published Sydney rail network PDF](https://transportnsw.info/sydney-trains-network-map) itself, not a recreation or the custom diagram. The network-map dataset is published through the [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au/dataset/network-maps) under a **Creative Commons Attribution** licence.
+
+**Map credit:** © Transport for NSW, *Sydney rail network*, effective 30 September 2024, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The application adds independent, interactive markers; Transport for NSW does not endorse this application. Station layout and operating routes can change after 2024.
+
+- A verified source PDF is rasterised to `dist/assets/tfnsw-sydney-rail-2024.png` by `scripts/render-official-map.sh` in GitHub Actions. The script pins the exact PDF SHA-256 (`f1ec1d8a14612382b084ebeccd3bb30506113002bddca325ae91cd9a9d95f121`) and refuses changed content until the station alignment is revalidated. GitHub Actions caches the image between the five-minute publication runs.
+- `site/official-map.js` overlays train markers using a fixed 1024 × 1447 coordinate calibration of the full 2024 PDF. The SVG viewBox and the background image pan/zoom together.
+- Calibrated station anchors are matched to separately verified **geographic** TfNSW GTFS stations. The software interpolates a train's on-map position only between known stations served by that rail line and only when its real-world position lies near the relevant segment. **Vehicles lacking a confident match are deliberately excluded**, never placed at a guessed station.
+- Train-shaped, line-labelled symbols depict reported vehicles; the original small station circles on the TfNSW artwork remain fixed and unchanged. Select a vehicle for its destination/delay and approximate printed-map location. Each display states its matched and omitted vehicle counts.
+- The published artwork is **schematic, not geographic**. Vehicle icons depict approximate progress between known station anchors, not precise GPS locations. The Geographic map view continues to offer TfNSW coordinates and an OpenStreetMap basemap. The custom network diagram and associated regression suite remain unchanged.
+- The original PDF contains 2024 line configurations, including former/under-conversion segments. Current services not represented on the source edition do not get fabricated routes or markers. Use [TfNSW's official trip planner](https://transportnsw.info/) for current service routes.
+- If the source PDF cannot be fetched and verified, the original schematic remains functional; the app **does not** show trains floating on a missing official background. Older iPhone Home Screen versions update through the existing asset-fingerprinting and update-notice mechanism.
+
+Before accepting a release, verify the GitHub Actions **official-tfnsw-map-background** image artifact against the current source PDF and inspect train/station overlays on desktop and iPhone. A unit-test pass is not a substitute for visual calibration checks.
+
 ## Network diagram readability update
 
 The diagram now uses an independent, high-contrast **Classic map** canvas by default, even if the rest of the website is in dark mode. A **Night map** option is available for users who prefer the earlier appearance.
