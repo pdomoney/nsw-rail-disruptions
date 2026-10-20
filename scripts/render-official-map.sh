@@ -4,6 +4,7 @@
 set -euo pipefail
 DEST="$1"
 SOURCE="https://transportnsw.info/sydney-trains-network-map"
+OFFICIAL_MAP_PREVIEW_UNVERIFIED="${OFFICIAL_MAP_PREVIEW_UNVERIFIED:-0}"
 FILE="tfnsw-sydney-rail-2024.png"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -22,10 +23,17 @@ curl --fail --location --silent --show-error --retry 2 --max-time 30 --max-files
   "$SOURCE" -o "$TMP/map.pdf"
 test "$(head -c4 "$TMP/map.pdf")" = "%PDF"
 pdftotext -layout -f 1 -l 1 "$TMP/map.pdf" "$TMP/map.txt"
-if ! grep -iq 'Sydney rail network' "$TMP/map.txt" || \
-   ! grep -Eq 'APXP_SRM_20240701|2024 Transport for NSW' "$TMP/map.txt"; then
-   echo "::error::Official map PDF edition is not validated for this overlay." >&2
-   exit 3
+PDF_SHA="$(sha256sum "$TMP/map.pdf" | cut -d' ' -f1)"
+echo "Official TfNSW PDF SHA256: $PDF_SHA"
+# Some of the released PDF maps have only an accessibility summary in the
+# text layer. An image inspection AND a pinned SHA will validate this source.
+APPROVED_SHA="AWAITING_VISUAL_ACCEPTANCE"
+if [[ "$PDF_SHA" != "$APPROVED_SHA" ]]; then
+  if [[ "$OFFICIAL_MAP_PREVIEW_UNVERIFIED" != "1" ]]; then
+    echo "::error::TfNSW PDF does not match the approved reference hash." >&2
+    exit 3
+  fi
+  echo "::warning::CI preview of unapproved TfNSW PDF; production publication remains blocked."
 fi
 PAGES="$(pdfinfo "$TMP/map.pdf" | awk '/^Pages:/{print $2}')"
 test "$PAGES" = 1
