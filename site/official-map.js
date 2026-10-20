@@ -33,7 +33,7 @@ export const OFFICIAL_STOPS = Object.freeze({
   'Domestic Airport': [738,776], 'Mascot': [738,748],
   'Wolli Creek': [691,824], 'Hurstville': [689,963],
   'Sutherland': [689,1120], 'Cronulla': [892,1129], 'Waterfall': [689,1206],
-  'East Hills': [548,940], 'Gadigal': [786,671],
+  'East Hills': [548,940],
 });
 // Every sequence follows stations printed on the 2024 map. No extrapolation past last anchor.
 // A given train must be close to the corresponding geographical stop-to-stop line.
