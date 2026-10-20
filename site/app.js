@@ -1767,6 +1767,11 @@ async function viewMap(main) {
       : h('p', { class: 'empty-chart' }, 'No incidents or trackwork closures right now.'));
   };
   draw();
+  // Tear down Leaflet's global handlers on navigation, including repeated Home Screen visits.
+  mapViewCleanup = () => {
+    clearTimeout(redrawTimer);
+    if (geographic) { geographic.destroy(); geographic = null; }
+  };
   onResize(() => { if (geographic) geographic.resize(); else draw(); });
   pageRefresh = async () => { await loadMap(true, kind); draw(); };
 }
@@ -1877,8 +1882,8 @@ function networkMap(container, { net, live, view, lineFilter, vb: zoom, onTrainS
       units: u, compact: W < 640 && zoomed < 2, dim, select: onTrainSelect });
     tg.append(c);
   }
-  svg.append(tg);
   svg.append(lbl);
+  svg.append(tg);
   container.replaceChildren(svg);
   return { svg, base, W, H };
 }
@@ -2034,12 +2039,36 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, onTrai
     t.textContent = L.name;
     lbl.append(t);
   }
+  // Coloured line-end chips bring the diagram closer to the familiar TfNSW network-map
+  // language without copying artwork. Suppressed at overview zoom to avoid crowding
+  // on small iPhone screens, except for an explicitly selected line.
+  const ends = S('g', { class: 'sch-termini' });
+  if (scale >= 16 || lineFilter) for (const [line, name, x, y] of sch.terminals || []) {
+    if (lineFilter && line !== lineFilter) continue;
+    if (scale < 16 && !lineFilter) continue;
+    const right = x >= 0;
+    const xOffset = u(right ? 18 : -18);
+    const yOffset = u(line === 'T5' && (name === 'Richmond' || name === 'Leppington') ? 19 : -17);
+    const bx = x + xOffset, by = y + yOffset;
+    if (bx < vb[0] + u(15) || bx > vb[0] + vb[2] - u(15) ||
+        by < vb[1] + u(12) || by > vb[1] + vb[3] - u(12)) continue;
+    const g = S('g', { transform: 'translate(' + bx + ' ' + by + ')', class: 'sch-terminal-label' });
+    const ww = u(line.length > 2 ? 33 : 27), hh = u(18);
+    g.append(S('rect', { x: -ww / 2, y: -hh / 2, width: ww, height: hh,
+      rx: u(4), fill: lineInfo(line).color }));
+    const label = S('text', { x: 0, y: u(3.3), 'text-anchor': 'middle', 'font-size': u(10) });
+    label.textContent = line;
+    g.append(label);
+    const title = S('title'); title.textContent = line + ' ' + name + ' terminus'; g.append(title);
+    ends.append(g);
+  }
+  svg.append(ends);
+
   // Trains on the diagram: on time first, latest on top. Dots shrink with the diagram when zoomed out.
   const cols = live.cols || [];
   const ix = cols.indexOf('sx'), iy = cols.indexOf('sy');
   const trains = (live.trains || []).filter(t => trackedLine(t[0]) && t[ix] != null).slice().sort((a, b) => (a[3] ?? -1) - (b[3] ?? -1));
   const tg = S('g', { class: 'map-trains' });
-  const dotR = pax => Math.max(u(sizeOf(pax) * 0.6), sizeOf(pax) / 34);
   for (const t of trains) {
     const [line, , , delay, pax, fullest, , headsign] = t;
     const dim = lineFilter && line !== lineFilter;
@@ -2047,8 +2076,8 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, onTrai
       units: u, compact: scale < 23, dim, select: onTrainSelect });
     tg.append(c);
   }
-  svg.append(tg);
   svg.append(lbl);
+  svg.append(tg);
   container.replaceChildren(svg);
   return { svg, base, W, H };
 }
@@ -2287,7 +2316,9 @@ function notFound(main, msg) {
 }
 
 // ---------- router ----------
+let mapViewCleanup = null;
 function resetView() {
+  if (mapViewCleanup) { mapViewCleanup(); mapViewCleanup = null; }
   hideTip();
   clearInterval(clockTimer);
   resizeHandlers = [];
