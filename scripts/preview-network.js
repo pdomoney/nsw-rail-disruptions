@@ -44,7 +44,7 @@ for (const view of ['sydney','city']) {
    svg.push('<circle cx="' + x + '" cy="' + y + '" r="' + r +
       '" stroke="#273f4b" stroke-width=".13" fill="white"/>');
    if (labels.has(name)) svg.push('<text x="' + (x + .6) + '" y="' + (y - .5) +
-    '" font-family="Arial,sans-serif" font-weight="600" font-size="1.4" fill="#243a49" stroke="#f4f7f8" stroke-width=".2" paint-order="stroke">' +
+    '" font-family="Arial,sans-serif" font-weight="600" font-size="1.1" fill="#243a49">' +
       escape(name) + '</text>');
  }
  for (const [line, name, x, y] of terminalCallouts(S.lay)) {
