@@ -23,7 +23,7 @@ test('real site HTML refers to fingerprinted CSS and JS, including both imported
     const manifest = JSON.parse(fs.readFileSync(path.join(out, 'data/site-version.json'), 'utf8'));
     assert.equal(manifest.release, release);
     assert.equal(manifest.generatedAt, new Date(10_000).toISOString());
-    for (const asset of ['app.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css']) {
+    for (const asset of ['app.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css']) {
       assert.ok(html.includes(stamped[asset]), 'HTML must reference ' + stamped[asset]);
       assert.ok(fs.existsSync(path.join(out, stamped[asset])));
       assert.ok(!html.includes('="' + asset + '"'), 'HTML must not use stale ' + asset);
