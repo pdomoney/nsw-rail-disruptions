@@ -1711,7 +1711,7 @@ async function viewMap(main) {
     frame.classList.toggle('map-frame-diagram', kind === 'diagram');
     frame.classList.toggle('map-frame-city', kind === 'diagram' && view === 'city');
     mapLabel.replaceChildren(
-      h('strong', {}, kind === 'diagram' ? 'SYDNEY TRAIN + METRO' : 'GEOGRAPHIC RAIL MAP'),
+      h('strong', {}, kind === 'diagram' ? 'SYDNEY RAIL NETWORK · LAYOUT V' + (D.schematic?.layoutVersion || 1) : 'GEOGRAPHIC RAIL MAP'),
       h('span', {}, kind === 'diagram'
         ? (view === 'city' ? 'CITY CENTRE · NETWORK SCHEMATIC' : view === 'all' ? 'WHOLE NETWORK · NOT TO SCALE' : 'SYDNEY NETWORK · NOT TO SCALE')
         : 'TfNSW STATIONS + REPORTED LIVE VEHICLES'),
