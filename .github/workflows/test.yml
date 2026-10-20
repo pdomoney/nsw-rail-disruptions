@@ -15,3 +15,11 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      - name: Render network layout review previews
+        run: node scripts/preview-network.js
+      - name: Attach network diagram previews
+        uses: actions/upload-artifact@v4
+        with:
+          name: sydney-network-diagram-layout
+          path: test-artifacts/network-schematic-*.svg
+          retention-days: 21
