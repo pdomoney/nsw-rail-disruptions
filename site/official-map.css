@@ -67,3 +67,41 @@
 .official-tfnsw-svg .official-vehicle:focus-visible rect:first-child {
   stroke: #151d2b; stroke-width: 3px;
 }
+
+/* The official map must not silently become the old diagram when its PNG fails.
+   Render an actionable diagnostic in the map itself, including on iPhone. */
+.official-map-error {
+  min-height: clamp(320px, 55vh, 620px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 14px;
+  padding: clamp(24px, 5vw, 60px);
+  background: #f3f7f9;
+  color: #263948;
+  border-left: 5px solid #bb6c24;
+}
+.official-map-error h2 {
+  font-family: var(--font-narrow);
+  font-size: clamp(1.35rem, 3vw, 1.9rem);
+  margin: 0;
+}
+.official-map-error p { max-width: 66ch; line-height: 1.55; margin: 0; }
+.official-map-error-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.official-map-error-actions button,
+.official-map-error-actions a {
+  font: 600 .94rem var(--font);
+  border-radius: 6px;
+  border: 1px solid #697c89;
+  background: #fff;
+  color: #193d59;
+  padding: 11px 13px;
+  min-height: 44px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.official-map-error-actions button:hover,
+.official-map-error-actions a:hover { background: #e5eef3; }
+.official-map-error-actions button:disabled { opacity: .7; cursor: wait; }
+.map-frame:has(.official-map-error) .map-corner-label { display: none; }
