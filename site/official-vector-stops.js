@@ -86,6 +86,14 @@ export function nearestPdfSymbol(xy,points,maxDistance=18) {
  * With known anchors, find exact PDF vector station dots between them, in order.
  * Never create positions when route evidence is missing or ambiguous.
  */
+// These terminating and complex interchange symbols use filled blocks or large
+// custom glyphs rather than the small open-circle vectors extracted above. They
+// have been visually checked against the attached 2024 PDF. Keep their provenance
+// separate from exact extracted vector-circle locations.
+export const VISUALLY_CALIBRATED_TERMINI = new Set([
+  'Berowra','Richmond','Tallawong','Leppington','Bankstown',
+  'Bondi Junction','Cronulla','Waterfall','Macarthur','Wolli Creek'
+]);
 export function reconcilePdfStations(anchors,lineRoutes,{maxAnchorDistance=17,maxGapDistance=10.5}={}){
   const dots=decodePdfSymbols(), positions=new Map(), byLine=new Map(),unresolved=new Set();
   const evidence=[];
@@ -98,7 +106,12 @@ export function reconcilePdfStations(anchors,lineRoutes,{maxAnchorDistance=17,ma
     if(nearest&&nearest.distance<=maxAnchorDistance){
       positions.set(name,nearest.position);
       evidence.push({name,line:nearest.line,distance:+nearest.distance.toFixed(1),method:'vector-anchor'});
-    }else unresolved.add(name);
+    } else if (VISUALLY_CALIBRATED_TERMINI.has(name) && serving.length) {
+      // An independently checked map-label/terminal anchor, *not* an extracted
+      // small white circle. Do not misrepresent it in the exact-symbol tally.
+      positions.set(name,[...xy]);
+      evidence.push({name,line:serving[0],distance:null,method:'visually-calibrated-terminus'});
+    } else unresolved.add(name);
   }
   // Intermediate stops only match when *both* enclosing names already have
   // verified PDF dots. Distances along an official corridor are an ordering clue,
