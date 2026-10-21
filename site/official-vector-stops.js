@@ -92,7 +92,8 @@ export function nearestPdfSymbol(xy,points,maxDistance=18) {
 // separate from exact extracted vector-circle locations.
 export const VISUALLY_CALIBRATED_TERMINI = new Set([
   'Berowra','Richmond','Tallawong','Leppington','Bankstown',
-  'Bondi Junction','Cronulla','Waterfall','Macarthur','Wolli Creek'
+  'Bondi Junction','Cronulla','Waterfall','Macarthur','Wolli Creek',
+  'Emu Plains','Erskineville','St Peters'
 ]);
 export function reconcilePdfStations(anchors,lineRoutes,{maxAnchorDistance=17,maxGapDistance=10.5}={}){
   const dots=decodePdfSymbols(), positions=new Map(), byLine=new Map(),unresolved=new Set();
@@ -110,7 +111,7 @@ export function reconcilePdfStations(anchors,lineRoutes,{maxAnchorDistance=17,ma
       // An independently checked map-label/terminal anchor, *not* an extracted
       // small white circle. Do not misrepresent it in the exact-symbol tally.
       positions.set(name,[...xy]);
-      evidence.push({name,line:serving[0],distance:null,method:'visually-calibrated-terminus'});
+      evidence.push({name,line:serving[0],distance:null,method:'visually-calibrated-pdf'});
     } else unresolved.add(name);
   }
   // Intermediate stops only match when *both* enclosing names already have
