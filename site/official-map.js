@@ -222,7 +222,7 @@ function el(tag, attrs={}) {
 }
 const colors={early:'#2a9d58',onTime:'#1f8a56',minor:'#aa7513',late:'#d65b22',severe:'#a82730',unknown:'#536675'};
 const delayColor=delay=>delay==null?colors.unknown:delay<120?colors.onTime:delay<300?colors.minor:delay<600?colors.late:colors.severe;
-export function drawOfficialOverlay(container,{network,live,view='sydney',lineFilter='',vb:zoom=null,onTrainSelect,onStationSelect}) {
+export function drawOfficialOverlay(container,{network,live,view='sydney',lineFilter='',vb:zoom=null,onTrainSelect,onStationSelect,imageUrl=OFFICIAL_MAP.image}) {
   const W=Math.max(310,container.clientWidth);
   const allowed=view==='city'?[595,400,380,540]:[0,0,OFFICIAL_MAP.width,OFFICIAL_MAP.height];
   const ratio=allowed[3]/allowed[2];
@@ -235,7 +235,7 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
     class:'map-svg official-tfnsw-svg'+(zoom?' zoomed':''),
     role:'group','aria-label':'Original Transport for NSW 2024 Sydney rail network map with separately added live train symbols'});
   // Whole PDF page is a single authored background: no redraw or tracing of TfNSW routes.
-  svg.append(el('image',{href:OFFICIAL_MAP.image,x:0,y:0,width:OFFICIAL_MAP.width,
+  svg.append(el('image',{href:imageUrl,x:0,y:0,width:OFFICIAL_MAP.width,
     height:OFFICIAL_MAP.height,preserveAspectRatio:'none',class:'official-source-map'}));
   const alignment=buildVerifiedPdfAlignment(network);
   const selected=new Set((REFERENCE_2024_ROUTES[lineFilter]||[]).flat());
