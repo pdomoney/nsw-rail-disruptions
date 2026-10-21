@@ -4,10 +4,15 @@ import {reconcilePdfStations,REFERENCE_2024_ROUTES,OFFICIAL_LINE_PALETTE,nearest
 // Calibration is to the 2024 first-page artwork, in image units 1024 x 1447.
 // This is schematic, not geographic: never project train GPS directly on the PDF.
 // Unmatched vehicles remain absent, rather than guessing a location.
+// Resolve relative to this published module, not the browser's current page URL.
+// Home Screen apps and fragment navigation must use the same asset location.
+export function officialMapAssetUrl(moduleUrl = import.meta.url) {
+  return new URL('assets/tfnsw-sydney-rail-2024.png?asset=verified-render-v3', moduleUrl).href;
+}
 export const OFFICIAL_MAP = Object.freeze({
   width: 1024, height: 1447, edition: '30 September 2024',
   // Revised URL also bypasses cached 404 responses from the broken release.
-  image: 'assets/tfnsw-sydney-rail-2024.png?asset=renderer-fixed-v2',
+  image: officialMapAssetUrl(),
   source: 'https://transportnsw.info/sydney-trains-network-map',
   licence: 'https://creativecommons.org/licenses/by/4.0/',
 });
