@@ -1,3 +1,5 @@
+import {reconcilePdfStations,REFERENCE_2024_ROUTES,OFFICIAL_LINE_PALETTE,nearestPdfSymbol} from './official-vector-stops.js';
+
 // The official TfNSW published network PDF is rendered at deployment time.
 // Calibration is to the 2024 first-page artwork, in image units 1024 x 1447.
 // This is schematic, not geographic: never project train GPS directly on the PDF.
@@ -66,6 +68,18 @@ export const OFFICIAL_CORRIDORS = Object.freeze({
   M1: [['Tallawong','Rouse Hill','Kellyville','Norwest','Epping','Macquarie University','Chatswood','Crows Nest','Victoria Cross','Barangaroo','Martin Place','Gadigal','Central','Waterloo','Sydenham']],
 });
 
+// Named station locations now snap to actual station-symbol curves extracted from
+// the SAME original 2024 TfNSW PDF as the published image. Do not draw arbitrary
+// straight-line route geometry over the source. Unknown points remain unavailable.
+export const PDF_STATION_CROSSWALK = reconcilePdfStations(OFFICIAL_STOPS,REFERENCE_2024_ROUTES);
+export const PDF_STATION_COVERAGE = Object.freeze({
+  pdfSymbols: 266,
+  namedMatches: PDF_STATION_CROSSWALK.positions.size,
+  verifiedAnchorCount: PDF_STATION_CROSSWALK.evidence.filter(e=>e.method==='vector-anchor').length,
+  matchedIntermediateCount: PDF_STATION_CROSSWALK.evidence.filter(e=>e.method==='vector-intermediate').length,
+  unmatchedSourceNames: PDF_STATION_CROSSWALK.unmatched.length
+});
+
 export function normaliseStop(name) {
   return String(name || '').normalize('NFKC').toLowerCase()
     .replace(/\bstation\b/g, '').replace(/[^\p{L}\p{N}]+/gu, '');
@@ -104,6 +118,32 @@ export function buildOfficialAlignment(network) {
   }
   return segments;
 }
+// Full TfNSW station-to-station evidence alignment, not broad hand-drawn corridors.
+// Both endpoints must exist as original PDF vector symbols on the SAME line.
+// The realtime feed's geographic coordinates determine fractional progress.
+export function buildVerifiedPdfAlignment(network, crosswalk=PDF_STATION_CROSSWALK) {
+  const geo=new Map();
+  for(const [name,x,y,lines] of network?.stations||[])
+    if(Number.isFinite(x)&&Number.isFinite(y))
+      geo.set(normaliseStop(name),{point:[x,y],lines:new Set(String(lines).split(' '))});
+  const result={};
+  for(const [line,routes] of Object.entries(REFERENCE_2024_ROUTES)) {
+    const printed=crosswalk.byLine.get(line) || new Map();
+    const segments=[];
+    for(const route of routes)for(let i=1;i<route.length;i++){
+      const from=route[i-1],to=route[i],a=geo.get(normaliseStop(from)),b=geo.get(normaliseStop(to));
+      if(!a||!b||!a.lines.has(line)||!b.lines.has(line))continue;
+      if(!printed.has(from)||!printed.has(to))continue;
+      const pdfA=printed.get(from),pdfB=printed.get(to);
+      // Duplicate/near-coincident marks cannot support a usable progress bearing.
+      if(Math.hypot(pdfB[0]-pdfA[0],pdfB[1]-pdfA[1])<2)continue;
+      segments.push({from,to,geoA:a.point,geoB:b.point,pdfA,pdfB});
+    }
+    result[line]=segments;
+  }
+  return result;
+}
+
 export function locateOfficialTrain(train, alignment, maxDistance = 125) {
   const [line,x,y]=train;
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
@@ -121,8 +161,8 @@ export function locateOfficialTrain(train, alignment, maxDistance = 125) {
 
 // Mark only incidents explicitly naming a station on the printed source map.
 // Corridor-wide closures remain in the incident list; we never invent a route trace.
-export function officialDisruptionPins(live, lineFilter='') {
-  const index = new Map(Object.entries(OFFICIAL_STOPS).map(([name,xy])=>[normaliseStop(name),{name,xy}]));
+export function officialDisruptionPins(live, lineFilter='', crosswalk=PDF_STATION_CROSSWALK) {
+  const index = new Map([...crosswalk.positions].map(([name,xy])=>[normaliseStop(name),{name,xy}]));
   const pins=[],seen=new Set();
   for (const overlay of live?.overlays || []) {
     if (lineFilter && !(overlay.lines || []).includes(lineFilter)) continue;
@@ -161,11 +201,11 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   // Whole PDF page is a single authored background: no redraw or tracing of TfNSW routes.
   svg.append(el('image',{href:OFFICIAL_MAP.image,x:0,y:0,width:OFFICIAL_MAP.width,
     height:OFFICIAL_MAP.height,preserveAspectRatio:'none',class:'official-source-map'}));
-  const alignment=buildOfficialAlignment(network);
-  const selected=new Set((OFFICIAL_CORRIDORS[lineFilter]||[]).flat());
+  const alignment=buildVerifiedPdfAlignment(network);
+  const selected=new Set((REFERENCE_2024_ROUTES[lineFilter]||[]).flat());
   const stationLayer=el('g',{class:'official-station-hits'});
   const hitRadius=Math.max(unit(11),3);
-  for (const [name,pos] of Object.entries(OFFICIAL_STOPS)) {
+  for (const [name,pos] of PDF_STATION_CROSSWALK.positions) {
     if(lineFilter && !selected.has(name)) continue;
     const c=el('circle',{cx:pos[0],cy:pos[1],r:hitRadius,
       class:'official-station-target','aria-label':'Fixed station '+name,tabindex:'0',role:'button'});
@@ -192,7 +232,7 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   for(const train of live?.trains||[]){
     const [line,,,delay,pax,fullest,,headsign]=train;
     if(lineFilter&&line!==lineFilter)continue;
-    if(!OFFICIAL_CORRIDORS[line])continue; // intercity not shown on the source map
+    if(!REFERENCE_2024_ROUTES[line])continue; // intercity not shown on the printed map
     const pos=locateOfficialTrain(train,alignment);
     if(!pos){unmatched++;continue;}
     positioned.push({train,pos});
@@ -208,7 +248,11 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
     const g=el('g',{class:'official-vehicle',transform:'translate('+x+' '+y+')',tabindex:'0',role:'button',
       'aria-label':'Moving '+line+' train'+(headsign?' towards '+headsign:'')+', position estimated on 2024 map'});
     g.append(el('rect',{x:-size/2,y:-size/2,width:size,height:size,rx:unit(5),
-      fill:delayColor(delay),stroke:'#ffffff','stroke-width':unit(2)}));
+      fill:OFFICIAL_LINE_PALETTE[line]||'#526777',stroke:'#ffffff','stroke-width':unit(2)}));
+    // Small detached status badge uses delay, leaving the primary vehicle colour
+    // equal to TfNSW's official line colour instead of being mistaken for a station.
+    g.append(el('circle',{cx:size*.41,cy:-size*.37,r:unit(4),
+      fill:delayColor(delay),stroke:'#ffffff','stroke-width':unit(1.2)}));
     g.append(el('rect',{x:-size*.32,y:-size*.36,width:size*.64,height:size*.26,
       rx:unit(1.5),fill:'#ffffff'}));
     const label=el('text',{x:0,y:size*.31,'font-size':unit(9),fill:'#ffffff',
@@ -227,5 +271,7 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   }
   svg.append(trainLayer);
   container.replaceChildren(svg);
-  return {svg,base,W,H,positioned:positioned.length,unmatched};
+  return {svg,base,W,H,positioned:positioned.length,unmatched,
+    namedStations:PDF_STATION_CROSSWALK.positions.size,
+    pdfSymbols:PDF_STATION_COVERAGE.pdfSymbols};
 }
