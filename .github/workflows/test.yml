@@ -22,6 +22,7 @@ jobs:
             sudo apt-get -y -qq install poppler-utils
           fi
           OFFICIAL_MAP_PREVIEW_UNVERIFIED="1" OFFICIAL_MAP_PNG_INPUT="" bash scripts/render-official-map.sh test-artifacts/assets
+          node scripts/verify-official-map.mjs test-artifacts/assets/tfnsw-sydney-rail-2024.png
       - name: Upload original map rendition for calibration review
         uses: actions/upload-artifact@v4
         with:
