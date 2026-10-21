@@ -28,6 +28,16 @@ jobs:
           name: official-tfnsw-map-background
           path: test-artifacts/assets/tfnsw-sydney-rail-2024.png
           retention-days: 21
+      - name: Generate station coordinate audit and review image
+        run: |
+          node scripts/review-official-alignment.mjs test-artifacts/official-review
+          cp test-artifacts/assets/tfnsw-sydney-rail-2024.png test-artifacts/official-review/
+      - name: Upload PDF-aligned station reconciliation review
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-station-coordinate-audit
+          path: test-artifacts/official-review/
+          retention-days: 28
       - name: Render network layout review previews
         run: node scripts/preview-network.js
       - name: Attach network diagram previews
