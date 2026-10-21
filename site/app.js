@@ -1607,7 +1607,7 @@ async function viewMap(main) {
     : saved==='diagram'?'official':saved;
   if (!['official','track','diagram'].includes(kind)) kind='official';
   let officialAvailable = null;
-  let officialFallback = false;
+  let officialImageUrl = OFFICIAL_MAP.image;
   await loadMap(true, kind);
   // The geographic view uses TfNSW coordinates and a street basemap. An offline/CDN
   // failure preserves the existing vector track view as a usable fallback.
@@ -1615,20 +1615,18 @@ async function viewMap(main) {
   if (kind === 'track') {
     try { await loadLeaflet(); geographicReady = true; } catch (e) { console.warn('Using offline track drawing:', e.message); }
   }
-  // A missing official background must NEVER display floating trains on a blank canvas.
-  // Validate an actual image load, not HEAD; a failure can be retried after deploy.
-  async function checkOfficialMap() {
-    if (officialAvailable === true) return true;
-    const loaded = await loadOfficialMapImage(OFFICIAL_MAP.image);
+  // Test actual image decoding. Missing artwork must never produce floating
+  // train markers, but must not silently change the user's map selection either.
+  async function checkOfficialMap(force = false) {
+    if (!force && officialAvailable === true) return true;
+    officialImageUrl = force
+      ? OFFICIAL_MAP.image + '&retry=' + Date.now()
+      : OFFICIAL_MAP.image;
+    const loaded = await loadOfficialMapImage(officialImageUrl);
     officialAvailable = loaded ? true : null;
     return loaded;
   }
-  if (kind === 'official' && !(await checkOfficialMap())) {
-    kind='diagram';
-    officialFallback=true;
-    await loadMap(false,'diagram');
-    console.warn('Official TfNSW map not available; using original schematic instead.');
-  }
+  if (kind === 'official') await checkOfficialMap();
   let view = ['city', 'sydney', 'all'].includes(q.get('view')) ? q.get('view') : prefs.get('mapView', 'sydney');
   if (!['city', 'sydney', 'all'].includes(view)) view = 'sydney';
   let diagramStyle = prefs.get('mapDiagramStyle', 'light') === 'dark' ? 'dark' : 'light';
@@ -1687,6 +1685,7 @@ async function viewMap(main) {
   };
   const zoomBy = f => {
     if (geographic) { geographic.zoomBy(f); return; }
+    if (!geo) return; // official image is unavailable, no map surface to zoom
     const cur = vb || geo.base;
     zoomAt(f, cur[0] + cur[2] / 2, cur[1] + cur[3] / 2);
   };
@@ -1747,10 +1746,27 @@ async function viewMap(main) {
       h('small', {}, plotCount
         ? `${plotCount.toLocaleString('en-AU')} reported vehicles ${kind === 'diagram' ? 'placed on the diagram' : 'with mapped coordinates'}`
         : kind === 'diagram' ? 'No mapped vehicle positions reported' : 'No live vehicle positions reported'));
-    if (kind === 'official' && officialAvailable) {
+    if (kind === 'official') {
       if (geographic) { geographic.destroy(); geographic=null; }
+      if (!officialAvailable) {
+        geo = null;
+        holder.replaceChildren(h('section', { class: 'official-map-error', role: 'alert' },
+          h('h2', {}, 'Official TfNSW map image unavailable'),
+          h('p', {}, 'The network diagram remains selected. The published source image did not load in this browser, so live train icons have been withheld rather than displayed over an incorrect map.'),
+          h('p', {}, 'Try reloading the source image. If it opens directly but this view still fails, the image rendering inside the web app needs further investigation.'),
+          h('div', { class: 'official-map-error-actions' },
+            h('button', { type: 'button', onclick: async ev => {
+              ev.currentTarget.disabled = true;
+              ev.currentTarget.textContent = 'Checking map image…';
+              await checkOfficialMap(true);
+              draw();
+            } }, 'Retry official image'),
+            h('a', { href: OFFICIAL_MAP.image, target: '_blank', rel: 'noopener noreferrer' },
+              'Open the source image directly'))));
+        return;
+      }
       geo = drawOfficialOverlay(holder, { network:D.network, live:D.live,
-        view:view === 'all'?'sydney':view,lineFilter,vb,
+        view:view === 'all'?'sydney':view,lineFilter,vb,imageUrl:officialImageUrl,
         onTrainSelect:showSelectedTrain,onStationSelect:showSelectedStation });
       geo.svg.classList.toggle('official-enhanced-contrast',officialContrast==='enhanced');
       attach(geo.svg);
@@ -1806,17 +1822,12 @@ async function viewMap(main) {
     filters.replaceChildren(
       segmented([['official', 'Network diagram · TfNSW'], ['track', 'Geographic map'], ['diagram', 'Legacy hand-drawn']], kind, async v => {
         kind = v; vb = null;
-        if (kind === 'official' && !(await checkOfficialMap())) {
-          showSelectedMapItem('Official image unavailable','The source PDF background has not been verified on this deployment. The custom schematic is still available.');
-          kind = 'diagram';
-          officialFallback=true;
-        }
+        if (kind === 'official') await checkOfficialMap();
         if (kind === 'track' && !geographicReady) {
           try { await loadLeaflet(); geographicReady = true; }
           catch (e) { console.warn('Using offline track drawing:', e.message); }
         }
         await loadMap(false,kind);
-        if (kind==='official') officialFallback=false;
         prefs.set('mapKind',kind);
         setState(); draw();
       }, 'Kind of map'),
@@ -1836,10 +1847,6 @@ async function viewMap(main) {
           h('option', { value: '' }, 'All lines'),
           lineIds.map(id => { const o = h('option', { value: id }, `${id} ${lineInfo(id).name}`); if (id === lineFilter) o.selected = true; return o; }))));
     drawMapOnly();
-    if (officialFallback) {
-      head.append(h('p', { class:'tw-sub' },
-        'The published TfNSW map image could not load. This site is temporarily showing the older diagram. The map is being repaired; try Network diagram · TfNSW again after the next deployment.'));
-    }
     if (kind === 'official' && geo?.positioned != null) {
       mapLabel.append(h('small', {}, geo.namedStations+' confirmed station locations · '
         +geo.positioned+' positioned trains · '+geo.unmatched+' unpositioned (no trusted match)'));
