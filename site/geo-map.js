@@ -136,6 +136,11 @@ export function createGeographicMap(container, { net, live, view, lineFilter, co
       const st = L.circleMarker(p, { radius: priority >= 2 ? 5.4 : 3.6,
         color: '#354552', fillColor: '#fff', fillOpacity: 1, weight: 1.4, renderer: canvas });
       st.bindPopup(popup(name + ' station', ['Served by: ' + served.join(', '), 'Location from TfNSW GTFS stops.']));
+      // Hover shows a small preview without requiring a click. The existing
+      // click popup remains available for touch screens.
+      st.bindTooltip(popup(name + ' station', ['Lines: ' + served.join(', ')]), {
+        direction: 'top', opacity: 0.97, sticky: true, className: 'rail-map-hover',
+      });
       st.addTo(stations);
     }
     }
@@ -167,6 +172,12 @@ export function createGeographicMap(container, { net, live, view, lineFilter, co
           delay == null ? 'Delay not available' : delay < 60 ? 'On time' : Math.round(delay / 60) + ' minutes late',
           pax == null ? 'Estimated occupancy unavailable' : 'Approximately ' + (Math.round(pax / 10) * 10).toLocaleString('en-AU') + ' people aboard (estimate)',
           fullest == null ? '' : 'Fullest carriage: ' + (levels[fullest] || 'unknown')]));
+      item.bindTooltip(popup('Moving ' + line + ' service', [
+        headsign ? 'Towards ' + headsign.replace(/\s+Station$/i, '') : 'Destination not reported',
+        delay == null ? 'Delay not reported' : delay < 60 ? 'On time' : Math.round(delay / 60) + ' min late',
+        pax == null ? 'Occupancy not reported' : 'Approximately ' +
+          (Math.round(pax / 10) * 10).toLocaleString('en-AU') + ' people aboard (estimate)',
+      ]), { direction: 'top', opacity: 0.97, offset: [0, -16], className: 'rail-map-hover' });
       item.on('click', () => onTrainSelect?.(description));
       item.addTo(vehicles);
     }
