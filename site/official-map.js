@@ -78,7 +78,7 @@ export const OFFICIAL_CORRIDORS = Object.freeze({
 // straight-line route geometry over the source. Unknown points remain unavailable.
 export const PDF_STATION_CROSSWALK = reconcilePdfStations(OFFICIAL_STOPS,REFERENCE_2024_ROUTES);
 export const PDF_STATION_COVERAGE = Object.freeze({
-  pdfSymbols: 266,
+  pdfSymbols: 277,
   namedMatches: PDF_STATION_CROSSWALK.positions.size,
   verifiedAnchorCount: PDF_STATION_CROSSWALK.evidence.filter(e=>e.method==='vector-anchor').length,
   matchedIntermediateCount: PDF_STATION_CROSSWALK.evidence.filter(e=>e.method==='vector-intermediate').length,
