@@ -39,6 +39,40 @@ export function decodePdfSymbols() {
   }
   return result;
 }
+
+// Route/station ordering transcribed from TfNSW 2024 map and existing complete
+// station corridor inventory. These are *route lists*, not 2D drawing instructions.
+export const REFERENCE_2024_ROUTES = Object.freeze({
+ T1: [
+  ['Richmond','East Richmond','Clarendon','Windsor','Mulgrave','Vineyard','Riverstone','Schofields','Quakers Hill','Marayong','Blacktown','Seven Hills','Toongabbie','Pendle Hill','Wentworthville','Westmead','Parramatta','Harris Park','Granville','Clyde','Auburn','Lidcombe','Flemington','Homebush','Strathfield','Burwood','Redfern','Central','Town Hall','Wynyard','Milsons Point','North Sydney','Waverton','Wollstonecraft','St Leonards','Artarmon','Chatswood','Roseville','Lindfield','Killara','Gordon','Pymble','Turramurra','Warrawee','Wahroonga','Waitara','Hornsby','Asquith','Mount Colah','Mount Kuring-gai','Berowra'],
+  ['Emu Plains','Penrith','Kingswood','Werrington','St Marys','Mount Druitt','Rooty Hill','Doonside','Blacktown']
+ ],
+ T2: [
+  ['Leppington','Edmondson Park','Glenfield','Casula','Liverpool','Warwick Farm','Cabramatta','Canley Vale','Fairfield','Yennora','Guildford','Merrylands','Granville','Clyde','Auburn','Lidcombe','Flemington','Homebush','Strathfield','Burwood','Croydon','Ashfield','Summer Hill','Lewisham','Petersham','Stanmore','Newtown','Macdonaldtown','Redfern','Central','Town Hall','Wynyard','Circular Quay','St James','Museum']
+ ],
+ T3: [
+  ['Liverpool','Warwick Farm','Cabramatta','Carramar','Villawood','Leightonfield','Chester Hill','Sefton','Regents Park','Berala','Lidcombe','Flemington','Homebush','Strathfield','Burwood','Croydon','Ashfield','Summer Hill','Lewisham','Petersham','Stanmore','Newtown','Macdonaldtown','Redfern','Central','Town Hall','Wynyard','Circular Quay','St James','Museum']
+ ],
+ T4: [
+  ['Bondi Junction','Edgecliff','Kings Cross','Martin Place','Town Hall','Central','Redfern','Erskineville','St Peters','Sydenham','Tempe','Wolli Creek','Arncliffe','Banksia','Rockdale','Kogarah','Carlton','Allawah','Hurstville','Penshurst','Mortdale','Oatley','Como','Jannali','Sutherland','Loftus','Engadine','Heathcote','Waterfall'],
+  ['Sutherland','Kirrawee','Gymea','Miranda','Caringbah','Woolooware','Cronulla']
+ ],
+ T5: [
+  ['Richmond','East Richmond','Clarendon','Windsor','Mulgrave','Vineyard','Riverstone','Schofields','Quakers Hill','Marayong','Blacktown','Seven Hills','Toongabbie','Pendle Hill','Wentworthville','Westmead','Parramatta','Harris Park','Merrylands','Guildford','Yennora','Fairfield','Canley Vale','Cabramatta','Warwick Farm','Liverpool','Casula','Glenfield','Edmondson Park','Leppington']
+ ],
+ T6: [['Lidcombe','Berala','Regents Park','Birrong','Yagoona','Bankstown']],
+ T7: [['Lidcombe','Olympic Park']],
+ T8: [
+  ['Macarthur','Campbelltown','Leumeah','Minto','Ingleburn','Macquarie Fields','Glenfield','Holsworthy','East Hills','Panania','Revesby','Padstow','Riverwood','Narwee','Beverly Hills','Kingsgrove','Bexley North','Bardwell Park','Turrella','Wolli Creek','International Airport','Domestic Airport','Mascot','Green Square','Central','Town Hall','Wynyard','Circular Quay','St James','Museum']
+ ],
+ T9: [
+  ['Hornsby','Normanhurst','Thornleigh','Pennant Hills','Beecroft','Cheltenham','Epping','Eastwood','Denistone','West Ryde','Meadowbank','Rhodes','Concord West','North Strathfield','Strathfield','Redfern','Central','Town Hall','Wynyard','Milsons Point','North Sydney','Waverton','Wollstonecraft','St Leonards','Artarmon','Chatswood','Roseville','Lindfield','Killara','Gordon']
+ ],
+ M1: [
+  ['Tallawong','Rouse Hill','Kellyville','Bella Vista','Norwest','Hills Showground','Castle Hill','Cherrybrook','Epping','Macquarie University','Macquarie Park','North Ryde','Chatswood','Crows Nest','Victoria Cross','Barangaroo','Martin Place','Gadigal','Central','Waterloo','Sydenham']
+ ]
+});
+
 export function pointDistance(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1]);}
 export function nearestPdfSymbol(xy,points,maxDistance=18) {
   let nearest=null,dist=Infinity;
