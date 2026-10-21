@@ -1750,7 +1750,23 @@ async function viewMap(main) {
       if (geographic) { geographic.destroy(); geographic=null; }
       if (!officialAvailable) {
         geo = null;
-        holder.replaceChildren(h('section', { class: 'official-map-error', role: 'alert' },
+        // A mounted HTML image is a second way to load the authentic background.
+        // On devices where detached Image() preflight fails but normal <img> works,
+        // promote that success to the full live overlay automatically.
+        const visiblePreview = h('img', {
+          class: 'official-map-load-preview',
+          alt: 'Original Transport for NSW rail map, attempting to load',
+          onload: () => {
+            if (kind === 'official' && holder.isConnected &&
+                location.hash.startsWith('#/map') && officialAvailable !== true) {
+              officialAvailable = true;
+              draw();
+            }
+          },
+          onerror: ev => { ev.currentTarget.hidden = true; },
+          src: officialImageUrl,
+        });
+        holder.replaceChildren(visiblePreview, h('section', { class: 'official-map-error', role: 'alert' },
           h('h2', {}, 'Official TfNSW map image unavailable'),
           h('p', {}, 'The network diagram remains selected. The published source image did not load in this browser, so live train icons have been withheld rather than displayed over an incorrect map.'),
           h('p', {}, 'Try reloading the source image. If it opens directly but this view still fails, the image rendering inside the web app needs further investigation.'),
