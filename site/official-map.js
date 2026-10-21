@@ -309,6 +309,7 @@ const g = el('g', {
 });
 // Invisible 30px touch target for mobile usability
 g.append(el('rect', {
+  class: 'official-train-hit',
   x: -unit(15),
   y: -unit(15),
   width: unit(30),
@@ -318,6 +319,7 @@ g.append(el('rect', {
 }));
 // Smaller train body using the official line colour
 g.append(el('rect', {
+  class: 'official-train-body',
   x: -size / 2,
   y: -size / 2,
   width: size,
