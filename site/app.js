@@ -1,7 +1,7 @@
 import { heatmap, hbars, columns, line as lineChart, onColor, showTip, hideTip, compact } from './charts.js';
 import { viewPatronage } from './patronage.js';
 import { loadLeaflet, createGeographicMap, trainDescription } from './geo-map.js';
-import { drawOfficialOverlay, OFFICIAL_MAP } from './official-map.js';
+import { drawOfficialOverlay, OFFICIAL_MAP, loadOfficialMapImage } from './official-map.js';
 import { viewStationPatronage } from './station-patronage.js';
 
 // Replaced in the published JS asset, never in the repository source file.
@@ -1616,13 +1616,12 @@ async function viewMap(main) {
     try { await loadLeaflet(); geographicReady = true; } catch (e) { console.warn('Using offline track drawing:', e.message); }
   }
   // A missing official background must NEVER display floating trains on a blank canvas.
+  // Validate an actual image load, not HEAD; a failure can be retried after deploy.
   async function checkOfficialMap() {
-    if (officialAvailable !== null) return officialAvailable;
-    try {
-      const response = await fetch(OFFICIAL_MAP.image, { method:'HEAD', cache:'no-store' });
-      officialAvailable = response.ok && (response.headers.get('content-type') || '').startsWith('image/');
-    } catch { officialAvailable = false; }
-    return officialAvailable;
+    if (officialAvailable === true) return true;
+    const loaded = await loadOfficialMapImage(OFFICIAL_MAP.image);
+    officialAvailable = loaded ? true : null;
+    return loaded;
   }
   if (kind === 'official' && !(await checkOfficialMap())) {
     kind='diagram';
@@ -1839,7 +1838,7 @@ async function viewMap(main) {
     drawMapOnly();
     if (officialFallback) {
       head.append(h('p', { class:'tw-sub' },
-        'The verified original TfNSW map image is not available on this deployment, so the custom diagram is shown instead.'));
+        'The published TfNSW map image could not load. This site is temporarily showing the older diagram. The map is being repaired; try Network diagram · TfNSW again after the next deployment.'));
     }
     if (kind === 'official' && geo?.positioned != null) {
       mapLabel.append(h('small', {}, geo.namedStations+' confirmed station locations · '
