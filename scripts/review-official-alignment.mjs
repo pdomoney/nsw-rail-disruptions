@@ -41,7 +41,7 @@ fs.writeFileSync(path.join(dest,'station-coordinate-reconciliation.csv'),
   [headers,...crosswalk].map(csvLine).join('\n')+'\n');
 fs.writeFileSync(path.join(dest,'review-metrics.json'),JSON.stringify({
   sourcePDF:OFFICIAL_MAP.source,edition:OFFICIAL_MAP.edition,
-  markerCandidates:266,printNames:onMap.size,
+  markerCandidates:277,printNames:onMap.size,
   confirmed:crosswalk.filter(x=>x[9]!=='UNRESOLVED').length,
   unresolved:crosswalk.filter(x=>x[9]==='UNRESOLVED').length,
   byLine:Object.fromEntries([...PDF_STATION_CROSSWALK.byLine].map(([id,m])=>[id,m.size]))
@@ -60,8 +60,8 @@ for(const [name,pt] of PDF_STATION_CROSSWALK.positions){
   (OFFICIAL_LINE_PALETTE[line]||'#00984c')+'" stroke-width="1.7" opacity=".9"><title>'+
   esc(name)+'</title></circle>');
 }
-const key=['PDF-exact named stations: '+PDF_STATION_CROSSWALK.positions.size,
- 'No guessed positions for unresolved stops'];
+const key=['Verified name anchors: '+PDF_STATION_CROSSWALK.positions.size,
+ 'Unresolved stops are excluded; a terminal may be calibrated manually'];
 svg.push('<rect x="35" y="66" width="440" height="61" fill="#f8f9f5" fill-opacity=".95" rx="7" stroke="#8b9498"/>');
 key.forEach((x,i)=>svg.push('<text x="50" y="'+(91+i*23)+
  '" font-size="16" font-family="Arial,sans-serif" fill="#193849">'+esc(x)+'</text>'));
