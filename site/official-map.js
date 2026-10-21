@@ -16,7 +16,7 @@ export const OFFICIAL_MAP = Object.freeze({
 // Coordinates may be refined after browser overlay alignment review.
 export const OFFICIAL_STOPS = Object.freeze({
   'Berowra': [519,218], 'Hornsby': [515,299], 'Gordon': [606,404], 'Asquith':[519.8,278.6], 'Waitara':[538.6,327.7],
-  'Chatswood': [660,454], 'Denistone':[513,494.4], 'West Ryde':[513,522.6], 'North Strathfield':[513,633.4], 'North Sydney': [744,521], 'Milsons Point': [747,551], 'Artarmon':[683.2,472.2], 'Lindfield':[639.4,428.5],
+  'Chatswood': [660,454], 'Denistone':[513,494.4], 'West Ryde':[513,522.6], 'North Strathfield':[513,633.4], 'North Sydney': [744,521], 'Roseville':[653.8,442.9], 'Milsons Point': [747,551], 'Artarmon':[683.2,472.2], 'Lindfield':[639.4,428.5],
   'Epping': [512,437], 'Tallawong': [219,422], 'Rouse Hill': [252.9,421.5],
   'Kellyville': [280.1,421.5], 'Bella Vista':[307.2,421.5],
   'Norwest': [334.4,421.5], 'Hills Showground':[361.6,421.5],
@@ -29,8 +29,8 @@ export const OFFICIAL_STOPS = Object.freeze({
   'Circular Quay': [795,571], 'St James': [849,637], 'Museum': [810,673],
   'Redfern': [736,694], 'Sydenham': [705,781], 'Waterloo': [766,709],
   'Richmond': [155,315], 'Windsor': [155,376], 'Clarendon':[157,355.2], 'Schofields': [155,455], 'Quakers Hill':[157,476.8], 'Marayong':[161.7,496.1],
-  'Emu Plains': [98,573.2], 'Penrith':[115.6,573.2], 'Kingswood':[132.5,573.2], 'Werrington':[149.5,573.2], 'St Marys':[164.8,573.2], 'Mount Druitt':[181.5,573.2], 'Rooty Hill':[198.4,573.2], 'Doonside':[215.4,573.2],
-  'Blacktown': [242,574], 'Parramatta': [353,648],
+  'Emu Plains': [98,573.2], 'Penrith':[115.6,573.2], 'Kingswood':[132.5,573.2], 'Werrington':[149.5,573.2], 'St Marys':[164.8,573.2], 'Mount Druitt':[181.5,573.2], 'Rooty Hill':[198.4,573.2], 'Doonside':[215.4,573.2], 'Toongabbie':[276,573.2], 'Pendle Hill':[293,573.2], 'Wentworthville':[318.7,579.5], 'Westmead':[328.5,589.4],
+  'Blacktown': [242,574], 'Parramatta': [359.6,630],
   'Strathfield': [519.8,702.1], 'Flemington':[486.4,708.9], 'Croydon':[553.1,708.9], 'Ashfield':[569.8,708.9], 'Petersham':[619.8,708.9], 'Stanmore':[636.5,708.9], 'Newtown':[653.1,708.9], 'Macdonaldtown':[669.8,708.9], 'Lidcombe': [448,703], 'Olympic Park': [468,617],
   'Granville': [385.9,646.8], 'Merrylands': [311,702.1],
   'Auburn':[405.2,675.5], 'Guildford':[297.4,717.7], 'Fairfield':[296.4,762.7],
@@ -42,7 +42,7 @@ export const OFFICIAL_STOPS = Object.freeze({
   'Domestic Airport': [767,803], 'Mascot': [767,769],
   'Wolli Creek': [690,824], 'Hurstville': [689,966], 'Arncliffe':[690.1,845.1], 'Kirrawee':[757.9,1102.9], 'Woolooware':[839.4,1102.9],
   'Sutherland': [689,1090], 'Cronulla': [894,1101], 'Waterfall': [689,1177],
-  'East Hills': [542,923], 'Macquarie Fields':[303.1,987], 'Ingleburn':[303.1,1014.1], 'Holsworthy':[350.7,921.8], 'Panania':[408.6,921.8], 'Revesby':[437.5,921.8], 'Padstow':[466.4,921.8], 'Riverwood':[495.3,921.8], 'Narwee':[524.2,921.8], 'Beverly Hills':[551.4,910.8], 'Kingsgrove':[572.3,889.9], 'Bexley North':[593.2,869], 'Bardwell Park':[614.1,848.1], 'Turrella':[635,827.3],
+  'East Hills': [379.7,921.8], 'Edmondson Park':[171.8,966.6], 'Green Square':[767.6,740.6], 'Macquarie Fields':[303.1,987], 'Ingleburn':[303.1,1014.1], 'Holsworthy':[350.7,921.8], 'Panania':[408.6,921.8], 'Revesby':[437.5,921.8], 'Padstow':[466.4,921.8], 'Riverwood':[495.3,921.8], 'Narwee':[524.2,921.8], 'Beverly Hills':[551.4,910.8], 'Kingsgrove':[572.3,889.9], 'Bexley North':[593.2,869], 'Bardwell Park':[614.1,848.1], 'Turrella':[635,827.3],
 });
 // On the original artwork, city interchange lines run side-by-side at different
 // x coordinates. These override the station-wide tap target for the *train* icon.
