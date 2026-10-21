@@ -17,6 +17,14 @@ An open, read-only record of delays, outages and service interruptions on Sydney
 
 It is an independent project and is not affiliated with Transport for NSW. For live travel information use [transportnsw.info](https://transportnsw.info/alerts).
 
+## Network diagram alignment correction
+
+The main **Network diagram · TfNSW** now uses the actual user-supplied official 2024 Sydney rail network PDF artwork, **not a reconstructed set of track lines**. Its station overlays have been reconciled to **277 actual PDF vector station symbols**, giving **175 verified named station coordinates out of 176** in the included 2024 rail/Metro route inventory. Harris Park remains explicitly unresolved for interactive overlay positioning, while its original printed label stays visible. The legacy hand-drawn layout is accessible separately and labelled accordingly.
+
+The optional **Enhanced contrast** mode improves printed line and label legibility; moving vehicles are rectangular, line-coloured glyphs with separate delay-status markers. Train positions on the PDF are approximate and displayed only on validated adjacent rail segments. The independent geographic map remains the correct view for real-world positions.
+
+The full source-derived coordinate crosswalk, the previous map coordinates, before/after evidence and QA procedure are described in [Official map coordinate reconciliation](docs/official-map-coordinate-reconciliation.md). CI includes a downloadable station-by-station CSV and overlay preview for visual acceptance before merge.
+
 ## Official TfNSW map with live data overlay
 
 The **TfNSW original + live** option on the Live map uses the [published Sydney rail network PDF](https://transportnsw.info/sydney-trains-network-map) itself, not a recreation or the custom diagram. The network-map dataset is published through the [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au/dataset/network-maps) under a **Creative Commons Attribution** licence.
