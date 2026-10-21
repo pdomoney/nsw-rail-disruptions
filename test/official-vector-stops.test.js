@@ -24,7 +24,8 @@ test('named stations snap to actual printed dot locations only where supported',
   unresolved:result.unmatched.length,
   byLine:Object.fromEntries([...result.byLine].map(([l,m])=>[l,m.size]))
  }));
- assert.ok(result.positions.size>=25);
+ assert.ok(result.positions.size>=170,'Most named stations must be reconciled to the source PDF before publishing');
+ assert.ok(result.unmatched.length<=6,'Unmatched stops are explicit exceptions, not ignored');
  for(const [line,stops] of result.byLine)
   for(const [name,xy] of stops)
    assert.ok(nearestPdfSymbol(xy,decodePdfSymbols()[line],.02),line+' '+name);
