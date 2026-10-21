@@ -43,3 +43,12 @@ test('reject HTML, empty files, truncated PNGs and mismatched map geometry', () 
     assert.throws(() => verifyOfficialMap(file, { ...onePixel, width: 2048 }), /dimensions differ/);
   });
 });
+
+test('Pages publisher cannot report success if the official PDF map fails to render', () => {
+  const workflow = fs.readFileSync(path.resolve('.github/workflows/collect.yml'), 'utf8');
+  assert.match(workflow, /Install PDF renderer on first official-map publish/);
+  assert.match(workflow, /sudo apt-get -y -qq install poppler-utils/);
+  assert.match(workflow, /Publish and verify the original TfNSW map image/);
+  assert.match(workflow, /node scripts\\/verify-official-map\\.mjs dist\\/assets\\/tfnsw-sydney-rail-2024\\.png/);
+  assert.doesNotMatch(workflow, /TfNSW PDF background could not be verified\\. The app will fall back/);
+});
