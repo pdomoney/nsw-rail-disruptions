@@ -1896,6 +1896,25 @@ async function viewMap(main) {
   pageRefresh = async () => { await loadMap(true,kind==='official'?'diagram':kind); draw(); };
 }
 
+// Shared hover treatment for both SVG maps. Hover is transient; click/tap remains
+// the persistent selection panel. Keyboard focus gets the same information.
+// Pointerenter makes the preview appear without requiring the mouse to move
+// again after entering a small train or station symbol.
+function bindSvgMapHover(node, rows) {
+  const show = event => {
+    if (event.pointerType === 'touch' || event.buttons) return;
+    showTip(rows, event.clientX, event.clientY);
+  };
+  node.addEventListener('pointerenter', show);
+  node.addEventListener('pointermove', show);
+  node.addEventListener('pointerleave', hideTip);
+  node.addEventListener('focus', () => {
+    const rect = node.getBoundingClientRect();
+    showTip(rows, rect.left + rect.width / 2, rect.top);
+  });
+  node.addEventListener('blur', hideTip);
+}
+
 function svgTrainMarker(S, { x, y, line, delay, pax, headsign, fullest, units, compact, dim, select }) {
   const a = units;
   const w = a(compact ? 15 : 23), hgt = a(compact ? 14 : 21);
@@ -1919,8 +1938,7 @@ function svgTrainMarker(S, { x, y, line, delay, pax, headsign, fullest, units, c
   const tip = [{ value: 'MOVING ' + line + (headsign ? ' to ' + headsign.replace(/\s+Station$/i, '') : '') },
     { label: delay == null ? 'No delay reported' : delay < 60 ? 'On time' : Math.round(delay / 60) + ' min late' },
     { label: pax == null ? 'Occupancy not reported' : 'About ' + Math.round(pax / 10) * 10 + ' people aboard (estimate)', muted: true }];
-  group.addEventListener('pointermove', event => showTip(tip, event.clientX, event.clientY));
-  group.addEventListener('pointerleave', hideTip);
+  bindSvgMapHover(group, tip);
   group.addEventListener('click', () => { hideTip(); select?.(summary); });
   group.addEventListener('keydown', event => {
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select?.(summary); }
@@ -1980,6 +1998,11 @@ function networkMap(container, { net, live, view, lineFilter, vb: zoom, onTrainS
     station.addEventListener('keydown', event => {
       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onStationSelect?.(name, ls.split(' ')); }
     });
+    bindSvgMapHover(station, [
+      { value: name + ' station' },
+      { label: 'Lines: ' + ls.split(' ').join(' · '), muted: true },
+    ]);
+    station.addEventListener('click', hideTip);
     st.append(station);
     // Light rail stops are close together: name them only when zoomed well in.
     const tramOnly = ls.split(' ').every(l => lineInfo(l).mode === 'lightrail');
@@ -2140,8 +2163,8 @@ function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, theme 
       if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onStationSelect?.(name, on); }
     });
     const tip = [{ value: name.replace(/\s+\(.*\)$/, '') }, { label: on.join(' · '), muted: true }];
-    c.addEventListener('pointermove', ev => showTip(tip, ev.clientX, ev.clientY));
-    c.addEventListener('pointerleave', hideTip);
+    bindSvgMapHover(c, tip);
+    c.addEventListener('click', hideTip);
     st.append(c);
     const a = (angle * Math.PI) / 180;
     const ex = ring ? r : Math.abs(0.12 * Math.cos(a)) + Math.abs(half * Math.sin(a));
