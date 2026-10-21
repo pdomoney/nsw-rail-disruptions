@@ -1598,9 +1598,14 @@ async function viewMap(main) {
   document.title = 'Live map | NSW Rail Disruptions';
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   // Three presentations: actual TfNSW PDF overlay, geographical map, custom diagram.
-  let kind = ['official','track','diagram'].includes(q.get('map'))
-    ? q.get('map') : prefs.get('mapKind', 'official');
-  if (!['official','track','diagram'].includes(kind)) kind = 'official';
+  // Network diagram links from earlier releases now open the authentic PDF
+  // artwork rather than the old hand-drawn layout. Keep legacy explicitly opt-in.
+  const requested=q.get('map');
+  const saved=prefs.get('mapKind','official');
+  let kind=requested==='legacy'?'diagram':requested==='diagram'?'official'
+    : ['official','track'].includes(requested)?requested
+    : saved==='diagram'?'official':saved;
+  if (!['official','track','diagram'].includes(kind)) kind='official';
   let officialAvailable = null;
   let officialFallback = false;
   await loadMap(true, kind);
@@ -1628,6 +1633,7 @@ async function viewMap(main) {
   let view = ['city', 'sydney', 'all'].includes(q.get('view')) ? q.get('view') : prefs.get('mapView', 'sydney');
   if (!['city', 'sydney', 'all'].includes(view)) view = 'sydney';
   let diagramStyle = prefs.get('mapDiagramStyle', 'light') === 'dark' ? 'dark' : 'light';
+  let officialContrast = prefs.get('officialMapContrast','enhanced') === 'original'?'original':'enhanced';
   let lineFilter = q.get('line') || '';
   const head = h('div', { class: 'map-head' });
   const filters = h('div', { class: 'filters' });
@@ -1747,6 +1753,7 @@ async function viewMap(main) {
       geo = drawOfficialOverlay(holder, { network:D.network, live:D.live,
         view:view === 'all'?'sydney':view,lineFilter,vb,
         onTrainSelect:showSelectedTrain,onStationSelect:showSelectedStation });
+      geo.svg.classList.toggle('official-enhanced-contrast',officialContrast==='enhanced');
       attach(geo.svg);
       return;
     }
@@ -1779,7 +1786,8 @@ async function viewMap(main) {
 
   const setState = () => {
     const p = new URLSearchParams();
-    if (kind === 'diagram' || kind === 'official') p.set('map', kind);
+    if (kind === 'diagram') p.set('map','legacy');
+    else if(kind==='official') p.set('map','official');
     if (view !== 'sydney') p.set('view', view);
     if (lineFilter) p.set('line', lineFilter);
     history.replaceState(null, '', `#/map${p.toString() ? `?${p}` : ''}`);
@@ -1797,7 +1805,7 @@ async function viewMap(main) {
       .filter(id => trackedLine(id) && (kind !== 'official' || /^T[1-9]$|^M1$/.test(id)))
       .sort((a, b) => orderOf(a) - orderOf(b));
     filters.replaceChildren(
-      segmented([['official', 'TfNSW original + live'], ['track', 'Geographic map'], ['diagram', 'Custom diagram']], kind, async v => {
+      segmented([['official', 'Network diagram · TfNSW'], ['track', 'Geographic map'], ['diagram', 'Legacy hand-drawn']], kind, async v => {
         kind = v; vb = null;
         if (kind === 'official' && !(await checkOfficialMap())) {
           showSelectedMapItem('Official image unavailable','The source PDF background has not been verified on this deployment. The custom schematic is still available.');
@@ -1820,6 +1828,10 @@ async function viewMap(main) {
       ...(kind === 'diagram' ? [segmented([['light', 'Classic map'], ['dark', 'Night map']], diagramStyle, v => {
         diagramStyle = v; prefs.set('mapDiagramStyle', v); drawMapOnly();
       }, 'Diagram background')] : []),
+      ...(kind === 'official' ? [segmented([['enhanced','Enhanced contrast'],['original','Original colours']],officialContrast,v=>{
+        officialContrast=v;prefs.set('officialMapContrast',v);
+        if(geo?.svg)geo.svg.classList.toggle('official-enhanced-contrast',v==='enhanced');
+      },'TfNSW source map contrast')] : []),
       h('label', { class: 'field inline' }, 'Line ',
         h('select', { onchange: ev => { lineFilter = ev.target.value; setState(); draw(); } },
           h('option', { value: '' }, 'All lines'),
@@ -1830,8 +1842,8 @@ async function viewMap(main) {
         'The verified original TfNSW map image is not available on this deployment, so the custom diagram is shown instead.'));
     }
     if (kind === 'official' && geo?.positioned != null) {
-      mapLabel.append(h('small', {}, geo.positioned + ' live vehicles positioned · ' +
-        geo.unmatched + ' excluded where alignment is uncertain'));
+      mapLabel.append(h('small', {}, geo.namedStations+' confirmed station locations · '
+        +geo.positioned+' positioned trains · '+geo.unmatched+' unpositioned (no trusted match)'));
     }
     legend.replaceChildren(
       h('div', { class: 'key map-symbol-key' },
@@ -1840,7 +1852,7 @@ async function viewMap(main) {
       h('div', { class: 'key' }, MAP_DELAY.map(b => h('span', {}, h('i', { class: `map-dot ${b.cls}` }), b.label)), h('span', {}, h('i', { class: 'map-dot mt-none' }), 'No delay figure')),
       h('div', { class: 'key' }, h('span', {}, h('i', { class: 'map-sec incident' }), 'Incident'), h('span', {}, h('i', { class: 'map-sec closed' }), 'Closed for trackwork now'),
         h('span', { class: 'muted' }, kind === 'official'
-          ? '© Transport for NSW, 2024 map (CC BY). Moving train icons are our approximate overlays, not official map symbols. An unmatched service is not displayed.'
+          ? '© Transport for NSW, 2024 map (CC BY). Map geometry and labels are original TfNSW artwork; interactive stations are snapped to its vector dots. Train symbols use official line colours and approximate positions only on verified routes. Unmatched services are excluded.'
           : kind === 'diagram'
           ? 'TfNSW-style line colours and distinct station stops. Light rail is only on the geographic map. Zoom in for additional names.'
           : geographic ? 'Geographically placed stations and services over OpenStreetMap. Pinch or drag; use +/− to zoom. Tap trains or stations for details.'
