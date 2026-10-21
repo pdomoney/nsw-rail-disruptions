@@ -279,21 +279,71 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
     const [line,,,delay,pax,fullest,,headsign]=train;
     const key=Math.round(pos.x/5)+':'+Math.round(pos.y/5);
     const count=bucket.get(key)||0;bucket.set(key,count+1);
-    const jitter=count?Math.min(8,count*3):0;
-    const size=unit(26),x=pos.x+jitter*unit(1),y=pos.y;
-    const g=el('g',{class:'official-vehicle',transform:'translate('+x+' '+y+')',tabindex:'0',role:'button',
-      'aria-label':'Moving '+line+' train'+(headsign?' towards '+headsign:'')+', position estimated on 2024 map'});
-    g.append(el('rect',{x:-size/2,y:-size/2,width:size,height:size,rx:unit(5),
-      fill:OFFICIAL_LINE_PALETTE[line]||'#526777',stroke:'#ffffff','stroke-width':unit(2)}));
-    // Small detached status badge uses delay, leaving the primary vehicle colour
-    // equal to TfNSW's official line colour instead of being mistaken for a station.
-    g.append(el('circle',{cx:size*.41,cy:-size*.37,r:unit(4),
-      fill:delayColor(delay),stroke:'#ffffff','stroke-width':unit(1.2)}));
-    g.append(el('rect',{x:-size*.32,y:-size*.36,width:size*.64,height:size*.26,
-      rx:unit(1.5),fill:'#ffffff'}));
-    const label=el('text',{x:0,y:size*.31,'font-size':unit(9),fill:'#ffffff',
-      'text-anchor':'middle','font-family':'Arial,sans-serif','font-weight':'bold'});
-    label.textContent=line;g.append(label);
+    
+const jitter = count ? Math.min(5, count * 2) : 0;
+const size = unit(view === 'city' ? 17 : 19);
+const x = pos.x + jitter * unit(1);
+const y = pos.y;
+// Create the train marker
+const g = el('g', {
+  class: 'official-vehicle',
+  transform: 'translate(' + x + ' ' + y + ')',
+  tabindex: '0',
+  role: 'button',
+  'aria-label': 'Moving ' + line + ' train' +
+    (headsign ? ' towards ' + headsign : '') +
+    ', position estimated on 2024 map'
+});
+// Invisible 30px touch target for mobile usability
+g.append(el('rect', {
+  x: -unit(15),
+  y: -unit(15),
+  width: unit(30),
+  height: unit(30),
+  rx: unit(6),
+  fill: 'transparent'
+}));
+// Smaller train body using the official line colour
+g.append(el('rect', {
+  x: -size / 2,
+  y: -size / 2,
+  width: size,
+  height: size,
+  rx: unit(3.8),
+  fill: OFFICIAL_LINE_PALETTE[line] || '#526777',
+  stroke: '#ffffff',
+  'stroke-width': unit(1.6)
+}));
+// Smaller delay status indicator
+g.append(el('circle', {
+  cx: size * 0.40,
+  cy: -size * 0.35,
+  r: unit(3.1),
+  fill: delayColor(delay),
+  stroke: '#ffffff',
+  'stroke-width': unit(1)
+}));
+// Train window
+g.append(el('rect', {
+  x: -size * 0.29,
+  y: -size * 0.33,
+  width: size * 0.58,
+  height: size * 0.22,
+  rx: unit(1.2),
+  fill: '#ffffff'
+}));
+// Smaller train line identifier
+const label = el('text', {
+  x: 0,
+  y: size * 0.28,
+  'font-size': unit(7.2),
+  fill: '#ffffff',
+  'text-anchor': 'middle',
+  'font-family': 'Arial,sans-serif',
+  'font-weight': 'bold'
+});
+label.textContent = line;
+g.append(label);
     const title=el('title');
     title.textContent=line+' to '+(headsign||'destination not reported')+'. On-map position approximate between '+pos.from+' and '+pos.to;
     g.append(title);
