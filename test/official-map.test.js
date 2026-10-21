@@ -1,7 +1,8 @@
 import test from 'node:test';
+import fsNode from 'node:fs';
 import assert from 'node:assert/strict';
 import { OFFICIAL_MAP, OFFICIAL_STOPS, OFFICIAL_CORRIDORS, normaliseStop,
-  projectToSegment, buildOfficialAlignment, locateOfficialTrain, OFFICIAL_LINE_STOPS, officialDisruptionPins, PDF_STATION_CROSSWALK, buildVerifiedPdfAlignment, loadOfficialMapImage } from '../site/official-map.js';
+  projectToSegment, buildOfficialAlignment, locateOfficialTrain, OFFICIAL_LINE_STOPS, officialDisruptionPins, PDF_STATION_CROSSWALK, buildVerifiedPdfAlignment, loadOfficialMapImage, officialMapAssetUrl } from '../site/official-map.js';
 
 const stops=[
   ['Tallawong Station',100,100,'M1',1],
@@ -26,7 +27,7 @@ test('original source map and image geometry are explicitly labelled',()=>{
   assert.equal(OFFICIAL_MAP.height,1447);
   assert.equal(OFFICIAL_MAP.edition,'30 September 2024');
   assert.match(OFFICIAL_MAP.source,/^https:\/\/transportnsw\.info/);
-  assert.match(OFFICIAL_MAP.image,/\.png\?asset=renderer-fixed-v2$/);
+  assert.match(OFFICIAL_MAP.image,/\/assets\/tfnsw-sydney-rail-2024\.png\?asset=verified-render-v3$/);
   assert.match(OFFICIAL_MAP.licence,/creativecommons\.org/);
 });
 
@@ -139,4 +140,21 @@ test('official map preflight requires an actually decoded image, never an HTTP H
   assert.equal(await loadOfficialMapImage(OFFICIAL_MAP.image,create(2048,500)),false);
   assert.equal(await loadOfficialMapImage(OFFICIAL_MAP.image,create(0,0,true)),false);
   assert.equal(await loadOfficialMapImage(OFFICIAL_MAP.image,()=>({set src(_v){/* never fires */}}),5),false);
+});
+
+test('official TfNSW map uses a module-rooted, absolute GitHub Pages image URL, unaffected by routes',()=>{
+  const base='https://pdomoney.github.io/nsw-rail-disruptions/official-map.fingerprint.js';
+  const expected='https://pdomoney.github.io/nsw-rail-disruptions/assets/tfnsw-sydney-rail-2024.png?asset=verified-render-v3';
+  assert.equal(officialMapAssetUrl(base),expected);
+  assert.equal(officialMapAssetUrl('https://pdomoney.github.io/nsw-rail-disruptions/official-map.js'),expected);
+  assert.ok(OFFICIAL_MAP.image.startsWith('file:') || OFFICIAL_MAP.image.startsWith('https:'));
+});
+
+test('official map failure remains visible instead of falling back to legacy hand-drawn',()=>{
+  const fs=fsNode;
+  const app=fs.readFileSync(new URL('../site/app.js',import.meta.url),'utf8');
+  assert.ok(app.includes('Official TfNSW map image unavailable'));
+  assert.ok(app.includes('Retry official image'));
+  assert.ok(app.includes('Open the source image directly'));
+  assert.doesNotMatch(app,/if \(kind === 'official' && !\(await checkOfficialMap\(\)\)\)\s*\{\s*kind\s*=\s*'diagram'/);
 });
