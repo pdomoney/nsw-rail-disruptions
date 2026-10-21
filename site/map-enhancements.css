@@ -5,6 +5,23 @@
 .geo-map .leaflet-popup-content { font: 500 .89rem/1.4 var(--font); min-width: 155px; }
 .geo-map .leaflet-popup-content strong { font-size: 1rem; }
 .geo-map .leaflet-popup-content p { margin: 7px 0; }
+/* Leaflet's native hover bubble is intentionally distinct from persistent
+   click popups. Wrapped text and restrained contrast keep it readable on Mac,
+   PC and mouse-equipped iPad without hiding most of the rail map. */
+.geo-map .leaflet-tooltip.rail-map-hover {
+  max-width: min(300px, 75vw);
+  white-space: normal;
+  padding: 8px 11px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  box-shadow: 0 5px 15px rgba(10, 20, 30, .16);
+  font: 500 .85rem/1.35 var(--font);
+  pointer-events: none;
+}
+.geo-map .rail-map-hover strong { display: block; font-weight: 700; }
+.geo-map .rail-map-hover p { margin: 3px 0 0; }
 .geo-map .leaflet-control-attribution { font-size: 10px; }
 .geo-vehicle { background: none; border: 0; }
 .geo-vehicle-symbol {
