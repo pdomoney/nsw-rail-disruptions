@@ -28,6 +28,13 @@ test('named stations snap to actual printed dot locations only where supported',
  for(const [line,stops] of result.byLine)
   for(const [name,xy] of stops)
    assert.ok(nearestPdfSymbol(xy,decodePdfSymbols()[line],.02),line+' '+name);
+ const used=new Map();
+ for(const [name,point] of result.positions){
+   const key=point.join(',');
+   assert.ok(!used.has(key) || used.get(key)===name,
+     'Two different names assigned the same printed stop: '+name+' and '+used.get(key)+' at '+key);
+   used.set(key,name);
+ }
  const again=reconcilePdfStations(OFFICIAL_STOPS,REFERENCE_2024_ROUTES);
  assert.deepEqual([...again.positions],[...result.positions]);
 });
