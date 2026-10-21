@@ -107,19 +107,34 @@ jobs:
           path: .cache/official-tfnsw-map-2024.png
           key: tfnsw-map-2024-v1
 
-      - name: Publish the original TfNSW map image
+      # The PR test workflow installs Poppler, but production previously did not.
+      # Every green Pages deployment therefore omitted the original map image.
+      # Install only on a cache miss; later five-minute builds reuse the validated PNG.
+      - name: Install PDF renderer on first official-map publish
+        if: steps.official-cache.outputs.cache-hit != 'true'
         run: |
+          set -euo pipefail
+          if ! command -v pdftoppm >/dev/null || ! command -v pdftotext >/dev/null || ! command -v pdfinfo >/dev/null; then
+            sudo apt-get -qq update
+            sudo apt-get -y -qq install poppler-utils
+          fi
+          command -v pdftoppm
+          command -v pdftotext
+          command -v pdfinfo
+
+      - name: Publish and verify the original TfNSW map image
+        run: |
+          set -euo pipefail
           mkdir -p dist/assets .cache
           if test -s .cache/official-tfnsw-map-2024.png; then
             OFFICIAL_MAP_PNG_INPUT=".cache/official-tfnsw-map-2024.png" \
               bash scripts/render-official-map.sh dist/assets
           else
-            if OFFICIAL_MAP_PNG_INPUT="" bash scripts/render-official-map.sh dist/assets; then
-              cp dist/assets/tfnsw-sydney-rail-2024.png .cache/official-tfnsw-map-2024.png
-            else
-              echo "::warning::TfNSW PDF background could not be verified. The app will fall back to its existing diagrams."
-            fi
+            OFFICIAL_MAP_PNG_INPUT="" bash scripts/render-official-map.sh dist/assets
+            cp dist/assets/tfnsw-sydney-rail-2024.png .cache/official-tfnsw-map-2024.png
           fi
+          node scripts/verify-official-map.mjs dist/assets/tfnsw-sydney-rail-2024.png
+          echo "TfNSW original-map PNG verified and included in Pages deployment."
 
       - name: Cache the approved official map image
         if: steps.official-cache.outputs.cache-hit != 'true' && hashFiles('.cache/official-tfnsw-map-2024.png') != ''
