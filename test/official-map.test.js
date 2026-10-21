@@ -156,5 +156,7 @@ test('official map failure remains visible instead of falling back to legacy han
   assert.ok(app.includes('Official TfNSW map image unavailable'));
   assert.ok(app.includes('Retry official image'));
   assert.ok(app.includes('Open the source image directly'));
+  assert.ok(app.includes('official-map-load-preview'), 'native inline image recovery required on iPhone');
+  assert.ok(app.includes('officialAvailable = true;'), 'successful preview should enable the official overlay');
   assert.doesNotMatch(app,/if \(kind === 'official' && !\(await checkOfficialMap\(\)\)\)\s*\{\s*kind\s*=\s*'diagram'/);
 });
