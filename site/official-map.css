@@ -11,11 +11,11 @@
   fill: #ffffff44; stroke: #243c4b; outline: none;
 }
 .official-train-markers .official-vehicle { cursor: pointer; }
-.official-train-markers .official-vehicle:hover rect:first-child,
-.official-train-markers .official-vehicle:focus-visible rect:first-child {
+.official-train-markers .official-vehicle:hover .official-train-body,
+.official-train-markers .official-vehicle:focus-visible .official-train-body {
   stroke: #18384d; stroke-width: 3px; outline: none;
 }
-.official-train-markers .official-vehicle rect:first-child {
+.official-train-markers .official-vehicle .official-train-body {
   filter: drop-shadow(0 2px 3px #0008);
 }
 .map-frame:has(.official-tfnsw-svg) {
@@ -55,7 +55,7 @@
 .official-tfnsw-svg .official-station-target:focus-visible {
   fill: #eaf9ff66; stroke: #0b5786; stroke-width: 2.6px;
 }
-.official-tfnsw-svg .official-vehicle rect:first-child {
+.official-tfnsw-svg .official-vehicle .official-train-body {
   paint-order: stroke fill; stroke: #fff; stroke-width: 2px;
 }
 .official-tfnsw-svg .official-vehicle circle {
@@ -64,7 +64,7 @@
 .official-tfnsw-svg .official-vehicle:focus-visible {
   outline: none;
 }
-.official-tfnsw-svg .official-vehicle:focus-visible rect:first-child {
+.official-tfnsw-svg .official-vehicle:focus-visible .official-train-body {
   stroke: #151d2b; stroke-width: 3px;
 }
 
