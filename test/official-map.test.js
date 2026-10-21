@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OFFICIAL_MAP, OFFICIAL_STOPS, OFFICIAL_CORRIDORS, normaliseStop,
-  projectToSegment, buildOfficialAlignment, locateOfficialTrain, OFFICIAL_LINE_STOPS, officialDisruptionPins, PDF_STATION_CROSSWALK, buildVerifiedPdfAlignment } from '../site/official-map.js';
+  projectToSegment, buildOfficialAlignment, locateOfficialTrain, OFFICIAL_LINE_STOPS, officialDisruptionPins, PDF_STATION_CROSSWALK, buildVerifiedPdfAlignment, loadOfficialMapImage } from '../site/official-map.js';
 
 const stops=[
   ['Tallawong Station',100,100,'M1',1],
@@ -26,7 +26,7 @@ test('original source map and image geometry are explicitly labelled',()=>{
   assert.equal(OFFICIAL_MAP.height,1447);
   assert.equal(OFFICIAL_MAP.edition,'30 September 2024');
   assert.match(OFFICIAL_MAP.source,/^https:\/\/transportnsw\.info/);
-  assert.match(OFFICIAL_MAP.image,/\.png$/);
+  assert.match(OFFICIAL_MAP.image,/\.png\?asset=renderer-fixed-v2$/);
   assert.match(OFFICIAL_MAP.licence,/creativecommons\.org/);
 });
 
@@ -126,4 +126,17 @@ test('production official train alignment uses only PDF-confirmed adjacent stati
   const shorter=buildVerifiedPdfAlignment(withMissing);
   assert.ok(Object.values(shorter).flat().every(e=>e.from!=='Strathfield'&&e.to!=='Strathfield'));
   assert.ok(Object.values(shorter).reduce((n,v)=>n+v.length,0)<total);
+});
+
+test('official map preflight requires an actually decoded image, never an HTTP HEAD response', async()=>{
+  const create=(width,height,fail=false)=>()=>({
+    naturalWidth:width,naturalHeight:height,
+    onload:null,onerror:null,
+    set src(value){this.requested=value;queueMicrotask(()=>fail?this.onerror?.():this.onload?.());}
+  });
+  assert.equal(await loadOfficialMapImage(OFFICIAL_MAP.image,create(2048,2896)),true);
+  assert.equal(await loadOfficialMapImage(OFFICIAL_MAP.image,create(0,0)),false);
+  assert.equal(await loadOfficialMapImage(OFFICIAL_MAP.image,create(2048,500)),false);
+  assert.equal(await loadOfficialMapImage(OFFICIAL_MAP.image,create(0,0,true)),false);
+  assert.equal(await loadOfficialMapImage(OFFICIAL_MAP.image,()=>({set src(_v){/* never fires */}}),5),false);
 });
