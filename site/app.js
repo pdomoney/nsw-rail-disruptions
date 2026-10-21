@@ -1,7 +1,7 @@
 import { heatmap, hbars, columns, line as lineChart, onColor, showTip, hideTip, compact } from './charts.js';
 import { viewPatronage } from './patronage.js';
 import { loadLeaflet, createGeographicMap, trainDescription } from './geo-map.js';
-import { drawOfficialOverlay, OFFICIAL_MAP, loadOfficialMapImage } from './official-map.js';
+import { drawOfficialOverlay, OFFICIAL_MAP, loadOfficialMapImage, mapTrainHoverRows } from './official-map.js';
 import { viewStationPatronage } from './station-patronage.js';
 
 // Replaced in the published JS asset, never in the repository source file.
@@ -1783,7 +1783,8 @@ async function viewMap(main) {
       }
       geo = drawOfficialOverlay(holder, { network:D.network, live:D.live,
         view:view === 'all'?'sydney':view,lineFilter,vb,imageUrl:officialImageUrl,
-        onTrainSelect:showSelectedTrain,onStationSelect:showSelectedStation });
+        onTrainSelect:showSelectedTrain,onStationSelect:showSelectedStation,
+        onTrainHover:showTip,onHoverEnd:hideTip });
       geo.svg.classList.toggle('official-enhanced-contrast',officialContrast==='enhanced');
       attach(geo.svg);
       return;
@@ -1935,9 +1936,7 @@ function svgTrainMarker(S, { x, y, line, delay, pax, headsign, fullest, units, c
     group.append(text);
   }
   const summary = trainDescription({ line, destination: headsign, delay, passengers: pax, fullness: fullest });
-  const tip = [{ value: 'MOVING ' + line + (headsign ? ' to ' + headsign.replace(/\s+Station$/i, '') : '') },
-    { label: delay == null ? 'No delay reported' : delay < 60 ? 'On time' : Math.round(delay / 60) + ' min late' },
-    { label: pax == null ? 'Occupancy not reported' : 'About ' + Math.round(pax / 10) * 10 + ' people aboard (estimate)', muted: true }];
+  const tip = mapTrainHoverRows({line,headsign,delay,pax});
   bindSvgMapHover(group, tip);
   group.addEventListener('click', () => { hideTip(); select?.(summary); });
   group.addEventListener('keydown', event => {

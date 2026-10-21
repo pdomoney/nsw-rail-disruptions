@@ -214,6 +214,19 @@ export function loadOfficialMapImage(url, createImage = () => new Image(), timeo
   });
 }
 
+// One tooltip content model for both SVG maps. Browser-native SVG <title>
+// bubbles do not share the application's formatting and omit delay/occupancy.
+export function mapTrainHoverRows({ line, headsign, delay, pax }) {
+  const destination = headsign ? String(headsign).replace(/\s+Station$/i, '') : '';
+  return [
+    { value: 'MOVING ' + line + (destination ? ' to ' + destination : '') },
+    { label: delay == null ? 'No delay reported' : delay < 60
+      ? 'On time' : Math.round(delay / 60) + ' min late' },
+    { label: pax == null ? 'Occupancy not reported'
+      : 'About ' + Math.round(pax / 10) * 10 + ' people aboard (estimate)', muted: true },
+  ];
+}
+
 const svgNS='http://www.w3.org/2000/svg';
 function el(tag, attrs={}) {
   const n=document.createElementNS(svgNS,tag);
@@ -222,7 +235,7 @@ function el(tag, attrs={}) {
 }
 const colors={early:'#2a9d58',onTime:'#1f8a56',minor:'#aa7513',late:'#d65b22',severe:'#a82730',unknown:'#536675'};
 const delayColor=delay=>delay==null?colors.unknown:delay<120?colors.onTime:delay<300?colors.minor:delay<600?colors.late:colors.severe;
-export function drawOfficialOverlay(container,{network,live,view='sydney',lineFilter='',vb:zoom=null,onTrainSelect,onStationSelect,imageUrl=OFFICIAL_MAP.image}) {
+export function drawOfficialOverlay(container,{network,live,view='sydney',lineFilter='',vb:zoom=null,onTrainSelect,onStationSelect,onTrainHover,onHoverEnd,imageUrl=OFFICIAL_MAP.image}) {
   const W=Math.max(310,container.clientWidth);
   const allowed=view==='city'?[595,400,380,540]:[0,0,OFFICIAL_MAP.width,OFFICIAL_MAP.height];
   const ratio=allowed[3]/allowed[2];
@@ -296,6 +309,7 @@ const g = el('g', {
 });
 // Invisible 30px touch target for mobile usability
 g.append(el('rect', {
+  class: 'official-train-hit',
   x: -unit(15),
   y: -unit(15),
   width: unit(30),
@@ -305,6 +319,7 @@ g.append(el('rect', {
 }));
 // Smaller train body using the official line colour
 g.append(el('rect', {
+  class: 'official-train-body',
   x: -size / 2,
   y: -size / 2,
   width: size,
@@ -344,13 +359,30 @@ const label = el('text', {
 });
 label.textContent = line;
 g.append(label);
-    const title=el('title');
-    title.textContent=line+' to '+(headsign||'destination not reported')+'. On-map position approximate between '+pos.from+' and '+pos.to;
-    g.append(title);
-    const select=()=>onTrainSelect?.(line+' '+(headsign?'towards '+headsign+'. ':'')+
-       (delay==null?'Delay not reported. ':delay<60?'On time. ':Math.round(delay/60)+' minutes late. ')+
-       'Shown approximately between '+pos.from+' and '+pos.to+' on the historical diagram.'+
-       (pax!=null?' Estimated '+Math.round(pax)+' passengers aboard.':''));
+    // Use the same styled application hover card as the legacy train markers.
+    // SVG <title> has been removed: its browser tooltip is inconsistent and
+    // omits both delay and occupancy. Retain aria-label and click details.
+    const hoverRows=mapTrainHoverRows({line,headsign,delay,pax});
+    const showHover=e=>{
+      if(e.pointerType==='touch' || e.buttons) return;
+      onTrainHover?.(hoverRows,e.clientX,e.clientY);
+    };
+    g.addEventListener('pointerenter',showHover);
+    g.addEventListener('pointermove',showHover);
+    g.addEventListener('pointerleave',()=>onHoverEnd?.());
+    g.addEventListener('pointercancel',()=>onHoverEnd?.());
+    g.addEventListener('focus',()=>{
+      const rect=g.getBoundingClientRect();
+      onTrainHover?.(hoverRows,rect.left+rect.width/2,rect.top);
+    });
+    g.addEventListener('blur',()=>onHoverEnd?.());
+    const select=()=>{
+      onHoverEnd?.();
+      onTrainSelect?.(line+' '+(headsign?'towards '+headsign+'. ':'')+
+        (delay==null?'Delay not reported. ':delay<60?'On time. ':Math.round(delay/60)+' minutes late. ')+
+        'Shown approximately between '+pos.from+' and '+pos.to+' on the historical diagram.'+
+        (pax!=null?' Estimated '+Math.round(pax)+' passengers aboard.':''));
+    };
     g.addEventListener('click',select);
     g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}});
     trainLayer.append(g);
