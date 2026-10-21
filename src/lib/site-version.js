@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
-const baseFiles = ['app.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css'];
+const baseFiles = ['app.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'official-vector-stops.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css'];
 
 function filesUnder(dir, prefix = '') {
   return fs.readdirSync(path.join(dir, prefix), { withFileTypes: true })
@@ -39,13 +39,21 @@ export function publishSiteRelease(siteDir, outputDir, { generatedAt = Date.now(
   // its parent app filename MUST change too, or iOS may reuse a cached app.js that
   // imports an obsolete dependency. Dependency files are stamped first.
   const stamped = {};
-  for (const name of baseFiles.filter(name => name !== 'app.js')) {
+  // Publish leaf modules first. official-map.js itself imports the PDF station
+  // registry, so its fingerprint must include the rewritten import filename.
+  for (const name of baseFiles.filter(name => name !== 'app.js' && name !== 'official-map.js')) {
     const content = fs.readFileSync(path.join(siteDir, name));
     const ext = path.extname(name);
     const newName = name.slice(0, -ext.length) + '.' + hash(content).slice(0, 12) + ext;
     stamped[name] = newName;
     fs.writeFileSync(path.join(outputDir, newName), content);
   }
+
+  let officialMap = fs.readFileSync(path.join(siteDir, 'official-map.js'), 'utf8');
+  officialMap = replaceOnce(officialMap, "from './official-vector-stops.js'",
+    "from './" + stamped['official-vector-stops.js'] + "'", 'official-map.js');
+  stamped['official-map.js'] = 'official-map.' + hash(officialMap).slice(0,12) + '.js';
+  fs.writeFileSync(path.join(outputDir, stamped['official-map.js']), officialMap);
 
   let app = fs.readFileSync(path.join(siteDir, 'app.js'), 'utf8');
   app = replaceOnce(app, "from './charts.js'", "from './" + stamped['charts.js'] + "'", 'app.js');

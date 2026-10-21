@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { OFFICIAL_MAP, OFFICIAL_STOPS, OFFICIAL_CORRIDORS, normaliseStop,
-  projectToSegment, buildOfficialAlignment, locateOfficialTrain, OFFICIAL_LINE_STOPS, officialDisruptionPins } from '../site/official-map.js';
+  projectToSegment, buildOfficialAlignment, locateOfficialTrain, OFFICIAL_LINE_STOPS, officialDisruptionPins, PDF_STATION_CROSSWALK, buildVerifiedPdfAlignment } from '../site/official-map.js';
 
 const stops=[
   ['Tallawong Station',100,100,'M1',1],
@@ -104,4 +104,26 @@ test('official map marks only explicitly named disrupted stations; no inferred c
   assert.equal(pins[0].title,alert.title);
   assert.deepEqual(officialDisruptionPins({overlays:[alert]},'T4'),[]);
   assert.deepEqual(officialDisruptionPins({overlays:[]}),[]);
+});
+
+test('production official train alignment uses only PDF-confirmed adjacent stations and current GTFS coordinates',()=>{
+  const linesByName=new Map();
+  for(const [line,stops] of PDF_STATION_CROSSWALK.byLine)for(const name of stops.keys()){
+    const items=linesByName.get(name)||new Set();items.add(line);linesByName.set(name,items);
+  }
+  const network={stations:[...PDF_STATION_CROSSWALK.positions].map(([name,p])=>[
+    name,p[0],p[1],[...(linesByName.get(name)||[])].join(' ')
+  ])};
+  const alignment=buildVerifiedPdfAlignment(network);
+  const total=Object.values(alignment).reduce((n,arr)=>n+arr.length,0);
+  assert.ok(total>=100,'Expected many verified adjacent station segments for T1-T9/M1');
+  for(const [line,segments] of Object.entries(alignment))for(const s of segments){
+    assert.deepEqual(s.pdfA,PDF_STATION_CROSSWALK.byLine.get(line).get(s.from));
+    assert.deepEqual(s.pdfB,PDF_STATION_CROSSWALK.byLine.get(line).get(s.to));
+    assert.ok(Math.hypot(s.pdfB[0]-s.pdfA[0],s.pdfB[1]-s.pdfA[1])>=2);
+  }
+  const withMissing={stations:network.stations.filter(x=>x[0]!=='Strathfield')};
+  const shorter=buildVerifiedPdfAlignment(withMissing);
+  assert.ok(Object.values(shorter).flat().every(e=>e.from!=='Strathfield'&&e.to!=='Strathfield'));
+  assert.ok(Object.values(shorter).reduce((n,v)=>n+v.length,0)<total);
 });

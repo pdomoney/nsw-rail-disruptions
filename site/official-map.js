@@ -1,3 +1,5 @@
+import {reconcilePdfStations,REFERENCE_2024_ROUTES,OFFICIAL_LINE_PALETTE,nearestPdfSymbol} from './official-vector-stops.js';
+
 // The official TfNSW published network PDF is rendered at deployment time.
 // Calibration is to the 2024 first-page artwork, in image units 1024 x 1447.
 // This is schematic, not geographic: never project train GPS directly on the PDF.
@@ -13,27 +15,35 @@ export const OFFICIAL_MAP = Object.freeze({
 // Store only positively identified railway/metro stops and do not infer new line extensions.
 // Coordinates may be refined after browser overlay alignment review.
 export const OFFICIAL_STOPS = Object.freeze({
-  'Berowra': [519,218], 'Hornsby': [515,299], 'Gordon': [606,404],
-  'Chatswood': [660,454], 'North Sydney': [744,521], 'Milsons Point': [747,551],
-  'Epping': [512,437], 'Tallawong': [219,422], 'Rouse Hill': [252,422],
-  'Kellyville': [285,422], 'Norwest': [368,422], 'Macquarie University': [565,454],
+  'Berowra': [519,218], 'Hornsby': [515,299], 'Gordon': [606,404], 'Asquith':[519.8,278.6], 'Waitara':[538.6,327.7],
+  'Chatswood': [660,454], 'Denistone':[513,494.4], 'West Ryde':[513,522.6], 'North Strathfield':[513,633.4], 'North Sydney': [744,521], 'Roseville':[653.8,442.9], 'Milsons Point': [747,551], 'Artarmon':[683.2,472.2], 'Lindfield':[639.4,428.5],
+  'Epping': [512,437], 'Tallawong': [219,422], 'Rouse Hill': [252.9,421.5],
+  'Kellyville': [280.1,421.5], 'Bella Vista':[307.2,421.5],
+  'Norwest': [334.4,421.5], 'Hills Showground':[361.6,421.5],
+  'Castle Hill':[388.8,421.5], 'Cherrybrook':[416,421.5],
+  'Macquarie University': [565.4,455.1], 'Macquarie Park':[596.9,455.1],
+  'North Ryde':[628.4,455.1],
   'Crows Nest': [705,490], 'Victoria Cross': [735,543], 'Barangaroo': [739,584],
   'Martin Place': [786,621], 'Gadigal': [785,643], 'Central': [766,675],
-  'Town Hall': [766,638], 'Wynyard': [766,604],
+  'Town Hall': [766,638], 'Wynyard': [766,604], 'Kings Cross':[859.0,628.2],
   'Circular Quay': [795,571], 'St James': [849,637], 'Museum': [810,673],
   'Redfern': [736,694], 'Sydenham': [705,781], 'Waterloo': [766,709],
-  'Richmond': [155,315], 'Windsor': [155,376], 'Schofields': [155,455],
-  'Blacktown': [242,574], 'Parramatta': [353,648],
-  'Strathfield': [513,637], 'Lidcombe': [448,703], 'Olympic Park': [468,617],
-  'Granville': [384,672], 'Merrylands': [291,706],
-  'Regents Park': [441,770], 'Bankstown': [479,827],
+  'Erskineville':[727.3,735], 'St Peters':[709.8,752.4],
+  'Richmond': [155,315], 'Windsor': [155,376], 'Clarendon':[157,355.2], 'Schofields': [155,455], 'Quakers Hill':[157,476.8], 'Marayong':[161.7,496.1],
+  'Emu Plains': [98,573.2], 'Penrith':[115.6,573.2], 'Kingswood':[132.5,573.2], 'Werrington':[149.5,573.2], 'St Marys':[164.8,573.2], 'Mount Druitt':[181.5,573.2], 'Rooty Hill':[198.4,573.2], 'Doonside':[215.4,573.2], 'Toongabbie':[276,573.2], 'Pendle Hill':[293,573.2], 'Wentworthville':[318.7,579.5], 'Westmead':[328.5,589.4],
+  'Blacktown': [242,574], 'Parramatta': [359.6,630],
+  'Strathfield': [519.8,702.1], 'Flemington':[486.4,708.9], 'Croydon':[553.1,708.9], 'Ashfield':[569.8,708.9], 'Petersham':[619.8,708.9], 'Stanmore':[636.5,708.9], 'Newtown':[653.1,708.9], 'Macdonaldtown':[669.8,708.9], 'Lidcombe': [448,703], 'Olympic Park': [468,617],
+  'Granville': [385.9,646.8], 'Merrylands': [311,702.1],
+  'Auburn':[405.2,675.5], 'Guildford':[297.4,717.7], 'Fairfield':[296.4,762.7],
+  'Yennora':[296.4,735.7], 'Casula':[296.4,905.5],
+  'Regents Park': [441,770], 'Bankstown': [479,827], 'Berala':[447.8,747.0], 'Birrong':[456.9,795.3], 'Sefton':[426.6,790.3], 'Villawood':[361.4,790.3], 'Carramar':[339.6,790.3],
   'Cabramatta': [294,818], 'Liverpool': [294,868], 'Glenfield': [294,940],
   'Leppington': [130,967], 'Campbelltown': [302,1095], 'Macarthur': [302,1125],
-  'Bondi Junction': [899,636], 'International Airport': [767,822],
+  'Bondi Junction': [897,628], 'International Airport': [751.5,812.8],
   'Domestic Airport': [767,803], 'Mascot': [767,769],
-  'Wolli Creek': [690,824], 'Hurstville': [689,966],
+  'Wolli Creek': [690,824], 'Hurstville': [689,966], 'Arncliffe':[690.1,845.1], 'Kirrawee':[757.9,1102.9], 'Woolooware':[839.4,1102.9],
   'Sutherland': [689,1090], 'Cronulla': [894,1101], 'Waterfall': [689,1177],
-  'East Hills': [542,923],
+  'East Hills': [379.7,921.8], 'Edmondson Park':[171.8,966.6], 'Green Square':[767.6,740.6], 'Macquarie Fields':[303.1,987], 'Ingleburn':[303.1,1014.1], 'Holsworthy':[350.7,921.8], 'Panania':[408.6,921.8], 'Revesby':[437.5,921.8], 'Padstow':[466.4,921.8], 'Riverwood':[495.3,921.8], 'Narwee':[524.2,921.8], 'Beverly Hills':[551.4,910.8], 'Kingsgrove':[572.3,889.9], 'Bexley North':[593.2,869], 'Bardwell Park':[614.1,848.1], 'Turrella':[635,827.3],
 });
 // On the original artwork, city interchange lines run side-by-side at different
 // x coordinates. These override the station-wide tap target for the *train* icon.
@@ -64,6 +74,18 @@ export const OFFICIAL_CORRIDORS = Object.freeze({
   T8: [['Macarthur','Campbelltown','Glenfield','East Hills','Wolli Creek','International Airport','Domestic Airport','Mascot','Central','Town Hall','Wynyard']],
   T9: [['Hornsby','Epping','Strathfield','Central','Wynyard','North Sydney','Chatswood','Gordon']],
   M1: [['Tallawong','Rouse Hill','Kellyville','Norwest','Epping','Macquarie University','Chatswood','Crows Nest','Victoria Cross','Barangaroo','Martin Place','Gadigal','Central','Waterloo','Sydenham']],
+});
+
+// Named station locations now snap to actual station-symbol curves extracted from
+// the SAME original 2024 TfNSW PDF as the published image. Do not draw arbitrary
+// straight-line route geometry over the source. Unknown points remain unavailable.
+export const PDF_STATION_CROSSWALK = reconcilePdfStations(OFFICIAL_STOPS,REFERENCE_2024_ROUTES);
+export const PDF_STATION_COVERAGE = Object.freeze({
+  pdfSymbols: 277,
+  namedMatches: PDF_STATION_CROSSWALK.positions.size,
+  verifiedAnchorCount: PDF_STATION_CROSSWALK.evidence.filter(e=>e.method==='vector-anchor').length,
+  matchedIntermediateCount: PDF_STATION_CROSSWALK.evidence.filter(e=>e.method==='vector-intermediate').length,
+  unmatchedSourceNames: PDF_STATION_CROSSWALK.unmatched.length
 });
 
 export function normaliseStop(name) {
@@ -104,6 +126,32 @@ export function buildOfficialAlignment(network) {
   }
   return segments;
 }
+// Full TfNSW station-to-station evidence alignment, not broad hand-drawn corridors.
+// Both endpoints must exist as original PDF vector symbols on the SAME line.
+// The realtime feed's geographic coordinates determine fractional progress.
+export function buildVerifiedPdfAlignment(network, crosswalk=PDF_STATION_CROSSWALK) {
+  const geo=new Map();
+  for(const [name,x,y,lines] of network?.stations||[])
+    if(Number.isFinite(x)&&Number.isFinite(y))
+      geo.set(normaliseStop(name),{point:[x,y],lines:new Set(String(lines).split(' '))});
+  const result={};
+  for(const [line,routes] of Object.entries(REFERENCE_2024_ROUTES)) {
+    const printed=crosswalk.byLine.get(line) || new Map();
+    const segments=[];
+    for(const route of routes)for(let i=1;i<route.length;i++){
+      const from=route[i-1],to=route[i],a=geo.get(normaliseStop(from)),b=geo.get(normaliseStop(to));
+      if(!a||!b||!a.lines.has(line)||!b.lines.has(line))continue;
+      if(!printed.has(from)||!printed.has(to))continue;
+      const pdfA=printed.get(from),pdfB=printed.get(to);
+      // Duplicate/near-coincident marks cannot support a usable progress bearing.
+      if(Math.hypot(pdfB[0]-pdfA[0],pdfB[1]-pdfA[1])<2)continue;
+      segments.push({from,to,geoA:a.point,geoB:b.point,pdfA,pdfB});
+    }
+    result[line]=segments;
+  }
+  return result;
+}
+
 export function locateOfficialTrain(train, alignment, maxDistance = 125) {
   const [line,x,y]=train;
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
@@ -121,8 +169,8 @@ export function locateOfficialTrain(train, alignment, maxDistance = 125) {
 
 // Mark only incidents explicitly naming a station on the printed source map.
 // Corridor-wide closures remain in the incident list; we never invent a route trace.
-export function officialDisruptionPins(live, lineFilter='') {
-  const index = new Map(Object.entries(OFFICIAL_STOPS).map(([name,xy])=>[normaliseStop(name),{name,xy}]));
+export function officialDisruptionPins(live, lineFilter='', crosswalk=PDF_STATION_CROSSWALK) {
+  const index = new Map([...crosswalk.positions].map(([name,xy])=>[normaliseStop(name),{name,xy}]));
   const pins=[],seen=new Set();
   for (const overlay of live?.overlays || []) {
     if (lineFilter && !(overlay.lines || []).includes(lineFilter)) continue;
@@ -161,11 +209,11 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   // Whole PDF page is a single authored background: no redraw or tracing of TfNSW routes.
   svg.append(el('image',{href:OFFICIAL_MAP.image,x:0,y:0,width:OFFICIAL_MAP.width,
     height:OFFICIAL_MAP.height,preserveAspectRatio:'none',class:'official-source-map'}));
-  const alignment=buildOfficialAlignment(network);
-  const selected=new Set((OFFICIAL_CORRIDORS[lineFilter]||[]).flat());
+  const alignment=buildVerifiedPdfAlignment(network);
+  const selected=new Set((REFERENCE_2024_ROUTES[lineFilter]||[]).flat());
   const stationLayer=el('g',{class:'official-station-hits'});
   const hitRadius=Math.max(unit(11),3);
-  for (const [name,pos] of Object.entries(OFFICIAL_STOPS)) {
+  for (const [name,pos] of PDF_STATION_CROSSWALK.positions) {
     if(lineFilter && !selected.has(name)) continue;
     const c=el('circle',{cx:pos[0],cy:pos[1],r:hitRadius,
       class:'official-station-target','aria-label':'Fixed station '+name,tabindex:'0',role:'button'});
@@ -192,7 +240,7 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   for(const train of live?.trains||[]){
     const [line,,,delay,pax,fullest,,headsign]=train;
     if(lineFilter&&line!==lineFilter)continue;
-    if(!OFFICIAL_CORRIDORS[line])continue; // intercity not shown on the source map
+    if(!REFERENCE_2024_ROUTES[line])continue; // intercity not shown on the printed map
     const pos=locateOfficialTrain(train,alignment);
     if(!pos){unmatched++;continue;}
     positioned.push({train,pos});
@@ -208,7 +256,11 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
     const g=el('g',{class:'official-vehicle',transform:'translate('+x+' '+y+')',tabindex:'0',role:'button',
       'aria-label':'Moving '+line+' train'+(headsign?' towards '+headsign:'')+', position estimated on 2024 map'});
     g.append(el('rect',{x:-size/2,y:-size/2,width:size,height:size,rx:unit(5),
-      fill:delayColor(delay),stroke:'#ffffff','stroke-width':unit(2)}));
+      fill:OFFICIAL_LINE_PALETTE[line]||'#526777',stroke:'#ffffff','stroke-width':unit(2)}));
+    // Small detached status badge uses delay, leaving the primary vehicle colour
+    // equal to TfNSW's official line colour instead of being mistaken for a station.
+    g.append(el('circle',{cx:size*.41,cy:-size*.37,r:unit(4),
+      fill:delayColor(delay),stroke:'#ffffff','stroke-width':unit(1.2)}));
     g.append(el('rect',{x:-size*.32,y:-size*.36,width:size*.64,height:size*.26,
       rx:unit(1.5),fill:'#ffffff'}));
     const label=el('text',{x:0,y:size*.31,'font-size':unit(9),fill:'#ffffff',
@@ -227,5 +279,7 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   }
   svg.append(trainLayer);
   container.replaceChildren(svg);
-  return {svg,base,W,H,positioned:positioned.length,unmatched};
+  return {svg,base,W,H,positioned:positioned.length,unmatched,
+    namedStations:PDF_STATION_CROSSWALK.positions.size,
+    pdfSymbols:PDF_STATION_COVERAGE.pdfSymbols};
 }

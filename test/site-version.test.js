@@ -32,6 +32,10 @@ test('real site HTML refers to fingerprinted CSS and JS, including both imported
       assert.ok(app.includes("from './" + stamped[asset] + "'"), 'App import must be versioned: ' + asset);
       assert.ok(fs.existsSync(path.join(out, stamped[asset])));
     }
+    const official = fs.readFileSync(path.join(out, stamped['official-map.js']), 'utf8');
+    assert.ok(official.includes("from './" + stamped['official-vector-stops.js'] + "'"),
+      'TfNSW coordinate registry must be referenced by a hashed module filename');
+    assert.ok(fs.existsSync(path.join(out, stamped['official-vector-stops.js'])));
     assert.ok(app.includes("const SITE_RELEASE = '" + release + "'"));
     assert.ok(!app.includes('__SITE_RELEASE__'));
     const syntax = spawnSync(process.execPath, ['--check', path.join(out, stamped['app.js'])], { encoding: 'utf8' });
@@ -114,5 +118,27 @@ test('incorrect static HTML references stop the build rather than silently publi
   } finally {
     fs.rmSync(modified, { force: true, recursive: true });
     fs.rmSync(out, { force: true, recursive: true });
+  }
+});
+
+test('changing only the TfNSW station coordinate registry updates parent official map and app URLs',()=>{
+  const modified=fs.mkdtempSync(path.join(os.tmpdir(),'nrd-coord-src-'));
+  const first=createOutput();
+  const out=fs.mkdtempSync(path.join(os.tmpdir(),'nrd-coord-build-'));
+  try {
+    fs.cpSync(source,modified,{recursive:true});
+    fs.cpSync(source,out,{recursive:true});
+    const a=publishSiteRelease(source,first);
+    fs.appendFileSync(path.join(modified,'official-vector-stops.js'),'\n// new validated station coordinate\n');
+    const b=publishSiteRelease(modified,out);
+    assert.notEqual(a.stamped['official-vector-stops.js'],b.stamped['official-vector-stops.js']);
+    assert.notEqual(a.stamped['official-map.js'],b.stamped['official-map.js']);
+    assert.notEqual(a.stamped['app.js'],b.stamped['app.js']);
+    const parent=fs.readFileSync(path.join(out,b.stamped['official-map.js']),'utf8');
+    const app=fs.readFileSync(path.join(out,b.stamped['app.js']),'utf8');
+    assert.ok(parent.includes("from './"+b.stamped['official-vector-stops.js']+"'"));
+    assert.ok(app.includes("from './"+b.stamped['official-map.js']+"'"));
+  }finally{
+    for(const dir of [modified,first,out])fs.rmSync(dir,{recursive:true,force:true});
   }
 });
