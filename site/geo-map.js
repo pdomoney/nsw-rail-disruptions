@@ -99,6 +99,7 @@ export function createGeographicMap(container, { net, live, view, lineFilter, co
     [id, chains.map(decodeProjectedChain).filter(chain => chain.length > 1)]));
   let lastView = null;
   let lastFilter = null;
+  let staticLayersReady = false;
   const boundsFor = name => {
     const v = net.views[name] || net.views.sydney;
     return L.latLngBounds(geographicCoordinates(v[0], v[1]), geographicCoordinates(v[2], v[3]));
@@ -112,8 +113,12 @@ export function createGeographicMap(container, { net, live, view, lineFilter, co
     }
     // Track geometry and station positions remain stable for the lifetime of this map.
     // Do not recreate thousands of rail segments on every five-minute live refresh.
-    if (lastFilter !== filter) {
+    // The first view must create track/station layers even when All lines is
+    // selected (filter === null). Previously lastFilter also started as null,
+    // so the initial render skipped both layers completely.
+    if (!staticLayersReady || lastFilter !== filter) {
       rails.clearLayers(); stations.clearLayers();
+      staticLayersReady = true;
       lastFilter = filter;
     const faded = !!filter;
     for (const [id, pieces] of Object.entries(paths)) {
