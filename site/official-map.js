@@ -6,7 +6,8 @@ import {reconcilePdfStations,REFERENCE_2024_ROUTES,OFFICIAL_LINE_PALETTE,nearest
 // Unmatched vehicles remain absent, rather than guessing a location.
 export const OFFICIAL_MAP = Object.freeze({
   width: 1024, height: 1447, edition: '30 September 2024',
-  image: 'assets/tfnsw-sydney-rail-2024.png',
+  // Revised URL also bypasses cached 404 responses from the broken release.
+  image: 'assets/tfnsw-sydney-rail-2024.png?asset=renderer-fixed-v2',
   source: 'https://transportnsw.info/sydney-trains-network-map',
   licence: 'https://creativecommons.org/licenses/by/4.0/',
 });
@@ -184,6 +185,28 @@ export function officialDisruptionPins(live, lineFilter='', crosswalk=PDF_STATIO
     }
   }
   return pins;
+}
+
+// The old app used HEAD plus content-type, and rejected the map without ever
+// decoding it. iOS browsers and intermediary caches may handle HEAD differently
+// from images. Preflight the same GET-backed URL the SVG will actually display.
+export function loadOfficialMapImage(url, createImage = () => new Image(), timeoutMs = 15_000) {
+  return new Promise(resolve => {
+    const img = createImage();
+    let finished = false;
+    const finish = ok => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      img.onload = null;
+      img.onerror = null;
+      resolve(ok);
+    };
+    img.onload = () => finish(img.naturalWidth >= 1024 && img.naturalHeight >= 1400);
+    img.onerror = () => finish(false);
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    img.src = url;
+  });
 }
 
 const svgNS='http://www.w3.org/2000/svg';
