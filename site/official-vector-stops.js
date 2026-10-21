@@ -17,7 +17,7 @@ const PDF_SYMBOLS_2024 = {
  T9:'GDsQXRjLEOwZWxF8GoESohsQEzEboRPBHDEUURzNFO8dExVwFAoP7RQKDxcUCg5BFAoNaxQKDJUU9RsqFE4bKh0TGQ0dExpTHRMXpxQKF7cUChadFAoVgxQKFGoUChNQFAoSNhyyGyQUChi+',
  M1:'G44ePBzQFtEeshkNHn0aUx59G6ATuREdHrIYURm/EkQbEROWHGsU7w=='
 };
-export const PDF_SYMBOL_COUNT = 282;
+export const PDF_SYMBOL_COUNT = 266;
 
 export const OFFICIAL_LINE_PALETTE = Object.freeze({
  T1:'#F99E1D', T2:'#0098CD', T3:'#F37021', T4:'#005AA9', T5:'#C32792',
@@ -133,6 +133,14 @@ export function reconcilePdfStations(anchors,lineRoutes,{maxAnchorDistance=17,ma
         left=i;
       }
       for(const nm of route)if(positions.has(nm))linePositions.set(nm,positions.get(nm));
+    }
+    // For each line keep only actual symbols of that colour, including at
+    // shared interchanges; a fixed station marker may be slightly offset from
+    // its particular train line's carriage path on the printed artwork.
+    for(const [name,p] of [...linePositions]){
+      const symbol=nearestPdfSymbol(p,symbols,13);
+      if(symbol)linePositions.set(name,symbol.position);
+      else linePositions.delete(name); // never draw a position on an unverified strand
     }
     byLine.set(line,linePositions);
   }
