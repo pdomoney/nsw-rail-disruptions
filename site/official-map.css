@@ -46,3 +46,24 @@
     top: 90px; left: 8px; max-width: 58%; padding: 6px 8px;
   }
 }
+
+/* The source map supplies ALL track strokes and printed station labels.
+   Enhance the original presentation without painting incorrect replacement lines. */
+.official-tfnsw-svg.official-enhanced-contrast .official-source-map {
+  filter: contrast(1.12) saturate(1.14);
+}
+.official-tfnsw-svg .official-station-target:focus-visible {
+  fill: #eaf9ff66; stroke: #0b5786; stroke-width: 2.6px;
+}
+.official-tfnsw-svg .official-vehicle rect:first-child {
+  paint-order: stroke fill; stroke: #fff; stroke-width: 2px;
+}
+.official-tfnsw-svg .official-vehicle circle {
+  filter: drop-shadow(0 1px 2px #15202b77);
+}
+.official-tfnsw-svg .official-vehicle:focus-visible {
+  outline: none;
+}
+.official-tfnsw-svg .official-vehicle:focus-visible rect:first-child {
+  stroke: #151d2b; stroke-width: 3px;
+}
