@@ -28,6 +28,7 @@ export const OFFICIAL_STOPS = Object.freeze({
   'Town Hall': [766,638], 'Wynyard': [766,604], 'Kings Cross':[859.0,628.2],
   'Circular Quay': [795,571], 'St James': [849,637], 'Museum': [810,673],
   'Redfern': [736,694], 'Sydenham': [705,781], 'Waterloo': [766,709],
+  'Erskineville':[727.3,735], 'St Peters':[709.8,752.4],
   'Richmond': [155,315], 'Windsor': [155,376], 'Clarendon':[157,355.2], 'Schofields': [155,455], 'Quakers Hill':[157,476.8], 'Marayong':[161.7,496.1],
   'Emu Plains': [98,573.2], 'Penrith':[115.6,573.2], 'Kingswood':[132.5,573.2], 'Werrington':[149.5,573.2], 'St Marys':[164.8,573.2], 'Mount Druitt':[181.5,573.2], 'Rooty Hill':[198.4,573.2], 'Doonside':[215.4,573.2], 'Toongabbie':[276,573.2], 'Pendle Hill':[293,573.2], 'Wentworthville':[318.7,579.5], 'Westmead':[328.5,589.4],
   'Blacktown': [242,574], 'Parramatta': [359.6,630],
