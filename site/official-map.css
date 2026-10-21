@@ -105,3 +105,14 @@
 .official-map-error-actions a:hover { background: #e5eef3; }
 .official-map-error-actions button:disabled { opacity: .7; cursor: wait; }
 .map-frame:has(.official-map-error) .map-corner-label { display: none; }
+
+/* Secondary native image recovery for iOS WebKit if detached Image() preflight
+   misreports failure. Successful loading automatically restores live overlays. */
+.official-map-load-preview {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  background: #f6f8fa;
+}
+.official-map-load-preview[hidden] { display: none; }
