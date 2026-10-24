@@ -146,17 +146,28 @@ export async function viewStationPatronage(main, meta) {
   }
 
   function renderControls() {
+    const allMonthly = f.period === 'historical' ? legacyMonths : months;
+    if(allMonthly.length && !allMonthly.includes(f.month))f.month=allMonthly.at(-1);
     form.replaceChildren(
       field('Dataset', [
-        ...(years.length ? [['typical', 'Historical typical day (hourly)']] : []),
+        ...(samples.length ? [['windows','Historic sampled day (time windows)']] : []),
+        ...(years.length ? [['typical', 'Historical hourly sample (separate source)']] : []),
+        ...(legacyMonths.length ? [['historical','Monthly history 2016–2024']] : []),
         ...(months.length ? [['monthly', 'Recent monthly totals']] : []),
       ], f.period, v => { f.period = v; f.station = null; render(); }),
-      f.period === 'typical'
-        ? field('Historical year', years.map(x => [x, x]), f.year, v => { f.year = v; f.station = null; render(); })
-        : field('Month', months.map(x => [x, x]), f.month, v => { f.month = v; f.station = null; render(); }),
-      f.period === 'typical' ? field('Typical day', [['weekday', 'Weekday'], ['weekend', 'Weekend']], f.day, v => { f.day = v; f.station = null; render(); }) : null,
-      f.period === 'typical' ? field('Hour (Sydney)', [['all', 'All available hours'], ...Array.from({ length: 24 }, (_, h) => [String(h), String(h).padStart(2, '0') + ':00'])],
-        f.hour, v => { f.hour = v; render(); }) : null,
+      f.period === 'windows'
+        ? field('Historical sample', samples.map(x => [x, x]), f.sample, v => {f.sample=v;f.station=null;render();})
+        : f.period === 'typical'
+          ? field('Historical year', years.map(x => [x, x]), f.year, v => { f.year = v; f.station = null; render(); })
+          : field('Month', allMonthly.map(x => [x, x]), f.month, v => { f.month = v; f.station = null; render(); }),
+      f.period === 'typical' ? field('Typical day', [['weekday','Weekday'],['weekend','Weekend']],f.day,v=>{f.day=v;f.station=null;render();}):null,
+      f.period === 'typical' ? field('Hour (Sydney)', [['all','All available hours'],
+        ...Array.from({length:24},(_,h)=>[String(h),String(h).padStart(2,'0')+':00'])],
+        f.hour,v=>{f.hour=v;render();}):null,
+      f.period === 'windows' ? field('Time window (Sydney)',[
+        ['06-10','06:00–10:00'],['10-15','10:00–15:00'],['15-19','15:00–19:00'],
+        ['19-06','19:00–06:00 (overnight)'],['24h','Published 24-hour total']
+      ],f.window,v=>{f.window=v;render();}):null,
       field('Rail line', [['all', 'All rail stations'], ...lineItems.map(l => [l.id, l.id + ' ' + l.name])],
         f.line, v => { f.line = v; f.station = null; render(); }),
       field('Measure', [['entries', 'Entries'], ['exits', 'Exits'], ['total', 'Entries + exits']], f.metric, v => { f.metric = v; render(); }));
@@ -166,13 +177,17 @@ export async function viewStationPatronage(main, meta) {
     renderControls();
     const rows = patronageRows(data, stations, f);
     const metric = f.metric === 'total' ? 'entries plus exits' : f.metric;
-    const sample = f.period === 'typical';
-    const periodDescription = sample
-      ? f.year + ' sampled typical ' + f.day + ', ' + (f.hour === 'all' ? 'all recorded hours' : String(f.hour).padStart(2, '0') + ':00–' + String(f.hour).padStart(2, '0') + ':59')
+    const sample = f.period === 'typical', broadSample=f.period==='windows';
+    const periodDescription = broadSample
+      ? f.sample + ' sampled typical weekday, ' + ({
+          '06-10':'06:00–10:00','10-15':'10:00–15:00','15-19':'15:00–19:00',
+          '19-06':'19:00–06:00','24h':'published 24-hour total'
+        }[f.window]||f.window)
+      : sample ? f.year + ' sampled typical ' + f.day + ', ' + (f.hour === 'all' ? 'all recorded hours' : String(f.hour).padStart(2, '0') + ':00–' + String(f.hour).padStart(2, '0') + ':59')
       : f.month + ' whole-month totals';
     const totals = rows.reduce((a, r) => a + r.value, 0);
     const headline = node('section', { class: 'sp-overview' },
-      cardValue('Data period', periodDescription, sample ? 'Historical typical-day average' : 'Monthly Opal totals'),
+      cardValue('Data period', periodDescription, sample||broadSample ? 'Historical typical-day average' : 'Monthly Opal totals'),
       cardValue('Stations with records', number(rows.length), 'Within the selected rail-line filter'),
       cardValue('Reported ' + metric, number(totals), f.metric === 'total'
         ? 'Entries + exits counts tap events, not unique people'
