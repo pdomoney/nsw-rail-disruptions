@@ -44,3 +44,20 @@
 .sp-catalogue-row span { color: var(--muted); font-size: .82rem; }
 @media (max-width: 850px) { .sp-lower { grid-template-columns: 1fr; gap: 28px; } .sp-overview { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 550px) { .sp-heading { padding-top: 25px; } .sp-overview { grid-template-columns: 1fr; gap: 3px; } .sp-kpi { padding: 8px 3px; } .sp-kpi strong { font-size: 1.2rem; } .sp-station-button { gap: 6px; grid-template-columns: minmax(0,1.1fr) minmax(35px,.7fr) 75px; } }
+
+/* A clear source/freshness distinction: station-month publication is not live
+   crowding, and a dataset catalogue update is not the final passenger month. */
+.sp-source-status {
+  border: 1px solid var(--rule-strong, #b6c2ca);
+  border-radius: 8px;
+  border-left: 4px solid #8a9cab;
+  padding: 10px 14px;
+  margin: 13px 0 16px;
+  background: var(--surface, #fff);
+  max-width: 85ch;
+}
+.sp-source-status strong { display: block; font-weight: 650; }
+.sp-source-status p { margin: 4px 0 0; line-height: 1.4; }
+.sp-source-status a { display: inline-block; margin-top: 7px; }
+.sp-source-status-missing { border-left-color: #b57931; }
+.sp-source-status-current { border-left-color: #25836e; }
