@@ -168,6 +168,12 @@ export function normalizeStationPatronage({ stations, typicalCsv = null, monthly
     sources: { typical: typicalCsv ? SOURCE_URLS.typical : null, monthly: monthlyCsv ? SOURCE_URLS.monthly : null,
       periods: periodsCsv ? SOURCE_URLS.typical : null, legacyMonthly: legacyMonthlyCsv ? LEGACY_MONTHLY_SOURCES : null },
     attribution: 'Transport for NSW Open Data · Creative Commons Attribution',
+    // The refresh timestamp records OUR import run, never the TfNSW publication date.
+    // Source months are derived from validated month values, not from this timestamp.
+    recentImportAt: typeof provenance.ckanSourceUpdatedAt === 'string'
+      ? provenance.ckanSourceUpdatedAt : null,
+    recentSourceResource: typeof provenance.ckanResource === 'string'
+      ? provenance.ckanResource : null,
     note: 'Sampled typical-day bins are 06-10, 10-15, 15-19 and overnight 19-06; 24h is supplied total, not inferred. Monthly totals are not hourly values. Suppressed small counts are omitted, not zero.',
   };
 }

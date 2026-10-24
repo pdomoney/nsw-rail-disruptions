@@ -1,3 +1,19 @@
+## Activating recent station patronage (November 2024 onward)
+
+The accepted 2016–2024 historical snapshots are built in and require no further upload. The **recent months** are deliberately a separate datasource and cannot appear until the authenticated CKAN refresh has succeeded at least once. TfNSW currently labels the source resource last updated **15 October 2026**, but this is not proof that its latest *trip-count month* is October 2026. The app displays the actual latest month obtained from validated records.
+
+Use the official [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au/dataset/train-station-entries-and-exits-data/resource/f8bb2918-0540-4bb3-9ccf-f7aef04d4249) to create a personal API token. Keep it secret: **do not paste it into a GitHub issue, PR, ChatGPT message or public JavaScript**.
+
+1. In the [NSW Rail Disruptions repository](https://github.com/pdomoney/nsw-rail-disruptions), open **Settings → Secrets and variables → Actions → New repository secret**.
+2. Name the secret exactly `TFNSW_CKAN_TOKEN` and enter the Hub's CKAN token as the secret value. The CKAN DataStore snippets use the raw value in the `Authorization` header.
+3. Go to **Actions → Refresh TfNSW station patronage → Run workflow**. It downloads and validates the monthly entries/exits from resource `f8bb2918-0540-4bb3-9ccf-f7aef04d4249`, and commits only verified station/month counts to the `data` branch.
+4. Inspect the workflow run for `Updated official monthly patronage:`, including the actual `latest` month and the number of complete station-month records. Missing token on a manual run now fails clearly, rather than returning a misleading green success.
+5. Following the next normal **Collect and publish** site build, visit [Station Patronage](https://pdomoney.github.io/nsw-rail-disruptions/#/stations). If recent data exists, the page now starts with the **Recent monthly totals** view and shows the latest available month and last successful import. Historical sample and historical monthly options remain accessible.
+
+The refresh runs separately from the five-minute train collector, once daily. It must not infer hourly or live patronage from monthly counts. The website never stores or uses an API key in the browser. An unverified/partial refresh must not overwrite previously published data.
+
+---
+
 ## Station directory shown instead of historic figures (PR #16)
 
 PR #15 already includes **two checksum-pinned, compressed original-source snapshots** in `src/data/patronage/`. The user's uploaded `NSW_Opal_patronage_import_package(1).zip` has SHA-256 hashes that exactly match these files after decompression. A separate historical data-branch upload is **not needed**. The optional `TFNSW_CKAN_TOKEN` is only for **newer monthly** station records.
