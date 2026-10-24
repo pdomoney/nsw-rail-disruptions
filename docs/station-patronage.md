@@ -9,7 +9,9 @@ patronage/
   historical-monthly.csv
 ```
 
-**New automated default:** Source-verified historical CSVs are bundled in `src/data/patronage/*.gz.b64` on PR #15 with pinned SHA-256 checksums. On merge, the site build reads them automatically; the historical patronage page can populate without an extra data-branch upload. No raw CSV or source API token is served to the browser.\n\nThe separately downloadable ZIP can instead be copied to the `data` branch at `data/patronage/` for explicitly managed replacement inputs; data-branch versions take precedence and require `provenance.json`.
+**New automated default:** Source-verified historical CSVs are bundled in `src/data/patronage/*.gz.b64` on PR #15 with pinned SHA-256 checksums. On merge, the site build reads them automatically; the historical patronage page can populate without an extra data-branch upload. No raw CSV or source API token is served to the browser.
+
+The separately downloadable ZIP can instead be copied to the `data` branch at `data/patronage/` for explicitly managed replacement inputs; data-branch versions take precedence and require `provenance.json`.
 
 ### Source dates and shapes (verified against supplied originals)
 
