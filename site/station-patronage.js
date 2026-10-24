@@ -102,16 +102,16 @@ export function stationRouteRows(data, stations, routes, opts={}) {
   const visited=new Set(),items=[];
   const sequence=direction==='reverse'||direction==='city'
     ? [...selected.route.stations].reverse() : selected.route.stations;
-  for(const stop of sequence){
+  for(const [index,stop] of sequence.entries()){
     const st=keyed.get(stopNameKey(stop));
     if(!st||visited.has(st.id))continue;
     if(line!=='T4_SCO'&&!st.lines.includes(line))continue;
     visited.add(st.id);
     if(search&&!st.name.toLowerCase().includes(search.trim().toLowerCase()))continue;
     const record=observations.get(st.id);
-    items.push(record?{...record,stopNumber:items.length+1,unreported:false}
+    items.push(record?{...record,stopNumber:index+1,unreported:false}
       :{id:st.id,name:st.name,lines:st.lines,entries:null,exits:null,
-        value:null,stopNumber:items.length+1,unreported:true});
+        value:null,stopNumber:index+1,unreported:true});
   }
   if(sort==='patronage')return items.filter(r=>r.value!==null)
     .sort((a,b)=>b.value-a.value||a.name.localeCompare(b.name));
@@ -158,13 +158,14 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     const [a, b, c] = await Promise.all([
       fetch('data/station-patronage.json' + suffix, { cache: refresh ? 'no-store' : 'no-cache' }),
       fetch('data/stations.json' + suffix, { cache: refresh ? 'no-store' : 'no-cache' }),
-      fetch('data/station-routes.json' + suffix, { cache: refresh ? 'no-store' : 'no-cache' }),
+      fetch('data/station-routes.json' + suffix, { cache: refresh ? 'no-store' : 'no-cache' })
+        .catch(() => null),
     ]);
     if (!a.ok || !b.ok) throw new Error('Station data files are not available yet');
     [data, stations] = await Promise.all([a.json(), b.json()]);
     // A previous deployment can retain the old dataset without corridor
     // metadata. Show existing patronage ranking rather than break the page.
-    routes = c.ok ? await c.json() : {lines:{},corridors:[]};
+    routes = c?.ok ? await c.json() : {lines:{},corridors:[]};
   } catch (e) {
     main.replaceChildren(node('section', { class: 'sp-no-data' },
       node('h1', {}, 'Station patronage'), node('p', {}, 'The station view could not load. ' + e.message),
