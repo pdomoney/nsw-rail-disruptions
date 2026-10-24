@@ -75,7 +75,7 @@ export function normalizeStationPatronage({ stations, typicalCsv = null, monthly
   function match(row, location) {
     const candidates = index.get(stationKey(row.station)) || [];
     if (candidates.length !== 1) {
-      unmatched.add(row.station + ' (' + location + ': ' + (candidates.length ? 'ambiguous match' : 'not in current station catalogue') + ')');
+      unmatched.add(row.station + ' (' + (candidates.length ? 'ambiguous match' : 'not in current station catalogue') + ')');
       return null;
     }
     used.add(candidates[0][0]);
@@ -159,7 +159,7 @@ export function normalizeStationPatronage({ stations, typicalCsv = null, monthly
   if (typicalRows + monthlyRows + periodRows + legacyMonthlyRows === 0) throw new Error('No rows matched known stations. Check station names; do not publish empty data as zero.');
   return {
     available: true, typical, monthly, periods, legacyMonthly,
-    coverage: { years: [...years].sort(), months: [...months].sort(), samples:[...samples].sort(), legacyMonths:[...legacyMonths].sort(),
+    coverage: { years: [...years].sort(), months: [...months].sort(), samples:SAMPLE_YEARS.filter(x=>samples.has(x)), legacyMonths:[...legacyMonths].sort(),
       stationCount: used.size, typicalRows, monthlyRows, periodRows, legacyMonthlyRows,
       unmatched: [...unmatched].sort().slice(0, 50), unmatchedCount: unmatched.size },
     sources: { typical: typicalCsv ? SOURCE_URLS.typical : null, monthly: monthlyCsv ? SOURCE_URLS.monthly : null,
