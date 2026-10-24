@@ -8,11 +8,13 @@ const railMode = new Set(['train', 'metro', 'intercity']);
 
 export function patronageRows(data, stations, {
   period = 'typical', year = '2023', day = 'weekday', hour = '8',
-  month = '', metric = 'entries', line = 'all', search = '',
+  month = '', sample = '2023', window = '06-10', metric = 'entries', line = 'all', search = '',
 } = {}) {
   const rows = [];
-  const hourly = period === 'typical';
-  const source = hourly ? (data?.typical?.[year]?.[day] || {}) : (data?.monthly?.[month] || {});
+  const hourly = period === 'typical', sampled = period === 'windows';
+  const source = hourly ? (data?.typical?.[year]?.[day] || {})
+    : sampled ? (data?.periods?.[sample] || {})
+    : period === 'historical' ? (data?.legacyMonthly?.[month] || {}) : (data?.monthly?.[month] || {});
   const term = search.trim().toLowerCase();
   for (const [id, name, allLines] of stations || []) {
     if (!Array.isArray(allLines)) continue;
@@ -28,6 +30,10 @@ export function patronageRows(data, stations, {
       hours = slots.length;
       entries = slots.reduce((a, [, v]) => a + v[0], 0);
       exits = slots.reduce((a, [, v]) => a + v[1], 0);
+    } else if (sampled) {
+      const available = values[window === 'all' ? '24h' : window];
+      if(!available)continue;
+      [entries,exits]=available;hours=1;
     } else {
       [entries, exits] = values;
     }
@@ -88,16 +94,18 @@ export async function viewStationPatronage(main, meta) {
   stations = stations.filter(st => st[2]?.some(id => allowed.has(id)))
     .map(st => [st[0], st[1].replace(/\s+Station$/i, ''), st[2].filter(id => allowed.has(id)), st[3]]);
   const years = data.coverage?.years || [], months = data.coverage?.months || [];
-  const f = { period: years.length ? 'typical' : 'monthly', year: years.at(-1) || '2023',
-    day: 'weekday', hour: '8', month: months.at(-1) || '', metric: 'entries',
-    line: 'all', search: '', station: null };
+  const samples = data.coverage?.samples || [], legacyMonths = data.coverage?.legacyMonths || [];
+  const f = { period: samples.length ? 'windows' : years.length ? 'typical' : months.length ? 'monthly' : 'historical',
+    year: years.at(-1) || '2023',sample:samples.at(-1)||'2023',
+    day: 'weekday', hour: '8', window:'06-10', month:months.at(-1)||legacyMonths.at(-1)||'',
+    metric: 'entries', line: 'all', search: '', station: null };
   const heading = node('header', { class: 'sp-heading' },
     node('p', { class: 'sp-eyebrow' }, 'Opal network / historical station usage'),
     node('h1', {}, 'Station patronage hotspots'),
     node('p', { class: 'sp-intro' }, 'Explore which stations recorded the most entries and exits and how historical travel patterns changed through the day. Filter by a rail line or individual station.'),
     node('p', { class: 'sp-warning' },
       node('strong', {}, 'Not live crowding. '),
-      'Hourly observations are typical-day averages from 2016–2023. Newer records are monthly totals. A station used by multiple lines is counted once in network totals, not assigned to each line.'));
+      'Historical workbook observations are sampled typical-day counts in broad time windows, not individual hours. Newer records are monthly totals. A station used by several lines is counted once, not assigned to each train line.'));
   const form = node('div', { class: 'sp-controls' });
   const content = node('div', { class: 'sp-content' });
   const notes = node('section', { class: 'sp-notes' },
