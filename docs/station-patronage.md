@@ -9,7 +9,7 @@ patronage/
   historical-monthly.csv
 ```
 
-Copy those files into the `data` branch at `data/patronage/` after reviewing source totals, not into `main` and not into the public `site/` folder. The existing collector already checks out the data branch and the current static build will discover them automatically once PR #15 is merged.
+**New automated default:** Source-verified historical CSVs are bundled in `src/data/patronage/*.gz.b64` on PR #15 with pinned SHA-256 checksums. On merge, the site build reads them automatically; the historical patronage page can populate without an extra data-branch upload. No raw CSV or source API token is served to the browser.\n\nThe separately downloadable ZIP can instead be copied to the `data` branch at `data/patronage/` for explicitly managed replacement inputs; data-branch versions take precedence and require `provenance.json`.
 
 ### Source dates and shapes (verified against supplied originals)
 
@@ -54,7 +54,7 @@ git commit -m "Import verified historic TfNSW station patronage"
 git push origin data
 ```
 
-The current data branch does not yet have a `patronage/` folder, so merging **code alone** will not publish the attached station figures. Avoid running a source import on `main` or uploading raw API keys. Historical data and current CKAN data remain visibly distinguished.
+The current data branch does not yet have a `patronage/` folder, but the SHA-verified historical snapshots bundled on `main` are used as a fallback after merge. The ZIP upload procedure is **optional** if an independently managed data-branch copy is desired. Avoid running a source import on `main` or uploading raw API keys. Historical data and current CKAN data remain visibly distinguished.
 
 ## Safety acceptance
 
