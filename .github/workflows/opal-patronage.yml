@@ -19,11 +19,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Check TfNSW CKAN access configuration
+        id: credentials
+        env:
+          TFNSW_CKAN_TOKEN: ${{ secrets.TFNSW_CKAN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${TFNSW_CKAN_TOKEN}" ]]; then
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo "::warning::Recent station patronage cannot refresh: TFNSW_CKAN_TOKEN is not configured."
+            {
+              echo '### Recent station patronage not connected'
+              echo 'Add repository Actions secret TFNSW_CKAN_TOKEN to enable authenticated TfNSW monthly data.'
+              echo 'Historical Opal station usage remains available. No recent monthly values were imported.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            # A manual run is a deliberate request to import the latest data;
+            # never report manual success when we have no API credential.
+            if [[ "${GITHUB_EVENT_NAME}" == 'workflow_dispatch' ]]; then exit 1; fi
+          else
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.credentials.outputs.configured == 'true'
       - uses: actions/setup-node@v4
+        if: steps.credentials.outputs.configured == 'true'
         with:
           node-version: 22
       - name: Check out published data branch
+        if: steps.credentials.outputs.configured == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -31,11 +54,13 @@ jobs:
           remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git clone --quiet --depth 1 --branch data --single-branch "$remote" data
       - name: Refresh CKAN monthly station entries and exits
+        if: steps.credentials.outputs.configured == 'true'
         env:
           TFNSW_CKAN_TOKEN: ${{ secrets.TFNSW_CKAN_TOKEN }}
           DATA_DIR: data
         run: node scripts/refresh-ckan-patronage.mjs
       - name: Commit validated updated monthly snapshot only
+        if: steps.credentials.outputs.configured == 'true'
         working-directory: data
         run: |
           set -euo pipefail
