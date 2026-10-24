@@ -6,6 +6,33 @@ const number = n => integerFormat.format(n);
 const sourceData = 'https://opendata.transport.nsw.gov.au/dataset/train-station-entries-and-exits-data';
 const railMode = new Set(['train', 'metro', 'intercity']);
 
+// The source record's latest month is the only supported freshness claim.
+// CKAN's catalogue 'last updated' date is not a passenger-count month.
+export function recentMonthlyStatus(data) {
+  const months = [...(data?.coverage?.months || [])].sort();
+  const latestMonth = months.at(-1) || null;
+  if (!latestMonth) {
+    return {
+      hasRecent: false,
+      latestMonth: null,
+      title: 'Recent monthly station patronage not connected',
+      details: 'Historical Opal station data ends in October 2024. TfNSW monthly entries and exits from November 2024 onward require the separate authenticated CKAN refresh.',
+    };
+  }
+  const imported = data?.recentImportAt && !Number.isNaN(Date.parse(data.recentImportAt))
+    ? new Date(data.recentImportAt).toLocaleString('en-AU', {
+      timeZone: 'Australia/Sydney', year: 'numeric', month: 'short',
+      day: 'numeric', hour: 'numeric', minute: '2-digit',
+    }) : null;
+  return {
+    hasRecent: true,
+    latestMonth,
+    title: 'Latest published Opal month: ' + latestMonth,
+    details: imported ? 'Last successful import: ' + imported + ' Sydney time. Monthly station counts are historical, not live.'
+      : 'Monthly station counts are historical, not live.',
+  };
+}
+
 export function patronageRows(data, stations, {
   period = 'typical', year = '2023', day = 'weekday', hour = '8',
   month = '', sample = '2023', window = '06-10', metric = 'entries', line = 'all', search = '',
@@ -99,7 +126,7 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     .map(st => [st[0], st[1].replace(/\s+Station$/i, ''), st[2].filter(id => allowed.has(id)), st[3]]);
   const years = data.coverage?.years || [], months = data.coverage?.months || [];
   const samples = data.coverage?.samples || [], legacyMonths = data.coverage?.legacyMonths || [];
-  const f = { period: samples.length ? 'windows' : years.length ? 'typical' : months.length ? 'monthly' : 'historical',
+  const f = { period: months.length ? 'monthly' : samples.length ? 'windows' : years.length ? 'typical' : 'historical',
     year: years.at(-1) || '2023',sample:samples.at(-1)||'2023',
     day: 'weekday', hour: '8', window:'06-10', month:months.at(-1)||legacyMonths.at(-1)||'',
     metric: 'entries', line: 'all', search: '', station: null };
@@ -110,6 +137,17 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     node('p', { class: 'sp-warning' },
       node('strong', {}, 'Not live crowding. '),
       'Historical workbook observations are sampled typical-day counts in broad time windows, not individual hours. Newer records are monthly totals. A station used by several lines is counted once, not assigned to each train line.'));
+  const recent = recentMonthlyStatus(data);
+  heading.append(node('section', {
+    class: 'sp-source-status' + (recent.hasRecent ? ' sp-source-status-current' : ' sp-source-status-missing'),
+    role: 'status', 'aria-label': 'Latest monthly station data status',
+  },
+    node('strong', {}, recent.title),
+    node('p', {}, recent.details),
+    !recent.hasRecent ? node('a', {
+      href: sourceData, target: '_blank', rel: 'noopener noreferrer',
+    }, 'View TfNSW monthly station dataset') : null,
+  ));
   const form = node('div', { class: 'sp-controls' });
   const content = node('div', { class: 'sp-content' });
   const notes = node('section', { class: 'sp-notes' },
