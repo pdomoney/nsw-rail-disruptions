@@ -58,6 +58,10 @@ git push origin data
 
 The current data branch does not yet have a `patronage/` folder, but the SHA-verified historical snapshots bundled on `main` are used as a fallback after merge. The ZIP upload procedure is **optional** if an independently managed data-branch copy is desired. Avoid running a source import on `main` or uploading raw API keys. Historical data and current CKAN data remain visibly distinguished.
 
+## Rights and attribution review
+
+The TfNSW online dataset metadata currently describes the files as Creative Commons Attribution, but the legacy workbook's own **Read me** sheet additionally says its contents may be reused for **non-commercial purposes only** with attribution. Those two notices should be reconciled with TfNSW before any commercial redistribution of the historical workbook figures. This independent public rail-monitoring app credits Transport for NSW and uses the original numbers only in a historical informational view; it does not alter the rights notices in the source document.
+
 ## Safety acceptance
 
 1. Verify a 2023 Central and Wynyard morning/afternoon comparison against the workbook.
