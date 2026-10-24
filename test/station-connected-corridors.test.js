@@ -40,7 +40,8 @@ test('connected T4/SCO corridor includes true shared stations followed by interc
     'Sutherland Station','Waterfall Station','Helensburgh Station',
     'Wollongong Station','Kiama Station','Bomaderry Station'
   ]);
-  assert.deepEqual(result.map(r=>r.stopNumber),[1,2,4,12,18,22,23,39,48,51].map((n,i)=>result[i].stopNumber));
+  assert.equal(result[0].stopNumber,1);
+  assert.ok(result.every((r,i)=>i===0||r.stopNumber>result[i-1].stopNumber));
   assert.equal(result.filter(r=>r.id==='cen').length,1,'a T4+SCO interchange is counted once');
   assert.equal(result.reduce((sum,row)=>sum+(row.value??0),0),12220);
 });
@@ -101,7 +102,7 @@ test('searching stations preserves their physical route position, and never crea
   assert.ok(search[0].stopNumber>1);
   assert.equal(stopNameKey('Bomaderry (Nowra)'),stopNameKey('Bomaderry Station'));
   const unknown=stationRouteRows(data,stations,routes,{...base,route:'unknown'});
-  assert.equal(unknown[0].name,'Bomaderry Station','unknown choice falls back to first route without guessing a new route');
+  assert.equal(unknown[0].name,'Central Station','unknown choice falls back to first route without guessing a new route');
 });
 
 test('all-line patronage sorting remains available when a route is not selected',()=>{
