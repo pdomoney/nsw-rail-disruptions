@@ -39,9 +39,17 @@ export const PATRONAGE_CORRIDORS = Object.freeze([
 export function buildPatronageRoutes(lineSequences){
   const lines={};
   for(const [id,sequences] of Object.entries(lineSequences||{})){
-    lines[id]=(sequences||[]).filter(r=>Array.isArray(r)&&r.length>0)
-      .map((route,i)=>({id:id+'-'+(i+1),name:route[0]+' → '+route.at(-1),
-        stations:[...route]}));
+    const available=(sequences||[]).filter(r=>Array.isArray(r)&&r.length>0);
+    // A branch sequence can begin at its junction, e.g. Sutherland→Waterfall
+    // or Coniston→Port Kembla. When the line's trunk also includes that
+    // junction, include the trunk prefix so the stop list is continuous.
+    // This does not imply through-running on any particular service.
+    lines[id]=available.map((route,i)=>{
+      const trunk=available[0]||[];
+      const junction=i>0 && (id==='T4'||id==='SCO')?trunk.indexOf(route[0]):-1;
+      const full=junction>=0?[...trunk.slice(0,junction),...route]:[...route];
+      return {id:id+'-'+(i+1),name:full[0]+' → '+full.at(-1),stations:full};
+    });
   }
   return {schema:1,meaning:'Reference physical station order, not timetabled service stops or directional boardings',
     source:'TfNSW published route stop geography and existing named railway corridor model',
