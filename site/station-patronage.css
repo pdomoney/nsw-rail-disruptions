@@ -61,3 +61,23 @@
 .sp-source-status a { display: inline-block; margin-top: 7px; }
 .sp-source-status-missing { border-left-color: #b57931; }
 .sp-source-status-current { border-left-color: #25836e; }
+
+/* The stop-order option follows a physical corridor, not a statistical rank.
+   Suppressed or missing entries remain visible without a deceptive zero bar. */
+.sp-corridor-note {
+  border-left: 3px solid var(--rule-strong);
+  padding: 8px 11px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  max-width: 74ch;
+  line-height: 1.45;
+}
+.sp-no-record {
+  display: block;
+  color: var(--muted);
+  font-size: .73rem;
+  font-style: italic;
+  white-space: nowrap;
+}
+.sp-ranking .sp-station-button:has(.sp-no-record) { opacity: .8; }
+.sp-ranking .sp-station-button:has(.sp-no-record) strong { color: var(--muted); }

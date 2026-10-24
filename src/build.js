@@ -12,6 +12,7 @@ import { readJson, writeJson, listFiles, readLines, ensureDir } from './lib/stor
 import { parseCsv } from './lib/csv.js';
 import { buildCrowding } from './lib/crowding.js';
 import { buildStationPatronage } from './lib/station-patronage.js';
+import { buildPatronageRoutes } from './lib/patronage-routes.js';
 import { publishSiteRelease } from './lib/site-version.js';
 import { readServiceDays } from './lib/service.js';
 import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from './lib/service-stats.js';
@@ -574,6 +575,9 @@ function buildMap(lines, status, trackwork, ongoing) {
 
   // The network diagram (lib/schematic.js): its layout, and helpers to put trains and sections on it.
   const SCH = buildSchematic();
+  // Separate data asset: station geographic sequence for the Patronage page,
+  // distinct from observed Opal entries/exits and from live train positions.
+  writeJson(out('data', 'station-routes.json'), buildPatronageRoutes(SCH.seqs));
   const schName = new Map([...SCH.lay.pos.keys()].map(n => [stationKey(n), n]));
   const realXY = n => stations.get(stationKey(n))?.xy;
   const R2 = v => Math.round(v * 100) / 100;
