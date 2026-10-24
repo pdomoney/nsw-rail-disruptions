@@ -119,6 +119,14 @@ test('site build exposes ordered stations for each railway line without using ar
   assert.ok(generated.lines.T4.some(route=>route.stations.includes('Sutherland')));
   assert.ok(generated.lines.SCO.some(route=>route.stations.includes('Wollongong')));
   assert.ok(generated.lines.T1.length>0);
+  const t4Waterfall=generated.lines.T4.find(r=>r.stations.at(-1)==='Waterfall');
+  assert.ok(t4Waterfall,'T4 Waterfall branch must be selectable');
+  assert.equal(t4Waterfall.stations[0],'Bondi Junction','Waterfall option must include cityside trunk before Sutherland');
+  assert.ok(t4Waterfall.stations.includes('Central'));
+  const scoPort=generated.lines.SCO.find(r=>r.stations.at(-1)==='Port Kembla');
+  assert.ok(scoPort);
+  assert.equal(scoPort.stations[0],'Central');
+  assert.ok(scoPort.stations.includes('Wollongong'));
   assert.ok(generated.corridors[0].routes.some(route=>route.id==='port-kembla'));
   const build=fs.readFileSync(new URL('../src/build.js',import.meta.url),'utf8');
   assert.match(build,/writeJson\(out\('data', 'station-routes\.json'\), buildPatronageRoutes\(SCH\.seqs\)\)/);
