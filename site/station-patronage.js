@@ -8,11 +8,13 @@ const railMode = new Set(['train', 'metro', 'intercity']);
 
 export function patronageRows(data, stations, {
   period = 'typical', year = '2023', day = 'weekday', hour = '8',
-  month = '', metric = 'entries', line = 'all', search = '',
+  month = '', sample = '2023', window = '06-10', metric = 'entries', line = 'all', search = '',
 } = {}) {
   const rows = [];
-  const hourly = period === 'typical';
-  const source = hourly ? (data?.typical?.[year]?.[day] || {}) : (data?.monthly?.[month] || {});
+  const hourly = period === 'typical', sampled = period === 'windows';
+  const source = hourly ? (data?.typical?.[year]?.[day] || {})
+    : sampled ? (data?.periods?.[sample] || {})
+    : period === 'historical' ? (data?.legacyMonthly?.[month] || {}) : (data?.monthly?.[month] || {});
   const term = search.trim().toLowerCase();
   for (const [id, name, allLines] of stations || []) {
     if (!Array.isArray(allLines)) continue;
@@ -28,6 +30,10 @@ export function patronageRows(data, stations, {
       hours = slots.length;
       entries = slots.reduce((a, [, v]) => a + v[0], 0);
       exits = slots.reduce((a, [, v]) => a + v[1], 0);
+    } else if (sampled) {
+      const available = values[window === 'all' ? '24h' : window];
+      if(!available)continue;
+      [entries,exits]=available;hours=1;
     } else {
       [entries, exits] = values;
     }
@@ -88,21 +94,23 @@ export async function viewStationPatronage(main, meta) {
   stations = stations.filter(st => st[2]?.some(id => allowed.has(id)))
     .map(st => [st[0], st[1].replace(/\s+Station$/i, ''), st[2].filter(id => allowed.has(id)), st[3]]);
   const years = data.coverage?.years || [], months = data.coverage?.months || [];
-  const f = { period: years.length ? 'typical' : 'monthly', year: years.at(-1) || '2023',
-    day: 'weekday', hour: '8', month: months.at(-1) || '', metric: 'entries',
-    line: 'all', search: '', station: null };
+  const samples = data.coverage?.samples || [], legacyMonths = data.coverage?.legacyMonths || [];
+  const f = { period: samples.length ? 'windows' : years.length ? 'typical' : months.length ? 'monthly' : 'historical',
+    year: years.at(-1) || '2023',sample:samples.at(-1)||'2023',
+    day: 'weekday', hour: '8', window:'06-10', month:months.at(-1)||legacyMonths.at(-1)||'',
+    metric: 'entries', line: 'all', search: '', station: null };
   const heading = node('header', { class: 'sp-heading' },
     node('p', { class: 'sp-eyebrow' }, 'Opal network / historical station usage'),
     node('h1', {}, 'Station patronage hotspots'),
     node('p', { class: 'sp-intro' }, 'Explore which stations recorded the most entries and exits and how historical travel patterns changed through the day. Filter by a rail line or individual station.'),
     node('p', { class: 'sp-warning' },
       node('strong', {}, 'Not live crowding. '),
-      'Hourly observations are typical-day averages from 2016–2023. Newer records are monthly totals. A station used by multiple lines is counted once in network totals, not assigned to each line.'));
+      'Historical workbook observations are sampled typical-day counts in broad time windows, not individual hours. Newer records are monthly totals. A station used by several lines is counted once, not assigned to each train line.'));
   const form = node('div', { class: 'sp-controls' });
   const content = node('div', { class: 'sp-content' });
   const notes = node('section', { class: 'sp-notes' },
     node('h2', {}, 'Source and limitations'),
-    node('p', {}, 'Source: Transport for NSW Opal-derived station entries and exits, under Creative Commons Attribution. Historical typical-day figures represent a sample-based average, not an actual count for a selected date. Monthly totals use a different reporting period. Do not compare them as if they used the same units.'),
+    node('p', {}, 'Source: Transport for NSW Opal-derived station entries and exits. Historical typical-day figures average three sampled weekdays, including three distinct 2020 periods. Source windows are 06–10, 10–15, 15–19, 19–06 and published 24-hour totals, not hourly counts. Historical and newer monthly totals use different methods. Suppressed counts below 50 remain missing, not zero.'),
     node('p', {}, 'At an interchange, entries and exits belong to the station. Filtering by T1, T9 or M1 shows stations served by each line, not passengers assigned to that train line. Never sum those line-filter totals together. Station-to-line membership comes from the current timetable and can differ from the historical network.'),
     node('p', {}, 'Dataset: ', node('a', { href: sourceData, target: '_blank', rel: 'noopener noreferrer' }, 'TfNSW Station Entries and Exits'),
       '. For current onboard crowding, use ', node('a', { href: '#/crowding' }, 'Crowding hotspots'), '.'));
@@ -138,17 +146,28 @@ export async function viewStationPatronage(main, meta) {
   }
 
   function renderControls() {
+    const allMonthly = f.period === 'historical' ? legacyMonths : months;
+    if(allMonthly.length && !allMonthly.includes(f.month))f.month=allMonthly.at(-1);
     form.replaceChildren(
       field('Dataset', [
-        ...(years.length ? [['typical', 'Historical typical day (hourly)']] : []),
+        ...(samples.length ? [['windows','Historic sampled day (time windows)']] : []),
+        ...(years.length ? [['typical', 'Historical hourly sample (separate source)']] : []),
+        ...(legacyMonths.length ? [['historical','Monthly history 2016–2024']] : []),
         ...(months.length ? [['monthly', 'Recent monthly totals']] : []),
       ], f.period, v => { f.period = v; f.station = null; render(); }),
-      f.period === 'typical'
-        ? field('Historical year', years.map(x => [x, x]), f.year, v => { f.year = v; f.station = null; render(); })
-        : field('Month', months.map(x => [x, x]), f.month, v => { f.month = v; f.station = null; render(); }),
-      f.period === 'typical' ? field('Typical day', [['weekday', 'Weekday'], ['weekend', 'Weekend']], f.day, v => { f.day = v; f.station = null; render(); }) : null,
-      f.period === 'typical' ? field('Hour (Sydney)', [['all', 'All available hours'], ...Array.from({ length: 24 }, (_, h) => [String(h), String(h).padStart(2, '0') + ':00'])],
-        f.hour, v => { f.hour = v; render(); }) : null,
+      f.period === 'windows'
+        ? field('Historical sample', samples.map(x => [x, x]), f.sample, v => {f.sample=v;f.station=null;render();})
+        : f.period === 'typical'
+          ? field('Historical year', years.map(x => [x, x]), f.year, v => { f.year = v; f.station = null; render(); })
+          : field('Month', allMonthly.map(x => [x, x]), f.month, v => { f.month = v; f.station = null; render(); }),
+      f.period === 'typical' ? field('Typical day', [['weekday','Weekday'],['weekend','Weekend']],f.day,v=>{f.day=v;f.station=null;render();}):null,
+      f.period === 'typical' ? field('Hour (Sydney)', [['all','All available hours'],
+        ...Array.from({length:24},(_,h)=>[String(h),String(h).padStart(2,'0')+':00'])],
+        f.hour,v=>{f.hour=v;render();}):null,
+      f.period === 'windows' ? field('Time window (Sydney)',[
+        ['06-10','06:00–10:00'],['10-15','10:00–15:00'],['15-19','15:00–19:00'],
+        ['19-06','19:00–06:00 (overnight)'],['24h','Published 24-hour total']
+      ],f.window,v=>{f.window=v;render();}):null,
       field('Rail line', [['all', 'All rail stations'], ...lineItems.map(l => [l.id, l.id + ' ' + l.name])],
         f.line, v => { f.line = v; f.station = null; render(); }),
       field('Measure', [['entries', 'Entries'], ['exits', 'Exits'], ['total', 'Entries + exits']], f.metric, v => { f.metric = v; render(); }));
@@ -158,13 +177,17 @@ export async function viewStationPatronage(main, meta) {
     renderControls();
     const rows = patronageRows(data, stations, f);
     const metric = f.metric === 'total' ? 'entries plus exits' : f.metric;
-    const sample = f.period === 'typical';
-    const periodDescription = sample
-      ? f.year + ' sampled typical ' + f.day + ', ' + (f.hour === 'all' ? 'all recorded hours' : String(f.hour).padStart(2, '0') + ':00–' + String(f.hour).padStart(2, '0') + ':59')
+    const sample = f.period === 'typical', broadSample=f.period==='windows';
+    const periodDescription = broadSample
+      ? f.sample + ' sampled typical weekday, ' + ({
+          '06-10':'06:00–10:00','10-15':'10:00–15:00','15-19':'15:00–19:00',
+          '19-06':'19:00–06:00','24h':'published 24-hour total'
+        }[f.window]||f.window)
+      : sample ? f.year + ' sampled typical ' + f.day + ', ' + (f.hour === 'all' ? 'all recorded hours' : String(f.hour).padStart(2, '0') + ':00–' + String(f.hour).padStart(2, '0') + ':59')
       : f.month + ' whole-month totals';
     const totals = rows.reduce((a, r) => a + r.value, 0);
     const headline = node('section', { class: 'sp-overview' },
-      cardValue('Data period', periodDescription, sample ? 'Historical typical-day average' : 'Monthly Opal totals'),
+      cardValue('Data period', periodDescription, sample||broadSample ? 'Historical typical-day average' : 'Monthly Opal totals'),
       cardValue('Stations with records', number(rows.length), 'Within the selected rail-line filter'),
       cardValue('Reported ' + metric, number(totals), f.metric === 'total'
         ? 'Entries + exits counts tap events, not unique people'
@@ -206,7 +229,26 @@ export async function viewStationPatronage(main, meta) {
       }
       detail.append(node('p', { class: 'muted' }, selected.lines.join(' · ') + ' · ' + number(selected.entries) + ' entries · ' +
         number(selected.exits) + ' exits. Counts are station-level, not assigned to the listed lines.'));
-      if (sample) {
+      if (broadSample) {
+        const values=data.periods?.[f.sample]?.[selected.id]||{};
+        const labels={'06-10':'06–10','10-15':'10–15','15-19':'15–19','19-06':'19–06','24h':'24h'};
+        const max=Math.max(1,...Object.values(values).map(v=>
+          f.metric==='exits'?v[1]:f.metric==='total'?v[0]+v[1]:v[0]));
+        const profile=node('div',{class:'sp-hourly',role:'group','aria-label':'Historical sampled time windows'});
+        for(const period of ['06-10','10-15','15-19','19-06','24h']){
+          const v=values[period],n=v?(f.metric==='exits'?v[1]:f.metric==='total'?v[0]+v[1]:v[0]):null;
+          profile.append(node('button',{type:'button',class:'sp-hour-button',
+            'aria-pressed':String(f.window===period),
+            'aria-label':labels[period]+' '+(n==null?'not published':number(n)+' '+metric),
+            title:labels[period]+': '+(n==null?'Unavailable':number(n)),
+            onclick:()=>{f.window=period;render();}},
+            n==null?node('span',{class:'sp-hour-missing'},'·')
+              :node('span',{class:'sp-hour-fill',style:'--height:'+Math.round(100*n/max)+'%'}),
+            node('small',{},labels[period])));
+        }
+        detail.append(profile,node('p',{class:'muted sp-footnote'},
+          'Published typical day, based on a three-day sample. These are broad reporting windows, not individual hours. The 24h value is the original published total and must not be added to the four periods. Missing bins were not released.'));
+      } else if (sample) {
         const hours = data.typical?.[f.year]?.[f.day]?.[selected.id] || {};
         const profile = node('div', { class: 'sp-hourly', role: 'group', 'aria-label': 'Historical hourly entries and exits' });
         const max = Math.max(1, ...Object.values(hours).map(v =>
@@ -225,7 +267,8 @@ export async function viewStationPatronage(main, meta) {
         detail.append(profile, node('p', { class: 'muted sp-footnote' },
           '24-hour station profile, sampled typical ' + f.day + ' in ' + f.year + '. Blank columns mean unavailable observations.'));
       } else {
-        const history = months.map(m => ({ month: m, value: data.monthly?.[m]?.[selected.id] }));
+        const history = (f.period==='historical'?legacyMonths:months).map(m=>({month:m,
+          value:(f.period==='historical'?data.legacyMonthly:data.monthly)?.[m]?.[selected.id]}));
         const list = node('div', { class: 'sp-month-list' });
         for (const point of history.filter(x => x.value).slice(-12)) {
           const value = point.value[f.metric === 'exits' ? 1 : 0] +

@@ -99,13 +99,13 @@ test('unknown stations are reported and excluded rather than mapped to another l
 test('import reads only explicit local files in data/patronage and never guesses downloads', () => {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'nrd-opal-'));
   try {
-    const empty = buildStationPatronage(folder, stations);
+    const empty = buildStationPatronage(folder, stations, {allowBundledBaseline:false});
     assert.equal(empty.available, false);
     fs.mkdirSync(path.join(folder, 'patronage'));
     fs.writeFileSync(path.join(folder, 'patronage', 'typical-day.csv'), hourly);
     assert.throws(() => buildStationPatronage(folder, stations), /provenance.json/);
     fs.writeFileSync(path.join(folder, 'patronage', 'provenance.json'), JSON.stringify(provenance));
-    const p = buildStationPatronage(folder, stations);
+    const p = buildStationPatronage(folder, stations, {allowBundledBaseline:false});
     assert.equal(p.coverage.stationCount, 3);
   } finally { fs.rmSync(folder, { recursive: true, force: true }); }
 });

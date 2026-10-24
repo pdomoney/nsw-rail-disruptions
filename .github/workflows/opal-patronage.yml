@@ -1,0 +1,58 @@
+name: Refresh TfNSW station patronage
+
+on:
+  schedule:
+    # TfNSW's Opal station-month dataset updates infrequently. Do not query the
+    # authenticated CKAN DataStore every five minutes with the live train feed.
+    - cron: '35 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: opal-station-patronage
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check out published data branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git clone --quiet --depth 1 --branch data --single-branch "$remote" data
+      - name: Refresh CKAN monthly station entries and exits
+        env:
+          TFNSW_CKAN_TOKEN: ${{ secrets.TFNSW_CKAN_TOKEN }}
+          DATA_DIR: data
+        run: node scripts/refresh-ckan-patronage.mjs
+      - name: Commit validated updated monthly snapshot only
+        working-directory: data
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          test -d patronage || exit 0
+          git add patronage/monthly.csv patronage/provenance.json || true
+          if git diff --cached --quiet; then
+            echo "No new monthly station data to publish."
+            exit 0
+          fi
+          git commit -m "Refresh TfNSW Opal station-month usage"
+          for attempt in 1 2 3; do
+            git push origin HEAD:data && exit 0
+            git fetch --quiet --depth 1 origin data
+            git rebase FETCH_HEAD || exit 1
+            sleep 5
+          done
+          echo "::error::Could not update data branch station patronage"
+          exit 1
