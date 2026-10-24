@@ -199,7 +199,12 @@ export function buildStationPatronage(dataDir, stations,{allowBundledBaseline=tr
   const periodsCsv=read('typical-periods.csv')||(allowBundledBaseline?readBundledPatronage('typical-periods.csv'):null);
   const legacyMonthlyCsv=read('historical-monthly.csv')||(allowBundledBaseline?readBundledPatronage('historical-monthly.csv'):null);
   if(!typicalCsv&&!monthlyCsv&&!periodsCsv&&!legacyMonthlyCsv)return normalizeStationPatronage({stations});
-  const dataProv=read('provenance.json'),previous=dataProv?JSON.parse(dataProv):{};
+  const dataProv=read('provenance.json');
+  const operatorSources=['typical-day.csv','monthly.csv','typical-periods.csv','historical-monthly.csv']
+    .filter(name=>fs.existsSync(file(name)));
+  if(operatorSources.length&&!dataProv)
+    throw Error('Station patronage files require provenance.json for supplied source evidence');
+  const previous=dataProv?JSON.parse(dataProv):{};
   const provenance={
     provider:'Transport for NSW',periodSource:SOURCE_URLS.typical,
     legacyMonthlySources:LEGACY_MONTHLY_SOURCES,...previous,
