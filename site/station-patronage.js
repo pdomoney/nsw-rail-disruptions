@@ -110,7 +110,7 @@ export async function viewStationPatronage(main, meta) {
   const content = node('div', { class: 'sp-content' });
   const notes = node('section', { class: 'sp-notes' },
     node('h2', {}, 'Source and limitations'),
-    node('p', {}, 'Source: Transport for NSW Opal-derived station entries and exits, under Creative Commons Attribution. Historical typical-day figures represent a sample-based average, not an actual count for a selected date. Monthly totals use a different reporting period. Do not compare them as if they used the same units.'),
+    node('p', {}, 'Source: Transport for NSW Opal-derived station entries and exits. Historical typical-day figures average three sampled weekdays, including three distinct 2020 periods. Source windows are 06–10, 10–15, 15–19, 19–06 and published 24-hour totals, not hourly counts. Historical and newer monthly totals use different methods. Suppressed counts below 50 remain missing, not zero.'),
     node('p', {}, 'At an interchange, entries and exits belong to the station. Filtering by T1, T9 or M1 shows stations served by each line, not passengers assigned to that train line. Never sum those line-filter totals together. Station-to-line membership comes from the current timetable and can differ from the historical network.'),
     node('p', {}, 'Dataset: ', node('a', { href: sourceData, target: '_blank', rel: 'noopener noreferrer' }, 'TfNSW Station Entries and Exits'),
       '. For current onboard crowding, use ', node('a', { href: '#/crowding' }, 'Crowding hotspots'), '.'));
@@ -229,7 +229,26 @@ export async function viewStationPatronage(main, meta) {
       }
       detail.append(node('p', { class: 'muted' }, selected.lines.join(' · ') + ' · ' + number(selected.entries) + ' entries · ' +
         number(selected.exits) + ' exits. Counts are station-level, not assigned to the listed lines.'));
-      if (sample) {
+      if (broadSample) {
+        const values=data.periods?.[f.sample]?.[selected.id]||{};
+        const labels={'06-10':'06–10','10-15':'10–15','15-19':'15–19','19-06':'19–06','24h':'24h'};
+        const max=Math.max(1,...Object.values(values).map(v=>
+          f.metric==='exits'?v[1]:f.metric==='total'?v[0]+v[1]:v[0]));
+        const profile=node('div',{class:'sp-hourly',role:'group','aria-label':'Historical sampled time windows'});
+        for(const period of ['06-10','10-15','15-19','19-06','24h']){
+          const v=values[period],n=v?(f.metric==='exits'?v[1]:f.metric==='total'?v[0]+v[1]:v[0]):null;
+          profile.append(node('button',{type:'button',class:'sp-hour-button',
+            'aria-pressed':String(f.window===period),
+            'aria-label':labels[period]+' '+(n==null?'not published':number(n)+' '+metric),
+            title:labels[period]+': '+(n==null?'Unavailable':number(n)),
+            onclick:()=>{f.window=period;render();}},
+            n==null?node('span',{class:'sp-hour-missing'},'·')
+              :node('span',{class:'sp-hour-fill',style:'--height:'+Math.round(100*n/max)+'%'}),
+            node('small',{},labels[period])));
+        }
+        detail.append(profile,node('p',{class:'muted sp-footnote'},
+          'Published typical day, based on a three-day sample. These are broad reporting windows, not individual hours. The 24h value is the original published total and must not be added to the four periods. Missing bins were not released.'));
+      } else if (sample) {
         const hours = data.typical?.[f.year]?.[f.day]?.[selected.id] || {};
         const profile = node('div', { class: 'sp-hourly', role: 'group', 'aria-label': 'Historical hourly entries and exits' });
         const max = Math.max(1, ...Object.values(hours).map(v =>
@@ -248,7 +267,8 @@ export async function viewStationPatronage(main, meta) {
         detail.append(profile, node('p', { class: 'muted sp-footnote' },
           '24-hour station profile, sampled typical ' + f.day + ' in ' + f.year + '. Blank columns mean unavailable observations.'));
       } else {
-        const history = months.map(m => ({ month: m, value: data.monthly?.[m]?.[selected.id] }));
+        const history = (f.period==='historical'?legacyMonths:months).map(m=>({month:m,
+          value:(f.period==='historical'?data.legacyMonthly:data.monthly)?.[m]?.[selected.id]}));
         const list = node('div', { class: 'sp-month-list' });
         for (const point of history.filter(x => x.value).slice(-12)) {
           const value = point.value[f.metric === 'exits' ? 1 : 0] +
