@@ -362,6 +362,19 @@ function build() {
     console.warn('Station patronage dataset rejected: ' + e.message);
   }
   writeJson(out('data', 'station-patronage.json'), stationPatronage);
+  // Do not silently claim station figures are published when the output is
+  // a searchable station directory. Keep the live transport build resilient,
+  // but surface exactly what the station import produced in Actions logs.
+  console.log('Published Opal station patronage: ' + JSON.stringify({
+    available: stationPatronage.available,
+    reason: stationPatronage.reason || null,
+    matchedStations: stationPatronage.coverage?.stationCount || 0,
+    sampledTimeWindows: stationPatronage.coverage?.periodRows || 0,
+    historicalStationMonths: stationPatronage.coverage?.legacyMonthlyRows || 0,
+    recentStationMonths: stationPatronage.coverage?.monthlyRows || 0,
+    latestHistoricalMonth: stationPatronage.coverage?.legacyMonths?.at(-1) || null,
+    latestRecentMonth: stationPatronage.coverage?.months?.at(-1) || null,
+  }));
   // Carriage occupancy by rail line and Sydney-local hour (30 days, never passenger tap counts).
   const crowdingLines = new Set(lines.filter(l => ['train', 'metro', 'intercity'].includes(l.mode)).map(l => l.id));
   writeJson(out('data', 'crowding.json'), buildCrowding(DATA_DIR, today, crowdingLines, { generatedAt: now }));
