@@ -3,6 +3,9 @@
 // The site must not turn historical "typical day" averages into current observations.
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
+import {createHash} from 'node:crypto';
+import {fileURLToPath} from 'node:url';
 import { parseCsv } from './csv.js';
 
 const OFFICIAL = 'https://opendata.transport.nsw.gov.au/data/dataset/3977df59-a1fa-422e-91ff-cfaeac355cc9/';
@@ -169,15 +172,37 @@ export function normalizeStationPatronage({ stations, typicalCsv = null, monthly
   };
 }
 
-export function buildStationPatronage(dataDir, stations) {
-  const folder = path.join(dataDir, 'patronage');
-  const file = name => path.join(folder, name);
-  const typicalCsv = fs.existsSync(file('typical-day.csv')) ? fs.readFileSync(file('typical-day.csv'), 'utf8') : null;
-  const monthlyCsv = fs.existsSync(file('monthly.csv')) ? fs.readFileSync(file('monthly.csv'), 'utf8') : null;
-  const periodsCsv = fs.existsSync(file('typical-periods.csv')) ? fs.readFileSync(file('typical-periods.csv'),'utf8') : null;
-  const legacyMonthlyCsv = fs.existsSync(file('historical-monthly.csv')) ? fs.readFileSync(file('historical-monthly.csv'),'utf8') : null;
-  if (!typicalCsv && !monthlyCsv && !periodsCsv && !legacyMonthlyCsv) return normalizeStationPatronage({ stations });
-  const provenance = fs.existsSync(file('provenance.json'))
-    ? JSON.parse(fs.readFileSync(file('provenance.json'), 'utf8')) : null;
-  return normalizeStationPatronage({ stations, typicalCsv, monthlyCsv, periodsCsv, legacyMonthlyCsv, provenance });
+// Reviewed, source-derived historical snapshots included in the application
+// source repository. They avoid a separate data-branch upload for the first
+// deployment. The original CVS files are never served to the browser; only the
+// validated, station-ID-keyed built JSON is published.
+const bundled = fileURLToPath(new URL('../data/patronage/',import.meta.url));
+const bundledHashes={
+  'typical-periods.csv':'59087a7bfc042c2d43f68e6df46b174fd48c1f99d765a611db8b2c512f636042',
+  'historical-monthly.csv':'20f9671d98acf96446a85fe5c7fef84cd15fc2354b04a25f7bb95353a098af87',
+};
+export function readBundledPatronage(name){
+  if(!Object.hasOwn(bundledHashes,name))throw Error('Unknown source snapshot '+name);
+  const file=path.join(bundled,name+'.gz.b64');
+  if(!fs.existsSync(file))return null;
+  const encoded=fs.readFileSync(file,'utf8');
+  const bytes=zlib.gunzipSync(Buffer.from(encoded,'base64'),{maxOutputLength:12_000_000});
+  const actual=createHash('sha256').update(bytes).digest('hex');
+  if(actual!==bundledHashes[name])throw Error('Bundled TfNSW station source integrity check failed: '+name);
+  return bytes.toString('utf8');
+}
+
+export function buildStationPatronage(dataDir, stations,{allowBundledBaseline=true}={}) {
+  const folder=path.join(dataDir,'patronage'), file=name=>path.join(folder,name);
+  const read=name=>fs.existsSync(file(name))?fs.readFileSync(file(name),'utf8'):null;
+  const typicalCsv=read('typical-day.csv'), monthlyCsv=read('monthly.csv');
+  const periodsCsv=read('typical-periods.csv')||(allowBundledBaseline?readBundledPatronage('typical-periods.csv'):null);
+  const legacyMonthlyCsv=read('historical-monthly.csv')||(allowBundledBaseline?readBundledPatronage('historical-monthly.csv'):null);
+  if(!typicalCsv&&!monthlyCsv&&!periodsCsv&&!legacyMonthlyCsv)return normalizeStationPatronage({stations});
+  const dataProv=read('provenance.json'),previous=dataProv?JSON.parse(dataProv):{};
+  const provenance={
+    provider:'Transport for NSW',periodSource:SOURCE_URLS.typical,
+    legacyMonthlySources:LEGACY_MONTHLY_SOURCES,...previous,
+  };
+  return normalizeStationPatronage({stations,typicalCsv,monthlyCsv,periodsCsv,legacyMonthlyCsv,provenance});
 }
