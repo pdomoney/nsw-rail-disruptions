@@ -71,6 +71,53 @@ export function patronageRows(data, stations, {
   return rows.sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
 }
 
+// Normalise the station identifiers shared by the Opal importer and GTFS
+// catalogue. A route is ordered by published station geography, not passenger
+// count and not the order in which the live feed happened to list stops.
+export const stopNameKey = name => String(name||'').toLowerCase()
+  .replace(/\s+station$/i,'').replace(/\s*\(nowra\)/i,'')
+  .replace(/[^a-z0-9]/g,'');
+
+export function patronageRouteChoice(routes, line, routeId) {
+  const item = line === 'T4_SCO'
+    ? (routes?.corridors||[]).find(c=>c.id==='T4_SCO')
+    : (routes?.lines?.[line] ? {id:line,routes:routes.lines[line]} : null);
+  const choices=item?.routes||[];
+  return {item,choices,route:choices.find(r=>r.id===routeId)||choices[0]||null};
+}
+
+// Count a single Opal station once even if it is shared by both SCO and T4.
+// Null values are real "not published" cells, not zero-tap stations.
+// A corridor's geographic order does NOT establish which way anyone rode.
+export function stationRouteRows(data, stations, routes, opts={}) {
+  const {line='all',route='',direction='forward',sort='stops',search=''}=opts;
+  const selected=patronageRouteChoice(routes,line,route);
+  if(!selected.route) return patronageRows(data,stations,{...opts,line:line==='T4_SCO'?'all':line});
+  const keyed=new Map();
+  for(const [id,name,lines] of stations||[]){
+    const key=stopNameKey(name);
+    if(!keyed.has(key))keyed.set(key,{id,name,lines});
+  }
+  const observations=new Map(patronageRows(data,stations,{...opts,line:'all',search:''}).map(r=>[r.id,r]));
+  const visited=new Set(),items=[];
+  const sequence=direction==='reverse'||direction==='city'
+    ? [...selected.route.stations].reverse() : selected.route.stations;
+  for(const stop of sequence){
+    const st=keyed.get(stopNameKey(stop));
+    if(!st||visited.has(st.id))continue;
+    if(line!=='T4_SCO'&&!st.lines.includes(line))continue;
+    visited.add(st.id);
+    if(search&&!st.name.toLowerCase().includes(search.trim().toLowerCase()))continue;
+    const record=observations.get(st.id);
+    items.push(record?{...record,stopNumber:items.length+1,unreported:false}
+      :{id:st.id,name:st.name,lines:st.lines,entries:null,exits:null,
+        value:null,stopNumber:items.length+1,unreported:true});
+  }
+  if(sort==='patronage')return items.filter(r=>r.value!==null)
+    .sort((a,b)=>b.value-a.value||a.name.localeCompare(b.name));
+  return items;
+}
+
 const node = (tag, attrs = {}, ...children) => {
   const el = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
@@ -102,18 +149,22 @@ function cardValue(label, value, desc) {
 export async function viewStationPatronage(main, meta, { refresh = false } = {}) {
   document.title = 'Station patronage · NSW Rail Disruptions';
   main.replaceChildren(node('p', { class: 'loading', role: 'status' }, 'Loading station catalogue and Opal data…'));
-  let data, stations;
+  let data, stations, routes;
   try {
     // A source import can deploy while this view remains open. A manual
     // refresh adds a unique query string to escape intermediary 404/no-data
     // caching, including some installed Safari Home Screen sessions.
     const suffix = refresh ? '?refresh=' + Date.now() : '';
-    const [a, b] = await Promise.all([
+    const [a, b, c] = await Promise.all([
       fetch('data/station-patronage.json' + suffix, { cache: refresh ? 'no-store' : 'no-cache' }),
       fetch('data/stations.json' + suffix, { cache: refresh ? 'no-store' : 'no-cache' }),
+      fetch('data/station-routes.json' + suffix, { cache: refresh ? 'no-store' : 'no-cache' }),
     ]);
-    if (!a.ok || !b.ok) throw new Error('Data files are not available yet');
+    if (!a.ok || !b.ok) throw new Error('Station data files are not available yet');
     [data, stations] = await Promise.all([a.json(), b.json()]);
+    // A previous deployment can retain the old dataset without corridor
+    // metadata. Show existing patronage ranking rather than break the page.
+    routes = c.ok ? await c.json() : {lines:{},corridors:[]};
   } catch (e) {
     main.replaceChildren(node('section', { class: 'sp-no-data' },
       node('h1', {}, 'Station patronage'), node('p', {}, 'The station view could not load. ' + e.message),
@@ -129,14 +180,15 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
   const f = { period: months.length ? 'monthly' : samples.length ? 'windows' : years.length ? 'typical' : 'historical',
     year: years.at(-1) || '2023',sample:samples.at(-1)||'2023',
     day: 'weekday', hour: '8', window:'06-10', month:months.at(-1)||legacyMonths.at(-1)||'',
-    metric: 'entries', line: 'all', search: '', station: null };
+    metric: 'entries', line: 'all', route:'', direction:'forward',
+    sort:'patronage', search:'', station: null };
   const heading = node('header', { class: 'sp-heading' },
     node('p', { class: 'sp-eyebrow' }, 'Opal network / historical station usage'),
     node('h1', {}, 'Station patronage hotspots'),
     node('p', { class: 'sp-intro' }, 'Explore which stations recorded the most entries and exits and how historical travel patterns changed through the day. Filter by a rail line or individual station.'),
     node('p', { class: 'sp-warning' },
-      node('strong', {}, 'Not live crowding. '),
-      'Historical workbook observations are sampled typical-day counts in broad time windows, not individual hours. Newer records are monthly totals. A station used by several lines is counted once, not assigned to each train line.'));
+      node('strong', {}, 'Not live crowding or directional ridership. '),
+      'The connected-corridor view follows stations along T4 and SCO, including interchanges and branches. Inbound/outbound changes the DISPLAY ORDER only. Opal station entries and exits cannot determine which train or travel direction a passenger used. Station counts are never attributed to a particular line.'));
   const recent = recentMonthlyStatus(data);
   heading.append(node('section', {
     class: 'sp-source-status' + (recent.hasRecent ? ' sp-source-status-current' : ' sp-source-status-missing'),
@@ -153,7 +205,7 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
   const notes = node('section', { class: 'sp-notes' },
     node('h2', {}, 'Source and limitations'),
     node('p', {}, 'Source: Transport for NSW Opal-derived station entries and exits. Historical typical-day figures average three sampled weekdays, including three distinct 2020 periods. Source windows are 06–10, 10–15, 15–19, 19–06 and published 24-hour totals, not hourly counts. Historical and newer monthly totals use different methods. Suppressed counts below 50 remain missing, not zero.'),
-    node('p', {}, 'At an interchange, entries and exits belong to the station. Filtering by T1, T9 or M1 shows stations served by each line, not passengers assigned to that train line. Never sum those line-filter totals together. Station-to-line membership comes from the current timetable and can differ from the historical network.'),
+    node('p', {}, 'Connected T4/SCO and individual rail-line routes show reference station order, NOT exact train stopping patterns. On T4/SCO shared stations, an Opal entry or exit is counted once, never both on T4 and SCO. Station counts have no journey origin, destination or citybound/coastbound field: reverse ordering must never be presented as directional passenger volume. Train stopping patterns and interchange arrangements may change with the timetable.'),
     node('p', {}, 'Dataset: ', node('a', { href: sourceData, target: '_blank', rel: 'noopener noreferrer' }, 'TfNSW Station Entries and Exits'),
       '. For current onboard crowding, use ', node('a', { href: '#/crowding' }, 'Crowding hotspots'), '.'));
   main.replaceChildren(heading, form, content, notes);
@@ -212,14 +264,35 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
         ['06-10','06:00–10:00'],['10-15','10:00–15:00'],['15-19','15:00–19:00'],
         ['19-06','19:00–06:00 (overnight)'],['24h','Published 24-hour total']
       ],f.window,v=>{f.window=v;render();}):null,
-      field('Rail line', [['all', 'All rail stations'], ...lineItems.map(l => [l.id, l.id + ' ' + l.name])],
-        f.line, v => { f.line = v; f.station = null; render(); }),
+      field('Rail line / connected corridor', [
+        ['all','All rail stations'],
+        ...(routes?.corridors||[]).map(c=>[c.id,c.name]),
+        ...lineItems.map(l=>[l.id,l.id+' '+l.name]),
+      ], f.line, v => {
+        f.line=v;f.route='';f.direction=v==='T4_SCO'?'city':'forward';
+        f.sort=v==='all'?'patronage':'stops';
+        f.station=null;render();
+      }),
+      ...(f.line!=='all' && patronageRouteChoice(routes,f.line,f.route).route ? [
+        field('Route / branch',patronageRouteChoice(routes,f.line,f.route).choices.map(r=>[r.id,r.name]),
+          patronageRouteChoice(routes,f.line,f.route).route.id,
+          v=>{f.route=v;f.station=null;render();}),
+        field('Stop direction', f.line==='T4_SCO'
+          ? [['city','Towards Central (stop order)'],['away','Away from Central (stop order)']]
+          : [['forward','First to last stop'],['reverse','Last to first stop']],
+          f.direction,v=>{f.direction=v;f.station=null;render();}),
+        field('Sort stations', [['stops','Route stop order'],['patronage','Highest patronage first']],
+          f.sort,v=>{f.sort=v;f.station=null;render();}),
+      ]:[]),
       field('Measure', [['entries', 'Entries'], ['exits', 'Exits'], ['total', 'Entries + exits']], f.metric, v => { f.metric = v; render(); }));
   }
 
   function render() {
     renderControls();
-    const rows = patronageRows(data, stations, f);
+    const selectedRoute=patronageRouteChoice(routes,f.line,f.route);
+    const ordered=f.line!=='all' && selectedRoute.route;
+    const rows=ordered ? stationRouteRows(data,stations,routes,f) : patronageRows(data,stations,f);
+    const published=rows.filter(r=>r.value!==null);
     const metric = f.metric === 'total' ? 'entries plus exits' : f.metric;
     const sample = f.period === 'typical', broadSample=f.period==='windows';
     const periodDescription = broadSample
@@ -229,10 +302,12 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
         }[f.window]||f.window)
       : sample ? f.year + ' sampled typical ' + f.day + ', ' + (f.hour === 'all' ? 'all recorded hours' : String(f.hour).padStart(2, '0') + ':00–' + String(f.hour).padStart(2, '0') + ':59')
       : f.month + ' whole-month totals';
-    const totals = rows.reduce((a, r) => a + r.value, 0);
+    const totals = published.reduce((a,r)=>a+r.value,0);
     const headline = node('section', { class: 'sp-overview' },
       cardValue('Data period', periodDescription, sample||broadSample ? 'Historical typical-day average' : 'Monthly Opal totals'),
-      cardValue('Stations with records', number(rows.length), 'Within the selected rail-line filter'),
+      cardValue('Stations with records',number(published.length),ordered
+        ? number(published.length)+' of '+number(rows.length)+' listed corridor stops with records'
+        : 'Within the selected rail-line filter'),
       cardValue('Reported ' + metric, number(totals), f.metric === 'total'
         ? 'Entries + exits counts tap events, not unique people'
         : 'One count per station; not passengers assigned to each line'));
@@ -240,7 +315,12 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
       'aria-label': 'Filter station names', value: f.search,
       oninput: e => { f.search = e.target.value; /* retain keyboard focus below */ updateResults(); } });
     const ranking = node('section', { class: 'sp-ranking' },
-      node('h2', {}, 'Busiest stations'), node('p', { class: 'muted' }, periodDescription + ' · ' + metric));
+      node('h2', {}, ordered && f.sort==='stops'?'Stations in corridor stop order':'Busiest stations'),
+      node('p', { class: 'muted' }, periodDescription+' · '+metric),
+      ordered ? node('p',{class:'sp-corridor-note'},
+        (selectedRoute.item?.note||'Reference geographic sequence, not a service timetable.')+
+        ' Direction changes the order of stations only. Entries and exits are not proof of a passenger’s travel direction.')
+        : null);
     const list = node('div', { class: 'sp-rank-list' });
     ranking.append(search, list);
     const detail = node('section', { class: 'sp-station-profile' });
@@ -248,19 +328,23 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     content.replaceChildren(headline, lower);
 
     function updateResults() {
-      const visible = patronageRows(data, stations, f);
-      const maximum = Math.max(1, ...visible.map(r => r.value));
+      const visible = ordered ? stationRouteRows(data,stations,routes,f)
+        : patronageRows(data,stations,f);
+      const maximum = Math.max(1, ...visible.filter(r=>r.value!==null).map(r => r.value));
       list.replaceChildren();
-      for (const r of visible.slice(0, 30)) {
+      for (const r of (ordered&&f.sort==='stops'?visible:visible.slice(0,30))) {
         const button = node('button', { type: 'button', class: 'sp-station-button',
           'aria-pressed': String(r.id === f.station), onclick: () => { f.station = r.id; updateResults(); } },
-          node('span', { class: 'sp-station-name' }, r.name),
+          node('span', { class: 'sp-station-name' },
+            ordered&&f.sort==='stops' ? String(r.stopNumber).padStart(2,'0')+' · '+r.name : r.name),
           node('span', { class: 'sp-station-bar-track' },
-            node('span', { class: 'sp-station-bar', style: '--width:' + (100 * r.value / maximum).toFixed(1) + '%' })),
-          node('strong', {}, number(r.value)));
+            r.value===null ? node('span',{class:'sp-no-record'},'Not published')
+              : node('span', { class: 'sp-station-bar', style: '--width:' + (100 * r.value / maximum).toFixed(1) + '%' })),
+          node('strong', {}, r.value===null?'—':number(r.value)));
         list.append(button);
       }
-      if (visible.length > 30) list.append(node('p', { class: 'muted' }, 'Showing the top 30 matching stations.'));
+      if (visible.length > 30 && !(ordered&&f.sort==='stops'))
+        list.append(node('p', { class: 'muted' }, 'Showing the top 30 matching stations.'));
       if (!visible.length) list.append(node('p', {}, 'No published records match these filters. This does not mean zero passengers.'));
       paintDetail(visible.find(x => x.id === f.station) || visible[0] || null);
     }
@@ -269,6 +353,11 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
       detail.replaceChildren(node('h2', {}, selected ? selected.name : 'Station profile'));
       if (!selected) {
         detail.append(node('p', {}, 'Choose a different month, year, rail line or station.'));
+        return;
+      }
+      if(selected.value===null){
+        detail.append(node('p', {class:'muted'},
+          'No published station entry/exit pair for this stop and period. This is unavailable data, not zero passengers.'));
         return;
       }
       detail.append(node('p', { class: 'muted' }, selected.lines.join(' · ') + ' · ' + number(selected.entries) + ' entries · ' +
