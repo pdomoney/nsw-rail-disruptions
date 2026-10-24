@@ -28,7 +28,9 @@ export function normalizeMonthlySource(rows,{minMonth=MODERN_START,maxMonth='210
     if(month<minMonth||month>maxMonth)continue;
     const name=String(row.Station||'').trim();
     if(!name)throw Error('TfNSW source row '+i+' missing Station');
-    const direction=String(row.Entry_Exit||'').trim().toLowerCase().replace(/s$/,'');
+    const rawDirection=String(row.Entry_Exit||'').trim().toLowerCase();
+    const direction=['entry','entries'].includes(rawDirection)?'entry'
+      :['exit','exits'].includes(rawDirection)?'exit':rawDirection;
     if(!['entry','exit'].includes(direction))throw Error('Unexpected Entry_Exit '+row.Entry_Exit);
     const type=String(row.Station_Type||'').trim().toLowerCase();
     // Shared can be a rail+metro interchange; it is still one station,
