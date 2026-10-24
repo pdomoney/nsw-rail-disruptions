@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeStationPatronage,SOURCE_URLS} from '../src/lib/station-patronage.js';
+import {normalizeStationPatronage,buildStationPatronage,readBundledPatronage,SOURCE_URLS} from '../src/lib/station-patronage.js';
 import {patronageRows} from '../site/station-patronage.js';
 // Source-verified 2023 Central/Wynyard and 2020 Central values from the
 // uploaded TfNSW "train-station-entries-and-exits-version-2.2.xlsx", not
@@ -49,4 +49,27 @@ test('2020 COVID phase samples remain independent, not merged into a typical 202
   const months=['Feb 2020','May 2020','Sep 2020'].map(sample=>
     patronageRows(data,stations,{period:'windows',sample,window:'24h'})[0].entries);
   assert.deepEqual(months,[106980,17750,42920]);
+});
+
+test('reviewed source snapshots are bundled and verified by original SHA-256',()=>{
+  const windows=readBundledPatronage('typical-periods.csv');
+  const history=readBundledPatronage('historical-monthly.csv');
+  assert.equal(windows.split('\n').length-1,8814);
+  assert.equal(history.split('\n').length-1,29946);
+  assert.match(windows,/Central Station,2023,06-10,7780,31480/);
+  assert.match(history,/Central Station,2024-10,/);
+  assert.throws(()=>readBundledPatronage('../../package.json'),/Unknown source snapshot/);
+});
+
+test('first production build exposes authentic supplied Opal figures without manual data branch uploads',()=>{
+  const all=buildStationPatronage('/no-data-directory-expected',stations);
+  assert.equal(all.available,true);
+  assert.ok(all.coverage.periodRows>100);
+  assert.ok(all.coverage.legacyMonthlyRows>100);
+  assert.deepEqual(all.periods['2023'].central['06-10'],[7780,31480]);
+  assert.deepEqual(all.periods['2023'].wynyard['24h'],[68170,70540]);
+  assert.equal(all.coverage.legacyMonths.at(-1),'2024-10');
+  assert.equal(all.coverage.samples.at(-1),'2023');
+  const excluded=buildStationPatronage('/no-data-directory-expected',stations,{allowBundledBaseline:false});
+  assert.equal(excluded.available,false);
 });
