@@ -1,3 +1,14 @@
+## Station directory shown instead of historic figures (PR #16)
+
+PR #15 already includes **two checksum-pinned, compressed original-source snapshots** in `src/data/patronage/`. The user's uploaded `NSW_Opal_patronage_import_package(1).zip` has SHA-256 hashes that exactly match these files after decompression. A separate historical data-branch upload is **not needed**. The optional `TFNSW_CKAN_TOKEN` is only for **newer monthly** station records.
+
+If the page shows **only a searchable station directory**, its loaded `data/station-patronage.json` has `available:false`, usually because the browser loaded the version published **before** PR #15, or because a build was unable to map historical station names to the current GTFS catalogue. PR #16 shows the true build reason, offers an **uncached data refresh** and records publication coverage in GitHub Actions **Build the site** logs.
+
+After a successful new deployment, the latest Station Patronage page should have the historical **Dataset**, **Historical sample**, **Time window**, **Rail line** and **Measure** filters. Start with **2023 / 06:00–10:00**, select **Central** and compare **7,780 entries / 31,480 exits** with the source workbook. **2024-10** remains historical monthly; post-2024 CKAN months require the optional authenticated refresh.
+
+To inspect a failed import, open **Actions → Collect and publish → latest completed run → collect → Build the site**, and search for `Published Opal station patronage:` or `Station patronage dataset rejected:`. Patronage failures do not block the live disruption monitor.
+
+---
 ## Source-specific import: original TfNSW workbook and legacy monthly CSVs (2026-10-25)
 
 The accepted source-derived normalised import package **NSW_Opal_patronage_import_package.zip** is prepared separately from this PR and contains these three files:

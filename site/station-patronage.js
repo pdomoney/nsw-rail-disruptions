@@ -72,14 +72,18 @@ function cardValue(label, value, desc) {
     node('span', {}, label), node('strong', {}, value), desc ? node('small', {}, desc) : null);
 }
 
-export async function viewStationPatronage(main, meta) {
+export async function viewStationPatronage(main, meta, { refresh = false } = {}) {
   document.title = 'Station patronage · NSW Rail Disruptions';
   main.replaceChildren(node('p', { class: 'loading', role: 'status' }, 'Loading station catalogue and Opal data…'));
   let data, stations;
   try {
+    // A source import can deploy while this view remains open. A manual
+    // refresh adds a unique query string to escape intermediary 404/no-data
+    // caching, including some installed Safari Home Screen sessions.
+    const suffix = refresh ? '?refresh=' + Date.now() : '';
     const [a, b] = await Promise.all([
-      fetch('data/station-patronage.json', { cache: 'no-cache' }),
-      fetch('data/stations.json', { cache: 'no-cache' }),
+      fetch('data/station-patronage.json' + suffix, { cache: refresh ? 'no-store' : 'no-cache' }),
+      fetch('data/stations.json' + suffix, { cache: refresh ? 'no-store' : 'no-cache' }),
     ]);
     if (!a.ok || !b.ok) throw new Error('Data files are not available yet');
     [data, stations] = await Promise.all([a.json(), b.json()]);
@@ -118,9 +122,11 @@ export async function viewStationPatronage(main, meta) {
 
   if (!data.available) {
     const info = node('section', { class: 'sp-no-data' },
-      node('h2', {}, 'Official station figures not imported yet'),
-      node('p', {}, 'The station catalogue is available, but the official Opal CSV/XLSX downloads require access to the Transport Open Data Hub. No passenger numbers have been estimated or invented.'),
-      node('p', {}, 'Once the validated dataset exports have been added to the project’s data branch, the app will display hourly historical hotspots and monthly station rankings automatically.'),
+      node('h2', {}, 'Station figures are not available in this published dataset'),
+      node('p', {}, data.reason || 'This deployment has not published verified station patronage figures.'),
+      node('p', {}, 'The historical TfNSW source snapshots are bundled with the application. If you still see the station directory after a recent deployment, refresh the station data rather than uploading the files again.'),
+      node('button', { type: 'button', class: 'sp-retry', onclick: () => viewStationPatronage(main, meta, { refresh: true }) },
+        'Refresh published patronage data'),
       node('a', { href: sourceData, target: '_blank', rel: 'noopener noreferrer' }, 'View official TfNSW station dataset'));
     const catalogue = node('section', { class: 'sp-catalogue' },
       node('h2', {}, 'Stations in the current rail network'));
