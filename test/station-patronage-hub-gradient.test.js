@@ -124,10 +124,10 @@ test('all-hub and wholly unavailable corridors use safe fallback, no invented co
 test('active responsive view and legacy SVG use hub-excluded heat, while normal counts remain unchanged',()=>{
   const sourceCode=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const styles=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
-  assert.match(sourceCode,/const fill=excludedHub\?'#e4e9ef'/);
-  assert.match(sourceCode,/node\('span',\{\},'More taps \('\+number\(diagramModel\.gradientMaximum\)/);
-  assert.match(sourceCode,/Only Martin Place, Town Hall, Central, Redfern and Sydenham are excluded/);
-  assert.match(sourceCode,/Other interchanges are included/);
-  assert.match(sourceCode,/node\('p',\{class:'sp-diagram-scale-note'/);
+  assert.match(sourceCode,/const fill=st\.visualColour\?\?/);
+  assert.match(sourceCode,/class:'sp-diagram-five-band'/);
+  assert.match(sourceCode,/Martin Place, Town Hall, Central, Redfern and Sydenham alone are excluded/);
+  assert.match(sourceCode,/Other interchange stations remain included/);
+  assert.match(sourceCode,/node\('details',\{class:'sp-diagram-explainer'/);
   assert.match(styles,/\.sp-diagram-scale-note/);
 });
