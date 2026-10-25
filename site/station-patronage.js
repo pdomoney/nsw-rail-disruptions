@@ -127,6 +127,21 @@ export const PATRONAGE_SEQUENTIAL_STOPS=Object.freeze([
 ]);
 // Compatibility name for older consumers; not a rainbow scale.
 export const PATRONAGE_RAINBOW_STOPS=PATRONAGE_SEQUENTIAL_STOPS;
+
+// Five discrete, high-contrast Viridis steps make relative differences easy
+// to compare on phone. A ranked scale (rather than linear max scaling) prevents
+// one ordinary high-volume station flattening every other marker to purple.
+// Numeric labels remain exact published tap counts.
+export const PATRONAGE_VISUAL_COLOURS=Object.freeze([
+  '#440154','#31688e','#21918c','#5ec962','#fde725',
+]);
+export function stationPatronageRankBands(values) {
+  const ordered=[...new Set((values||[]).filter(Number.isFinite))].sort((a,b)=>a-b);
+  const bands=new Map();
+  ordered.forEach((value,i)=>bands.set(value,ordered.length===1
+    ? 2 : Math.floor(4*i/(ordered.length-1))));
+  return bands;
+}
 export function patronageHeatColour(intensity) {
   const value=Number.isFinite(intensity)?Math.max(0,Math.min(1,intensity)):0;
   const scaled=value*(PATRONAGE_SEQUENTIAL_STOPS.length-1);
@@ -214,6 +229,10 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
     .map(st=>st.value));
   const excludedHubCount=excludeHubs
     ? published.filter(st=>patronageHubKeys.has(st.key)).length : 0;
+  // All included stations (including other interchanges) contribute to the
+  // ordered groups. Identical published values always have identical colours.
+  const colourBands=stationPatronageRankBands((excludeHubs?ordinary:published)
+    .map(st=>st.value));
   const nodes=[],paths=[],shown=new Set(),mainX=58,branchX=412,top=68,step=47;
   function add(stop,x,y,service=plan.line) {
     const key=stopNameKey(stop);
@@ -235,6 +254,10 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
       value:record?.value??null, unreported:!record, unmatched:!station,
       x,y,service,intensity:record?Math.sqrt(Math.max(0,record.value)/max):0,
       heatIntensity,markerSize,hubExcludedFromScale,
+      colourBand:record?colourBands.get(record.value)??null:null,
+      visualColour:record
+        ? (hubExcludedFromScale?'#e4e9ef':PATRONAGE_VISUAL_COLOURS[
+            colourBands.get(record.value)??0]):null,
     });
   }
   const waterfall=plan.line==='T4_SCO'
@@ -332,8 +355,8 @@ export function makeStationDiagram(model, {name,metric,search='',selectedId=null
     const label=st.value===null?(st.unmatched?'No catalogue match':'Not published'):number(st.value);
     const match=!term||st.name.toLowerCase().includes(term);
     const radius=(st.markerSize??(st.value===null?18:14+18*st.intensity))/2;
-    const displayHeat=st.hubExcludedFromScale
-      ? '#e4e9ef' : patronageHeatColour(st.heatIntensity??st.intensity);
+    const displayHeat=st.visualColour??(st.hubExcludedFromScale
+      ? '#e4e9ef' : patronageHeatColour(st.heatIntensity??st.intensity));
     const group=svgNode('g',{
       class:'sp-diagram-stop'+(st.value===null?' sp-diagram-missing':'')+
         (st.hubExcludedFromScale?' sp-diagram-hub':'')+
@@ -413,8 +436,8 @@ export function makeResponsiveStationDiagram(plan,model,{
   function drawStation(st) {
     const missing=st.value==null;
     const excludedHub=!missing&&st.hubExcludedFromScale;
-    const fill=excludedHub?'#e4e9ef':
-      patronageHeatColour(st.heatIntensity??st.intensity);
+    const fill=st.visualColour??(excludedHub?'#e4e9ef':
+      patronageHeatColour(st.heatIntensity??st.intensity));
     const markerSize=st.markerSize??(missing?16:18);
     const label=missing?(st.unmatched?'No catalogue match':'Not published'):number(st.value);
     const routeColour=colour(st.service==='T4_SCO'?'T4':st.service||plan.line);
@@ -745,33 +768,31 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
             },
           },'⇅ Flip diagram'),
         ),
-        node('p',{class:'sp-diagram-orientation','aria-live':'polite'},
-          'Main corridor, top to bottom: '+topStation+' → '+bottomStation+
-          ' (diagram orientation only; branches may extend beyond the terminus)'),
-        node('p',{class:'sp-corridor-note'},
-          'Reference station order, not a timetable. Circle size represents the selected station-level '+
-          metric+'. Branches remain connected at their junctions when the diagram is flipped. '+
-          'Station entries and exits do not identify the direction or train service used by a passenger.'),
-        node('div',{class:'sp-diagram-legend','aria-label':'Patronage diagram legend'},
-          node('span',{},'● Bigger and brighter markers indicate more '+metric),
-          node('span',{},'○ Hollow circle: missing or suppressed station figures'),
-          node('span',{},'0 is a published zero, not missing data'),
-          node('span',{},'Grey markers: Martin Place, Town Hall, Central, Redfern and Sydenham are excluded from both scales'),
-          node('span',{},'Track colours indicate the route, not passenger travel direction'),
-          node('div',{class:'sp-diagram-heat-legend','aria-label':'Station patronage colour gradient from low to high'},
-            node('span',{},'Fewer taps'),
-            node('span',{class:'sp-diagram-heat-ramp','aria-hidden':'true'}),
-            node('span',{},'More taps ('+number(diagramModel.gradientMaximum)+' '+metric+')')),
-        node('p',{class:'sp-diagram-scale-note'},
-          diagramModel.hubScaleExclusionActive
-            ? 'Only Martin Place, Town Hall, Central, Redfern and Sydenham are excluded from colour and size scaling ('+
-              number(diagramModel.excludedHubCount)+' published excluded station'+
-              (diagramModel.excludedHubCount===1?'':'s')+
-              ' on this corridor). Other interchanges are included. Actual counts are unchanged.'
-            : 'The sequential colour scale uses all published station observations on this route; '+
-              'no other published stations were available for the exclusions to apply.')),
-        node('p',{class:'muted'},'Read the main route from top to bottom. Open a branch at its junction; tap a station to reveal its entry and exit counts beside the route.'),
-        search,node('div',{class:'sp-diagram-scroll'}),
+        node('div',{class:'sp-diagram-quick-guide'},
+          node('div',{class:'sp-diagram-five-band',role:'group',
+            'aria-label':'Five relative patronage bands, from lower to higher'},
+            node('span',{class:'sp-band-label'},'Less'),
+            ...PATRONAGE_VISUAL_COLOURS.map((colour,i)=>
+              node('span',{class:'sp-band-swatch',style:'background-color:'+colour,
+                title:['Lowest','Low','Middle','High','Highest'][i]+' relative station patronage',
+                'aria-label':['Lowest','Low','Middle','High','Highest'][i]+' patronage band'})),
+            node('span',{class:'sp-band-label'},'More')),
+          node('span',{class:'sp-diagram-guide-note'},
+            'Colours rank stations on this corridor; grey = excluded hub.')),
+        search,
+        node('details',{class:'sp-diagram-explainer'},
+          node('summary',{},'About this diagram, colours and data'),
+          node('p',{},'Main corridor: '+topStation+' → '+bottomStation+
+            '. Flip changes stop order, not where passengers travelled. Branches connect at their junctions.'),
+          node('p',{},'Colour groups show relative ranking across the published stations on this route. '+
+            'They are five equal steps along the ordered range of distinct station values, not five equal passenger-count intervals. '+
+            'Circle size reflects passenger tap volume against the largest included station.'),
+          node('p',{},'Missing/suppressed values use a hollow marker; a published zero remains a filled marker. '+
+            'Counts describe station-level Opal taps, not a live train, boarding direction or timetable.'),
+          node('p',{},'Martin Place, Town Hall, Central, Redfern and Sydenham alone are excluded from visual comparisons. '+
+            number(diagramModel.excludedHubCount)+' published excluded stations are on this corridor; '+
+            'their exact figures remain visible. Other interchange stations remain included.')),
+        node('div',{class:'sp-diagram-scroll'}),
       );
     }
 
