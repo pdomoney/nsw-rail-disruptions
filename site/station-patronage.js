@@ -188,9 +188,10 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
   const published=plotted.map(key=>({
     key,value:catalogue.has(key)?recorded.get(catalogue.get(key).id)?.value:null,
   })).filter(st=>st.value!=null && Number.isFinite(st.value));
-  // Preserve the true peak for geometry/marker-size comparisons.
+  // Retain the actual highest count for reporting and old SVG consumers.
+  // Neither mobile marker sizes nor colours should use this hub-skewed peak.
   const max=Math.max(1,...published.map(st=>st.value));
-  // Use non-hub values for colour, but fall back when no ordinary station is
+  // Use non-hub values for both size and colour, but fall back when no ordinary station is
   // published in this period. Do not turn missing or suppressed into zero.
   const ordinary=published.filter(st=>!patronageHubKeys.has(st.key));
   const excludeHubs=ordinary.length>0;
@@ -205,14 +206,20 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
     shown.add(key);
     const station=catalogue.get(key);
     const record=station?recorded.get(station.id):null;
+    const hubExcludedFromScale=excludeHubs && patronageHubKeys.has(key);
+    const heatIntensity=record
+      ? Math.sqrt(Math.min(1,Math.max(0,record.value)/gradientMaximum)):0;
+    // A designated hub is neutral and fixed-size, not a red/oversized
+    // outlier. Non-hubs use the SAME hub-free reference for size and colour.
+    // A published zero still has a small filled marker; missing stays hollow.
+    const markerSize=!record?16:hubExcludedFromScale?18:
+      Math.round(12+14*heatIntensity);
     nodes.push({
       id:station?.id??null, name:station?.name??stop, lines:station?.lines||[],
       entries:record?.entries??null, exits:record?.exits??null,
       value:record?.value??null, unreported:!record, unmatched:!station,
       x,y,service,intensity:record?Math.sqrt(Math.max(0,record.value)/max):0,
-      heatIntensity:record
-        ? Math.sqrt(Math.min(1,Math.max(0,record.value)/gradientMaximum)):0,
-      hubExcludedFromScale:excludeHubs && patronageHubKeys.has(key),
+      heatIntensity,markerSize,hubExcludedFromScale,
     });
   }
   const waterfall=plan.line==='T4_SCO'
@@ -309,9 +316,12 @@ export function makeStationDiagram(model, {name,metric,search='',selectedId=null
   for(const st of model.nodes) {
     const label=st.value===null?(st.unmatched?'No catalogue match':'Not published'):number(st.value);
     const match=!term||st.name.toLowerCase().includes(term);
-    const radius=st.value===null?9:7+9*st.intensity;
+    const radius=(st.markerSize??(st.value===null?18:14+18*st.intensity))/2;
+    const displayHeat=st.hubExcludedFromScale
+      ? '#e4e9ef' : patronageHeatColour(st.heatIntensity??st.intensity);
     const group=svgNode('g',{
       class:'sp-diagram-stop'+(st.value===null?' sp-diagram-missing':'')+
+        (st.hubExcludedFromScale?' sp-diagram-hub':'')+
         (match?'':' sp-diagram-dim'),
       'data-station-id':st.id,
       'aria-label':st.name+', '+label+' '+metric+(st.id?', select station':''),
@@ -324,7 +334,7 @@ export function makeStationDiagram(model, {name,metric,search='',selectedId=null
       svgNode('circle',{cx:st.x,cy:st.y,r:radius,
         class:'sp-diagram-dot',
         style:'--sp-station-colour:'+colour(st.service||model.line)+
-          ';--sp-heat-colour:'+patronageHeatColour(st.heatIntensity??st.intensity)}),
+          ';--sp-heat-colour:'+displayHeat}),
       // A tspan is laid out immediately after its station name by the SVG
       // text engine; never pin the figure to an arbitrary distant x-coordinate.
       svgNode('text',{x:st.x+26,y:st.y+5,class:'sp-diagram-label'},
@@ -387,25 +397,36 @@ export function makeResponsiveStationDiagram(plan,model,{
 
   function drawStation(st) {
     const missing=st.value==null;
-    const fill=patronageHeatColour(st.heatIntensity??st.intensity);
+    const excludedHub=!missing&&st.hubExcludedFromScale;
+    const fill=excludedHub?'#e4e9ef':
+      patronageHeatColour(st.heatIntensity??st.intensity);
+    const markerSize=st.markerSize??(missing?16:18);
     const label=missing?(st.unmatched?'No catalogue match':'Not published'):number(st.value);
     const routeColour=colour(st.service==='T4_SCO'?'T4':st.service||plan.line);
     const muted=term&&!st.name.toLowerCase().includes(term);
-    const item=node('li',{class:'sp-route-stop'+(muted?' sp-route-dim':''),
+    const item=node('li',{class:'sp-route-stop'+
+      (excludedHub?' sp-route-hub':'')+(muted?' sp-route-dim':''),
       style:'--sp-route-colour:'+routeColour});
     const body=node('button',{type:'button',class:'sp-route-stop-button',
-      'aria-label':st.name+', '+label+' '+metric+(st.id?', show station details':''),
+      'aria-label':st.name+', '+label+' '+metric+
+        (excludedHub?', major interchange excluded from colour and size scale':'')+
+        (st.id?', show station details':''),
       'aria-pressed':String(st.id===selectedId),
       ...(st.id?{}:{disabled:'disabled'})},
-      node('span',{class:'sp-route-dot'+(missing?' sp-route-dot-missing':''),
-        style:missing?'border-color:'+routeColour:
-          'border-color:'+routeColour+';background-color:'+fill,
+      node('span',{class:'sp-route-dot'+(missing?' sp-route-dot-missing':'')+
+        (excludedHub?' sp-route-dot-hub':''),
+        style:'--sp-marker-size:'+markerSize+'px;border-color:'+routeColour+
+          (missing?'':';background-color:'+fill),
         'aria-hidden':'true'}),
       node('span',{class:'sp-route-text'},
         node('span',{class:'sp-route-name'},st.name),
-        node('span',{class:'sp-route-amount'+(missing?' sp-route-amount-missing':''),
+        excludedHub?node('span',{class:'sp-route-hub-tag',
+          title:'Not used to calculate colour or marker size'},'Hub'):null,
+        node('span',{class:'sp-route-amount'+(missing?' sp-route-amount-missing':'')+
+          (excludedHub?' sp-route-amount-hub':''),
           style:missing?'':('background-color:'+fill+';color:'+
-            ((st.heatIntensity??st.intensity)>=.70?'#ffffff':'#17202b'))},label)));
+            (excludedHub?'#354154':
+              (st.heatIntensity??st.intensity)>=.70?'#ffffff':'#17202b'))},label)));
     const detail=node('div',{class:'sp-route-inline-detail',
       ...(st.id===selectedId?{}:{hidden:'hidden'})},
       missing
@@ -704,9 +725,10 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
           metric+'. Branches remain connected at their junctions when the diagram is flipped. '+
           'Station entries and exits do not identify the direction or train service used by a passenger.'),
         node('div',{class:'sp-diagram-legend','aria-label':'Patronage diagram legend'},
-          node('span',{},'● Larger, warmer circles: more published '+metric+' on this diagram'),
+          node('span',{},'● Ordinary stations: larger, warmer markers mean more '+metric),
           node('span',{},'○ Hollow circle: missing or suppressed station figures'),
           node('span',{},'0 is a published zero, not missing data'),
+          node('span',{},'Grey Hub markers: displayed but excluded from colour and size comparison'),
           node('span',{},'Track colours indicate the route, not passenger travel direction'),
           node('div',{class:'sp-diagram-heat-legend','aria-label':'Station patronage colour gradient from low to high'},
             node('span',{},'Lower patronage'),
@@ -717,8 +739,8 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
             ? 'High-volume interchange hubs, including Central and Redfern, do not set this colour scale ('+
               number(diagramModel.excludedHubCount)+' published hub'+
               (diagramModel.excludedHubCount===1?'':'s')+
-              ' excluded from the range). Their full counts are still shown and their '+
-              'colours are capped at the high end.'
+              ' excluded from the range). Full hub counts remain visible in neutral grey; '+
+              'ordinary stations alone determine both marker size and colour.'
             : 'Colour scale uses the available observations on this corridor; '+
               'no published non-hub station data was available.')),
         node('p',{class:'muted'},'Read the main route from top to bottom. Open a branch at its junction; tap a station to reveal its entry and exit counts beside the route.'),
