@@ -1,4 +1,14 @@
-## Seven distinct station patronage volume bands (PR #29)
+## Nine station activity colour shades with a warmer high end (PR #30)
+
+The Station Patronage diagram now displays **nine distinct volume shades**, adding two more bands to improve differentiation while warming the high end toward **orange and red**. The active palette is dark purple → violet → indigo → blue → teal → green → lime → orange → red. This is a custom warm-ended sequential scale, not the default Matplotlib Viridis colormap. Its purpose is to make higher-volume stops visually clearer on mobile while retaining recognisable low-to-high order. The compact legend fits within the narrow station diagram.
+
+Band allocation continues to use **square-root-scaled reported volume relative to the busiest included station**. Adding more shades improves resolution but does not invent differences when two counts fall into the same band. The exact published values remain displayed, and circle sizes continue to use the independent published-value model. With the user's photographed T4 entries and maximum of 466,944 (Hurstville), **Carlton's 64,085 entries receive band 4/9**, **Rockdale's 219,364 entries receive band 7/9** and **Hurstville's 466,944 entries receive band 9/9 (red)**. Rockdale and Carlton therefore have clearly different colours.
+
+The visual exclusion policy is unchanged: **only Martin Place, Town Hall, Central, Redfern and Sydenham** are excluded from the colour and marker-size calculations and shown in neutral grey with their original counts. Every other interchange remains included. The dataset, update cadence, historical tap counts, filtered metrics, station positions, accessibility controls, search and compact mobile layout are unchanged.
+
+---
+
+## Historical seven-band change (PR #29, superseded by PR #30)
 
 The compact diagram from PR #28 is retained, but the original **five rank groups** could give visually identical colours to stations with substantially different counts (for example, Rockdale **219,364** and Carlton **64,085** in the user's T4 screenshot). The diagram now uses **seven visibly separated Viridis colours** running from purple/indigo through blue, teal, green and lime to yellow. The legend remains compact enough for iPhone screens.
 

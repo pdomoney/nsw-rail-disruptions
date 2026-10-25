@@ -128,8 +128,8 @@ test('branch tracks bend between rows instead of crossing Sutherland/Coniston te
 test('mobile legend and CSS advertise a continuous relative colour gradient',()=>{
   const ui=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
-  assert.match(ui,/Seven relative patronage volume bands, from lower to higher/);
-  assert.match(ui,/class:'sp-diagram-seven-band'/);
+  assert.match(ui,/Nine relative patronage volume bands, from lower to higher/);
+  assert.match(ui,/class:'sp-diagram-nine-band'/);
   assert.match(ui,/patronageHeatColour\(st.heatIntensity\?\?st.intensity\)/);
   assert.match(ui,/svgNode\('tspan',\{class:'sp-diagram-value',dx:12\}/);
   assert.doesNotMatch(ui,/x:st.x\+435/);
