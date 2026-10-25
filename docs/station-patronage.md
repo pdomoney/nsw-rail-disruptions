@@ -1,3 +1,15 @@
+## Mobile station labels and patronage heat gradient (PR #22)
+
+The previous diagram displayed station names near the track but pinned their numeric values to a distant right-aligned SVG column. On an iPhone this separated a station from its count by hundreds of pixels and required horizontal scrolling. The station name and its selected entry, exit or combined figure are now adjacent `<tspan>` elements in the same accessible SVG text node, with a small measured gap supplied by SVG text layout rather than a hardcoded remote x-coordinate. The overall SVG is narrower for mobile browsing.
+
+Circle **fill** now displays a continuous, relative low-to-high patronage heat scale (pale blue through teal and amber to red), and a labelled gradient key shows the scale using the maximum published count for **this selected corridor**. Circle **outlines** and tracks continue to use official line identity colours. Circle radius still represents relative patronage. Published **zero** is a pale filled marker with the numeric zero; unavailable or suppressed observations are a hollow station with **Not published**. Colours do not infer trips, boarding direction, occupancy, or station-line allocation.
+
+Branch tracks leave junction stops at a curved offset **between adjacent station-label rows**. This prevents T4 Cronulla and connected T4/SCO Port Kembla branch connectors from crossing names such as Sutherland and Coniston, in both normal and flipped diagrams.
+
+The underlying TfNSW source data, route order, station counts, line metadata, collector, map renderers, and list-view filters are unchanged. The heat colours are deliberately recalculated when period, metric or route changes and should not be compared as an absolute scale across separate diagrams.
+
+---
+
 ## Diagram marker scale and line identity (PR #21)
 
 The selected diagram now scales station-circle sizes using **only the stations plotted on that route and its branches**, rather than the largest recorded station anywhere in the NSW network. Switching to a quieter line therefore still makes the relative differences between its stops visible. The SVG legend explicitly distinguishes available counts (including a published zero) from missing, suppressed or unmatched records. No observed entry or exit counts are changed.
