@@ -150,7 +150,7 @@ export function stationDiagramPlan(routes, line, routeId = '') {
       line==='T4_SCO'?'T4 + SCO · Connected South Coast':selected.route.name};
 }
 
-export function stationDiagramModel(plan, stations, observations) {
+export function stationDiagramModel(plan, stations, observations, { flip = false } = {}) {
   if(!plan)return null;
   const catalogue=new Map();
   for(const [id,name,lines] of stations||[]){
@@ -186,7 +186,17 @@ export function stationDiagramModel(plan, stations, observations) {
     branch.stations.forEach((stop,i)=>add(stop,branchX,firstY+i*step));
     highest=Math.max(highest,firstY+(branch.stations.length-1)*step);
   }
-  return {nodes,paths,width:1030,height:highest+72,maximum:max};
+  // Mirror railway geometry vertically without rotating SVG labels.
+  // Flipping affects only station placement and track paths; station records,
+  // entry/exit figures, line memberships and selected profile IDs do not change.
+  // Do not flip the whole SVG: that would render station names upside down.
+  if (flip) {
+    const axis=top+highest;
+    for(const st of nodes)st.y=axis-st.y;
+    for(const path of paths)path.transform='translate(0 '+axis+') scale(1 -1)';
+  }
+  return {nodes,paths,width:1030,height:highest+72,maximum:max,flipped:!!flip,
+    line:plan.line,first:plan.trunk[0],last:plan.trunk.at(-1)};
 }
 
 const svgNs='http://www.w3.org/2000/svg';
@@ -204,8 +214,21 @@ function makeStationDiagram(model, {name,metric,search='',selectedId=null,onSele
     width:model.width,height:model.height,role:'group',
     'aria-label':name+' station patronage schematic, '+metric+'; select a station for its profile',
   });
+  // Compact line identifier inspired by the user's T4 reference diagram.
+  // It is generated from the selected route rather than embedding an old
+  // screenshot that could misrepresent current stations or monthly figures.
+  const lineLabel=model.line==='T4_SCO'?'T4 + SCO':model.line;
+  const badgeWidth=lineLabel.length>4?116:52;
+  svg.append(
+    svgNode('rect',{class:'sp-diagram-line-badge',x:19,y:13,width:badgeWidth,height:33,rx:6}),
+    svgNode('text',{class:'sp-diagram-line-code',x:19+badgeWidth/2,y:35,
+      'text-anchor':'middle'},lineLabel),
+    svgNode('text',{class:'sp-diagram-header-label',x:34+badgeWidth,y:34},
+      'Station-level '+metric+' · historical Opal counts'),
+  );
   for(const p of model.paths)svg.append(svgNode('path',{
     class:'sp-diagram-track'+(p.branch?' sp-diagram-branch':''),d:p.d,
+    transform:p.transform,
   }));
   const term=search.trim().toLowerCase(),groups=[];
   for(const st of model.nodes) {
@@ -309,7 +332,7 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     year: years.at(-1) || '2023',sample:samples.at(-1)||'2023',
     day: 'weekday', hour: '8', window:'06-10', month:months.at(-1)||legacyMonths.at(-1)||'',
     metric: 'entries', line: 'all', route:'', direction:'forward',
-    sort:'patronage', view:'list', search:'', station: null };
+    sort:'patronage', view:'list', diagramFlip:false, search:'', station: null };
   const heading = node('header', { class: 'sp-heading' },
     node('p', { class: 'sp-eyebrow' }, 'Opal network / historical station usage'),
     node('h1', {}, 'Station patronage hotspots'),
@@ -422,7 +445,8 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     const listRows=ordered ? stationRouteRows(data,stations,routes,f) : patronageRows(data,stations,f);
     const plan=stationDiagramPlan(routes,f.line,f.route);
     const allObservations=plan ? patronageRows(data,stations,{...f,line:'all',search:''}) : [];
-    const diagramModel=plan ? stationDiagramModel(plan,stations,allObservations) : null;
+    const diagramModel=plan ? stationDiagramModel(plan,stations,allObservations,
+      {flip:f.diagramFlip}) : null;
     // Summary cards use all unique plotted stations when both branches are shown;
     // the selected route/list subset would otherwise undercount the diagram.
     const rows=f.view==='diagram' && diagramModel ? diagramModel.nodes : listRows;
@@ -470,12 +494,32 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
       diagramActive?diagram:ranking, detail);
     content.replaceChildren(headline,toggle,lower);
     if(diagramActive){
-      diagram.append(node('h2',{},plan.name+' · station diagram'),
+      const topStation=f.diagramFlip?diagramModel.last:diagramModel.first;
+      const bottomStation=f.diagramFlip?diagramModel.first:diagramModel.last;
+      diagram.append(
+        node('div',{class:'sp-diagram-toolbar'},
+          node('h2',{},plan.name+' · station diagram'),
+          node('button',{
+            type:'button',class:'sp-diagram-flip','aria-pressed':String(f.diagramFlip),
+            'aria-label':'Flip diagram. Put '+bottomStation+' at the top.',
+            onclick:()=>{
+              f.diagramFlip=!f.diagramFlip;
+              render();
+              // Return keyboard focus to the replacement control after render.
+              form.parentElement?.querySelector('.sp-diagram-flip')?.focus({preventScroll:true});
+            },
+          },'⇅ Flip diagram'),
+        ),
+        node('p',{class:'sp-diagram-orientation','aria-live':'polite'},
+          'Reading top to bottom: '+topStation+' → '+bottomStation+
+          ' (diagram orientation only)'),
         node('p',{class:'sp-corridor-note'},
           'Reference station order, not a timetable. Circle size represents the selected station-level '+
-          metric+'. Branches run from their junction towards each terminus. Stop direction and ranking apply to List view only.'),
+          metric+'. Branches remain connected at their junctions when the diagram is flipped. '+
+          'Station entries and exits do not identify the direction or train service used by a passenger.'),
         node('p',{class:'muted'},'On a phone, scroll the diagram sideways if needed. Select a station to see its source values.'),
-        search,node('div',{class:'sp-diagram-scroll'}));
+        search,node('div',{class:'sp-diagram-scroll'}),
+      );
     }
 
     function updateResults() {
