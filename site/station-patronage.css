@@ -282,3 +282,10 @@
   .sp-diagram-panel {width:100%;min-width:0;}
   .sp-lower.sp-lower-diagram {grid-template-columns:minmax(0,1fr);}
 }
+
+/* The colour range excludes listed interchange hubs. Keep its explanation
+   readable on narrow Safari screens without competing with station rows. */
+.sp-diagram-scale-note {
+  flex:1 1 100%;margin:1px 0 4px;max-width:72ch;
+  font-size:.81rem;line-height:1.45;color:var(--ink-2);
+}
