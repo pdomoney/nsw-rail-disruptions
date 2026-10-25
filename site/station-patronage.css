@@ -97,7 +97,7 @@
 .sp-diagram-scroll {overflow-x:auto;overscroll-behavior-inline:contain;max-width:100%;
   border:1px solid var(--rule-strong);border-radius:8px;background:var(--surface);
   -webkit-overflow-scrolling:touch;}
-.sp-diagram-svg {width:1030px;max-width:none;display:block;height:auto;
+.sp-diagram-svg {width:820px;max-width:none;display:block;height:auto;
   color:var(--ink);font-family:var(--font);}
 .sp-diagram-track {stroke-width:6;stroke-linejoin:round;
   stroke-linecap:round;fill:none;pointer-events:none;}
@@ -109,10 +109,11 @@
 .sp-diagram-stop[role="button"]:focus-visible {outline:none;}
 .sp-diagram-stop[role="button"]:focus-visible .sp-diagram-hit {
   fill:var(--surface-2);stroke:var(--focus);stroke-width:2;}
-.sp-diagram-dot {fill:var(--sp-station-colour, #526777);stroke:var(--surface);stroke-width:3;}
+.sp-diagram-dot {fill:var(--sp-heat-colour, #e2f2f7);stroke:var(--sp-station-colour, #526777);stroke-width:2;}
 .sp-diagram-missing .sp-diagram-dot {fill:var(--surface);stroke:var(--sp-station-colour, #526777);stroke-width:3;opacity:1;}
 .sp-diagram-label {font-size:15px;font-weight:550;fill:currentColor;}
-.sp-diagram-value {font-size:14px;font-weight:600;fill:currentColor;font-variant-numeric:tabular-nums;}
+.sp-diagram-name {font-weight:550;}
+.sp-diagram-value {font-size:14px;font-weight:700;fill:var(--ink);font-variant-numeric:tabular-nums;}
 .sp-diagram-missing .sp-diagram-value {font-weight:400;fill:var(--muted);}
 .sp-diagram-dim {opacity:.25;}
 @media (max-width:850px) {
@@ -140,3 +141,16 @@
   font-size:.82rem;line-height:1.35;color:var(--ink-2);
 }
 .sp-diagram-legend span {padding:4px 0;}
+
+/* The patronage figure follows the station name as a tspan, not an
+   x=+435 column that falls off screen on an iPhone. Station heat uses real
+   per-route intensity while line colours remain on the rail/marker outline. */
+.sp-diagram-heat-legend {
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  width:100%;padding:5px 0;color:var(--ink-2);font-size:.81rem;
+}
+.sp-diagram-heat-ramp {
+  width:clamp(100px,30vw,190px);height:12px;display:inline-block;flex:none;
+  border:1px solid var(--rule-strong);border-radius:10px;
+  background:linear-gradient(to right,#e2f2f7 0%,#58aebd 33.333%,#e9994b 66.666%,#b12d34 100%);
+}
