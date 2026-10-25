@@ -322,6 +322,104 @@ export function makeStationDiagram(model, {name,metric,search='',selectedId=null
   return svg;
 }
 
+
+// Mobile-first route renderer. One readable column is more useful than an
+// oversized SVG viewport on Safari: station, colour and value belong together.
+// Keep the separate SVG renderer for the earlier schematic regression fixtures.
+export function stationRouteCardSections(plan, model) {
+  if(!plan||!model)return [];
+  const byName=new Map(model.nodes.map(st=>[stopNameKey(st.name),st]));
+  const branches=new Map();
+  for(const branch of plan.branches){
+    const key=stopNameKey(branch.at);
+    const label=branch.stations.at(-1);
+    const rows=branch.stations.map(s=>byName.get(stopNameKey(s))).filter(Boolean);
+    if(!rows.length)continue;
+    const arr=branches.get(key)||[];
+    arr.push({junction:branch.at,terminal:label,rows,
+      service:rows[0].service});
+    branches.set(key,arr);
+  }
+  const trunk=(model.flipped?[...plan.trunk].reverse():plan.trunk);
+  return trunk.map(stop=>{
+    const key=stopNameKey(stop);
+    const station=byName.get(key);
+    return station?{station,branches:branches.get(key)||[]}:null;
+  }).filter(Boolean);
+}
+
+export function makeResponsiveStationDiagram(plan,model,{
+  metric='entries',search='',selectedId=null,onSelect=()=>{},colors={},
+}={}) {
+  const colour=line=>/^#[0-9a-f]{6}$/i.test(colors[line]||'')
+    ? colors[line] : '#526777';
+  const term=search.trim().toLowerCase();
+  const sections=stationRouteCardSections(plan,model);
+  const root=node('div',{class:'sp-responsive-network',role:'group',
+    'aria-label':plan.name+' route diagram with station-level '+metric});
+  const trunk=node('ol',{class:'sp-route-stop-list', 'aria-label':'Main corridor stations'});
+  root.append(trunk);
+
+  function drawStation(st) {
+    const missing=st.value==null;
+    const fill=patronageHeatColour(st.intensity);
+    const label=missing?(st.unmatched?'No catalogue match':'Not published'):number(st.value);
+    const routeColour=colour(st.service==='T4_SCO'?'T4':st.service||plan.line);
+    const muted=term&&!st.name.toLowerCase().includes(term);
+    const item=node('li',{class:'sp-route-stop'+(muted?' sp-route-dim':''),
+      style:'--sp-route-colour:'+routeColour});
+    const body=node('button',{type:'button',class:'sp-route-stop-button',
+      'aria-label':st.name+', '+label+' '+metric+(st.id?', show station details':''),
+      'aria-pressed':String(st.id===selectedId),
+      ...(st.id?{}:{disabled:'disabled'})},
+      node('span',{class:'sp-route-dot'+(missing?' sp-route-dot-missing':''),
+        style:missing?'border-color:'+routeColour:
+          'border-color:'+routeColour+';background-color:'+fill,
+        'aria-hidden':'true'}),
+      node('span',{class:'sp-route-text'},
+        node('span',{class:'sp-route-name'},st.name),
+        node('span',{class:'sp-route-amount'+(missing?' sp-route-amount-missing':''),
+          style:missing?'':('background-color:'+fill+';color:'+
+            (st.intensity>=.70?'#ffffff':'#17202b'))},label)));
+    const detail=node('div',{class:'sp-route-inline-detail',
+      ...(st.id===selectedId?{}:{hidden:'hidden'})},
+      missing
+        ? 'No complete published entry/exit pair for this station and period. Missing is not zero.'
+        : number(st.entries)+' entries · '+number(st.exits)+
+          ' exits. These are station tap events, not passengers assigned to a train.');
+    item.append(body,detail);
+    if(st.id)body.addEventListener('click',()=>{
+      for(const btn of root.querySelectorAll('.sp-route-stop-button'))
+        btn.setAttribute('aria-pressed',String(btn===body));
+      for(const el of root.querySelectorAll('.sp-route-inline-detail'))
+        el.hidden=el!==detail;
+      detail.hidden=false;
+      onSelect(st);
+    });
+    return item;
+  }
+
+  function drawBranch(branch) {
+    const branchColour=colour(branch.service==='T4_SCO'?'T4':branch.service);
+    const label='From '+branch.junction+' to '+branch.terminal;
+    const details=node('details',{class:'sp-route-branch',open:'',
+      style:'--sp-route-colour:'+branchColour},
+      node('summary',{class:'sp-route-branch-title'},
+        node('span',{class:'sp-route-branch-icon','aria-hidden':'true'},'↳'),
+        node('span',{},'Branch to '+branch.terminal),
+        node('small',{},branch.rows.length+' stations')),
+      node('p',{class:'sp-route-branch-context'},label+' · reference route order'),
+      node('ol',{class:'sp-route-stop-list sp-route-branch-stops',
+        'aria-label':label},...branch.rows.map(drawStation)));
+    return node('li',{class:'sp-route-branch-wrapper'},details);
+  }
+  for(const row of sections){
+    trunk.append(drawStation(row.station));
+    for(const branch of row.branches)trunk.append(drawBranch(branch));
+  }
+  return root;
+}
+
 const node = (tag, attrs = {}, ...children) => {
   const el = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
@@ -589,7 +687,7 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
             node('span',{},'Lower patronage'),
             node('span',{class:'sp-diagram-heat-ramp','aria-hidden':'true'}),
             node('span',{},'Higher patronage ('+number(diagramModel.maximum)+' '+metric+')'))),
-        node('p',{class:'muted'},'On a phone, scroll the diagram sideways if needed. Select a station to see its source values.'),
+        node('p',{class:'muted'},'Read the main route from top to bottom. Open a branch at its junction; tap a station to reveal its entry and exit counts beside the route.'),
         search,node('div',{class:'sp-diagram-scroll'}),
       );
     }
@@ -600,8 +698,8 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
       const maximum = Math.max(1, ...visible.filter(r=>r.value!==null).map(r => r.value));
       if(diagramActive) {
         const host=diagram.querySelector('.sp-diagram-scroll');
-        host.replaceChildren(makeStationDiagram(diagramModel,{
-          name:plan.name,metric,search:f.search,selectedId:f.station,
+        host.replaceChildren(makeResponsiveStationDiagram(plan,diagramModel,{
+          metric,search:f.search,selectedId:f.station,
           colors:diagramColors,
           onSelect:st=>{f.station=st.id;paintDetail(st);},
         }));
