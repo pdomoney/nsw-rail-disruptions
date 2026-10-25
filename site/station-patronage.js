@@ -835,9 +835,10 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     const annualNote=annualMode?node('p',{class:'sp-annual-note',role:'status'},
       yearCoverage?.completeYear
         ? 'Full '+f.annualYear+' calendar year. Stations missing any published month are shown as unavailable.'
-        : 'Partial '+f.annualYear+' year: '+(yearCoverage?.months||[]).join(', ')+
-          '. Totals cover only these '+(yearCoverage?.monthCount||0)+
-          ' published months, not a full calendar year. Stations missing any of these months are shown as unavailable.',
+        : 'Partial '+f.annualYear+' year: '+(yearCoverage?.monthCount||0)+
+          ' published months ('+(yearCoverage?.months?.[0]||'unknown')+' to '+
+          (yearCoverage?.months?.at(-1)||'unknown')+
+          '), not a full calendar year. Stations missing any included month are shown as unavailable.',
       ' '+(yearCoverage?.missingStationCount||0)+' station'+
         (yearCoverage?.missingStationCount===1?'':'s')+' withheld for incomplete month coverage. '+
         (f.period==='historical-annual'?'Historical source only.':'Recent source only.')+
