@@ -58,7 +58,7 @@ test('exactly five named stations are excluded, regardless of Station suffix',()
   }
   assert.equal(a.nodes.find(n=>n.name==='Sutherland Station').markerSize,26);
   assert.equal(patronageHeatColour(a.nodes.find(n=>n.name==='Sutherland Station').heatIntensity),
-    '#dc2626','top of rainbow is red for largest included station');
+    '#fde725','top of sequential scale is yellow for largest included station');
   assert.ok(a.nodes.find(n=>n.name==='Jannali Station').markerSize<
     a.nodes.find(n=>n.name==='Arncliffe Station').markerSize);
 });
