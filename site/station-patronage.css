@@ -357,3 +357,45 @@
   .sp-kpi small {display:none;}
   .sp-kpi:last-child {grid-column:1 / -1;}
 }
+
+/* Compact diagram-first layout. Five visible ranked colours are easier to
+   distinguish than a continuous ramp compressed into a few mobile pixels. */
+.sp-diagram-toolbar {margin-bottom:4px;gap:7px;}
+.sp-diagram-toolbar h2 {font-size:1.02rem;line-height:1.2;}
+.sp-diagram-quick-guide {
+  display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:5px;
+  margin:3px 0 6px;line-height:1.25;font-size:.77rem;color:var(--ink-2);
+}
+.sp-diagram-five-band {display:inline-flex;align-items:center;gap:3px;flex:none;}
+.sp-band-label {font-size:.75rem;color:var(--muted);padding:0 3px;}
+.sp-band-swatch {
+  display:inline-block;flex:none;width:24px;height:17px;border-radius:3px;
+  border:1px solid rgba(0,0,0,.12);box-sizing:border-box;
+}
+.sp-diagram-guide-note {font-size:.77rem;line-height:1.3;}
+.sp-diagram-explainer {
+  margin:0 0 7px;font-size:.78rem;line-height:1.37;color:var(--ink-2);
+}
+.sp-diagram-explainer summary {
+  display:inline-block;cursor:pointer;color:var(--focus);font-weight:600;
+  padding:4px 0;
+}
+.sp-diagram-explainer p {
+  margin:4px 0;padding:4px 9px;border-left:2px solid var(--rule-strong);
+}
+.sp-diagram-panel > input[type="search"] {
+  display:block;width:100%;box-sizing:border-box;
+  min-height:42px;margin:5px 0 8px;padding:8px 10px;
+  border:1px solid var(--rule-strong);border-radius:6px;
+  background:var(--surface);color:var(--ink);font:500 .91rem var(--font);
+}
+.sp-diagram-panel .sp-responsive-network {margin-top:2px;}
+@media (max-width:600px) {
+  .sp-diagram-toolbar {margin-bottom:2px;}
+  .sp-diagram-toolbar h2 {font-size:.98rem;}
+  .sp-diagram-flip {min-height:38px;min-width:104px;padding:6px 8px;font-size:.79rem;}
+  .sp-diagram-quick-guide {gap:4px 8px;margin:3px 0 4px;}
+  .sp-band-swatch {width:28px;height:19px;}
+  .sp-diagram-panel > input[type="search"] {margin:4px 0 7px;}
+  .sp-diagram-explainer {margin:0 0 6px;}
+}

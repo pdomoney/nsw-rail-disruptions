@@ -128,7 +128,7 @@ test('diagram includes a real, accessible flip control rather than a hidden list
   assert.match(ui,/f\.diagramFlip=!f\.diagramFlip/);
   assert.match(ui,/sp-diagram-flip/);
   assert.match(ui,/aria-pressed.*f\.diagramFlip/);
-  assert.match(ui,/Main corridor, top to bottom:/);
+  assert.match(ui,/Main corridor: '\+topStation\+' → '\+bottomStation/);
   assert.match(css,/\.sp-diagram-flip:focus-visible/);
   assert.match(css,/\.sp-diagram-toolbar/);
 });

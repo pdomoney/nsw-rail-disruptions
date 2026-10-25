@@ -140,7 +140,7 @@ test('Safari-facing HTML neutralises hubs but shows their original numbers and s
  const jDot=descendants(jannali,'sp-route-dot')[0];
  assert.match(kDot.attrs.style,/--sp-marker-size:/);
  assert.match(kDot.attrs.style,new RegExp('background-color:'+
-   patronageHeatColour(modelFor().nodes.find(n=>n.id==='kog').heatIntensity)));
+   modelFor().nodes.find(n=>n.id==='kog').visualColour));
  const sDot=descendants(byName(tree,'Sutherland Station'),'sp-route-dot')[0];
  assert.match(sDot.attrs.style,/--sp-marker-size:26px/);
  assert.match(sDot.attrs.style,/background-color:#fde725/);
