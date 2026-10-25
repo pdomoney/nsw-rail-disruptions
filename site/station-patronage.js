@@ -118,6 +118,133 @@ export function stationRouteRows(data, stations, routes, opts={}) {
   return items;
 }
 
+
+// Build a railway diagram from the same ordered stops used by the published
+// patronage view. This is a branching *station schematic*, not TfNSW map art,
+// train movement, a stopping timetable, or inferred journey direction.
+export function stationDiagramPlan(routes, line, routeId = '') {
+  const selected = patronageRouteChoice(routes,line,routeId);
+  if (!selected.route) return null;
+  let trunk = selected.route.stations;
+  let alternatives = [];
+  if (line === 'T4') {
+    const choices = routes?.lines?.T4 || [];
+    const waterfall = choices.find(r=>stopNameKey(r.stations.at(-1))==='waterfall');
+    const cronulla = choices.find(r=>stopNameKey(r.stations.at(-1))==='cronulla');
+    if (waterfall && cronulla) { trunk=waterfall.stations; alternatives=[cronulla]; }
+  } else if (line === 'T4_SCO') {
+    const choices = selected.choices;
+    trunk = (choices.find(r=>r.id==='south-coast')||selected.route).stations;
+    alternatives = choices.filter(r=>r.id==='port-kembla'||r.id==='cronulla');
+  }
+  const branches=[];
+  for (const route of alternatives) {
+    let index=0;
+    while(index<Math.min(trunk.length,route.stations.length) &&
+      stopNameKey(trunk[index])===stopNameKey(route.stations[index]))index++;
+    if(index && index<route.stations.length)
+      branches.push({at:trunk[index-1],stations:route.stations.slice(index),name:route.name});
+  }
+  return {line,trunk:[...trunk],branches,
+    name:line==='T4'?'T4 · Eastern Suburbs & Illawarra':
+      line==='T4_SCO'?'T4 + SCO · Connected South Coast':selected.route.name};
+}
+
+export function stationDiagramModel(plan, stations, observations) {
+  if(!plan)return null;
+  const catalogue=new Map();
+  for(const [id,name,lines] of stations||[]){
+    const key=stopNameKey(name);
+    if(!catalogue.has(key))catalogue.set(key,{id,name,lines});
+  }
+  const recorded=new Map((observations||[]).map(r=>[r.id,r]));
+  const max=Math.max(1,...(observations||[]).map(r=>r.value??0));
+  const nodes=[],paths=[],shown=new Set(),mainX=58,branchX=548,top=68,step=47;
+  function add(stop,x,y) {
+    const key=stopNameKey(stop);
+    if(shown.has(key))return;
+    shown.add(key);
+    const station=catalogue.get(key);
+    const record=station?recorded.get(station.id):null;
+    nodes.push({
+      id:station?.id??null, name:station?.name??stop, lines:station?.lines||[],
+      entries:record?.entries??null, exits:record?.exits??null,
+      value:record?.value??null, unreported:!record, unmatched:!station,
+      x,y, intensity:record?Math.sqrt(Math.max(0,record.value)/max):0,
+    });
+  }
+  plan.trunk.forEach((stop,i)=>add(stop,mainX,top+i*step));
+  if(plan.trunk.length>1)
+    paths.push({d:'M'+mainX+' '+top+' V'+(top+(plan.trunk.length-1)*step),branch:false});
+  let highest=top+Math.max(0,plan.trunk.length-1)*step;
+  for(const branch of plan.branches) {
+    const anchorIndex=plan.trunk.findIndex(s=>stopNameKey(s)===stopNameKey(branch.at));
+    if(anchorIndex<0 || !branch.stations.length)continue;
+    const y=top+anchorIndex*step,firstY=y+step;
+    paths.push({d:'M'+mainX+' '+y+' H'+branchX+' V'+(firstY+(branch.stations.length-1)*step),
+      branch:true});
+    branch.stations.forEach((stop,i)=>add(stop,branchX,firstY+i*step));
+    highest=Math.max(highest,firstY+(branch.stations.length-1)*step);
+  }
+  return {nodes,paths,width:1030,height:highest+72,maximum:max};
+}
+
+const svgNs='http://www.w3.org/2000/svg';
+function svgNode(tag,attributes={},...children) {
+  const el=document.createElementNS(svgNs,tag);
+  for(const [key,value] of Object.entries(attributes))if(value!=null)el.setAttribute(key,String(value));
+  for(const child of children.flat(Infinity))
+    if(child!=null)el.append(child instanceof Node?child:document.createTextNode(String(child)));
+  return el;
+}
+
+function makeStationDiagram(model, {name,metric,search='',selectedId=null,onSelect}) {
+  const svg=svgNode('svg',{
+    class:'sp-diagram-svg',viewBox:'0 0 '+model.width+' '+model.height,
+    width:model.width,height:model.height,role:'group',
+    'aria-label':name+' station patronage schematic, '+metric+'; select a station for its profile',
+  });
+  for(const p of model.paths)svg.append(svgNode('path',{
+    class:'sp-diagram-track'+(p.branch?' sp-diagram-branch':''),d:p.d,
+  }));
+  const term=search.trim().toLowerCase(),groups=[];
+  for(const st of model.nodes) {
+    const label=st.value===null?(st.unmatched?'No catalogue match':'Not published'):number(st.value);
+    const match=!term||st.name.toLowerCase().includes(term);
+    const radius=st.value===null?9:7+9*st.intensity;
+    const group=svgNode('g',{
+      class:'sp-diagram-stop'+(st.value===null?' sp-diagram-missing':'')+
+        (match?'':' sp-diagram-dim'),
+      'data-station-id':st.id,
+      'aria-label':st.name+', '+label+' '+metric+(st.id?', select station':''),
+      'aria-pressed':String(st.id===selectedId),
+      ...(st.id?{role:'button',tabindex:'0'}:{}),
+    });
+    group.append(
+      svgNode('rect',{x:st.x-23,y:st.y-22,width:450,height:44,rx:5,
+        class:'sp-diagram-hit'}),
+      svgNode('circle',{cx:st.x,cy:st.y,r:radius,
+        class:'sp-diagram-dot',opacity:st.value===null?1:(0.45+0.55*st.intensity).toFixed(2)}),
+      svgNode('text',{x:st.x+26,y:st.y+5,class:'sp-diagram-label'},st.name),
+      svgNode('text',{x:st.x+435,y:st.y+5,class:'sp-diagram-value',
+        'text-anchor':'end'},label),
+    );
+    if(st.id) {
+      const activate=()=>{
+        for(const g of groups)g.setAttribute('aria-pressed',String(g===group));
+        onSelect(st);
+      };
+      group.addEventListener('click',activate);
+      group.addEventListener('keydown',e=>{
+        if(e.key==='Enter'||e.key===' '){e.preventDefault();activate();}
+      });
+    }
+    groups.push(group);
+    svg.append(group);
+  }
+  return svg;
+}
+
 const node = (tag, attrs = {}, ...children) => {
   const el = document.createElement(tag);
   for (const [key, value] of Object.entries(attrs)) {
@@ -182,7 +309,7 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     year: years.at(-1) || '2023',sample:samples.at(-1)||'2023',
     day: 'weekday', hour: '8', window:'06-10', month:months.at(-1)||legacyMonths.at(-1)||'',
     metric: 'entries', line: 'all', route:'', direction:'forward',
-    sort:'patronage', search:'', station: null };
+    sort:'patronage', view:'list', search:'', station: null };
   const heading = node('header', { class: 'sp-heading' },
     node('p', { class: 'sp-eyebrow' }, 'Opal network / historical station usage'),
     node('h1', {}, 'Station patronage hotspots'),
@@ -272,18 +399,18 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
       ], f.line, v => {
         f.line=v;f.route='';f.direction=v==='T4_SCO'?'city':'forward';
         f.sort=v==='all'?'patronage':'stops';
-        f.station=null;render();
+        f.station=null;if(v==='all')f.view='list';render();
       }),
       ...(f.line!=='all' && patronageRouteChoice(routes,f.line,f.route).route ? [
-        field('Route / branch',patronageRouteChoice(routes,f.line,f.route).choices.map(r=>[r.id,r.name]),
+        ...(f.view==='diagram' && (f.line==='T4'||f.line==='T4_SCO') ? [] : [field('Route / branch',patronageRouteChoice(routes,f.line,f.route).choices.map(r=>[r.id,r.name]),
           patronageRouteChoice(routes,f.line,f.route).route.id,
-          v=>{f.route=v;f.station=null;render();}),
-        field('Stop direction', f.line==='T4_SCO'
+          v=>{f.route=v;f.station=null;render();})]),
+        ...(f.view==='diagram'?[]:[field('Stop direction', f.line==='T4_SCO'
           ? [['city','Towards Central (stop order)'],['away','Away from Central (stop order)']]
           : [['forward','First to last stop'],['reverse','Last to first stop']],
           f.direction,v=>{f.direction=v;f.station=null;render();}),
         field('Sort stations', [['stops','Route stop order'],['patronage','Highest patronage first']],
-          f.sort,v=>{f.sort=v;f.station=null;render();}),
+          f.sort,v=>{f.sort=v;f.station=null;render();})]),
       ]:[]),
       field('Measure', [['entries', 'Entries'], ['exits', 'Exits'], ['total', 'Entries + exits']], f.metric, v => { f.metric = v; render(); }));
   }
@@ -292,7 +419,13 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     renderControls();
     const selectedRoute=patronageRouteChoice(routes,f.line,f.route);
     const ordered=f.line!=='all' && selectedRoute.route;
-    const rows=ordered ? stationRouteRows(data,stations,routes,f) : patronageRows(data,stations,f);
+    const listRows=ordered ? stationRouteRows(data,stations,routes,f) : patronageRows(data,stations,f);
+    const plan=stationDiagramPlan(routes,f.line,f.route);
+    const allObservations=plan ? patronageRows(data,stations,{...f,line:'all',search:''}) : [];
+    const diagramModel=plan ? stationDiagramModel(plan,stations,allObservations) : null;
+    // Summary cards use all unique plotted stations when both branches are shown;
+    // the selected route/list subset would otherwise undercount the diagram.
+    const rows=f.view==='diagram' && diagramModel ? diagramModel.nodes : listRows;
     const published=rows.filter(r=>r.value!==null);
     const metric = f.metric === 'total' ? 'entries plus exits' : f.metric;
     const sample = f.period === 'typical', broadSample=f.period==='windows';
@@ -325,13 +458,37 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     const list = node('div', { class: 'sp-rank-list' });
     ranking.append(search, list);
     const detail = node('section', { class: 'sp-station-profile' });
-    const lower = node('div', { class: 'sp-lower' }, ranking, detail);
-    content.replaceChildren(headline, lower);
+    const diagram=node('section',{class:'sp-diagram-panel'});
+    const toggle=node('div',{class:'sp-view-toggle',role:'group','aria-label':'Station patronage display mode'},
+      node('button',{type:'button','aria-pressed':String(f.view==='list'),
+        onclick:()=>{f.view='list';render();}},'List view'),
+      node('button',{type:'button','aria-pressed':String(f.view==='diagram'),
+        ...(plan?{}:{disabled:'disabled'}),
+        onclick:()=>{if(plan){f.view='diagram';render();}}},'Diagram view'));
+    const diagramActive=f.view==='diagram' && !!diagramModel;
+    const lower = node('div', { class: 'sp-lower'+(diagramActive?' sp-lower-diagram':'') },
+      diagramActive?diagram:ranking, detail);
+    content.replaceChildren(headline,toggle,lower);
+    if(diagramActive){
+      diagram.append(node('h2',{},plan.name+' · station diagram'),
+        node('p',{class:'sp-corridor-note'},
+          'Reference station order, not a timetable. Circle size represents the selected station-level '+
+          metric+'. Branches run from their junction towards each terminus. Stop direction and ranking apply to List view only.'),
+        node('p',{class:'muted'},'On a phone, scroll the diagram sideways if needed. Select a station to see its source values.'),
+        search,node('div',{class:'sp-diagram-scroll'}));
+    }
 
     function updateResults() {
       const visible = ordered ? stationRouteRows(data,stations,routes,f)
         : patronageRows(data,stations,f);
       const maximum = Math.max(1, ...visible.filter(r=>r.value!==null).map(r => r.value));
+      if(diagramActive) {
+        const host=diagram.querySelector('.sp-diagram-scroll');
+        host.replaceChildren(makeStationDiagram(diagramModel,{
+          name:plan.name,metric,search:f.search,selectedId:f.station,
+          onSelect:st=>{f.station=st.id;paintDetail(st);},
+        }));
+      }
       list.replaceChildren();
       for (const r of (ordered&&f.sort==='stops'?visible:visible.slice(0,30))) {
         const button = node('button', { type: 'button', class: 'sp-station-button',
@@ -347,7 +504,9 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
       if (visible.length > 30 && !(ordered&&f.sort==='stops'))
         list.append(node('p', { class: 'muted' }, 'Showing the top 30 matching stations.'));
       if (!visible.length) list.append(node('p', {}, 'No published records match these filters. This does not mean zero passengers.'));
-      paintDetail(visible.find(x => x.id === f.station) || visible[0] || null);
+      const chosen=diagramActive ? diagramModel.nodes.find(x=>x.id===f.station)
+        : visible.find(x=>x.id===f.station);
+      paintDetail(chosen || (diagramActive?diagramModel.nodes.find(x=>x.id):visible[0]) || null);
     }
 
     function paintDetail(selected) {

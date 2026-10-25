@@ -81,3 +81,40 @@
 }
 .sp-ranking .sp-station-button:has(.sp-no-record) { opacity: .8; }
 .sp-ranking .sp-station-button:has(.sp-no-record) strong { color: var(--muted); }
+
+
+/* Route-diagram alternative to the existing ranked list. The fixed SVG width is
+   intentional: mobile users pan horizontally instead of squashing stop labels. */
+.sp-view-toggle { display:flex;gap:4px;align-items:center;margin:8px 0 15px; }
+.sp-view-toggle button {border:1px solid var(--rule-strong);border-radius:6px;
+  background:var(--surface);color:var(--ink);font:600 .9rem var(--font);padding:10px 16px;
+  min-height:44px;cursor:pointer;}
+.sp-view-toggle button[aria-pressed="true"] {background:var(--ink);color:var(--page);}
+.sp-view-toggle button:disabled {opacity:.45;cursor:not-allowed;}
+.sp-lower.sp-lower-diagram {grid-template-columns:minmax(0,1.65fr) minmax(250px,.85fr);gap:20px;}
+.sp-diagram-panel {min-width:0;}
+.sp-diagram-panel h2 {margin:0 0 10px;font-size:1.24rem;}
+.sp-diagram-scroll {overflow-x:auto;overscroll-behavior-inline:contain;max-width:100%;
+  border:1px solid var(--rule-strong);border-radius:8px;background:var(--surface);
+  -webkit-overflow-scrolling:touch;}
+.sp-diagram-svg {width:1030px;max-width:none;display:block;height:auto;
+  color:var(--ink);font-family:var(--font);}
+.sp-diagram-track {stroke:#1c63a4;stroke-width:6;stroke-linejoin:round;
+  stroke-linecap:round;fill:none;pointer-events:none;}
+.sp-diagram-branch {stroke-width:5;}
+.sp-diagram-hit {fill:transparent;stroke:transparent;stroke-width:2;}
+.sp-diagram-stop[role="button"] {cursor:pointer;}
+.sp-diagram-stop[aria-pressed="true"] .sp-diagram-hit {fill:var(--surface-2);}
+.sp-diagram-stop[role="button"]:hover .sp-diagram-hit {fill:var(--surface-2);}
+.sp-diagram-stop[role="button"]:focus-visible {outline:none;}
+.sp-diagram-stop[role="button"]:focus-visible .sp-diagram-hit {
+  fill:var(--surface-2);stroke:var(--focus);stroke-width:2;}
+.sp-diagram-dot {fill:#1c63a4;stroke:var(--surface);stroke-width:3;}
+.sp-diagram-missing .sp-diagram-dot {fill:var(--surface);stroke:#1c63a4;stroke-width:3;opacity:1;}
+.sp-diagram-label {font-size:15px;font-weight:550;fill:currentColor;}
+.sp-diagram-value {font-size:14px;font-weight:600;fill:currentColor;font-variant-numeric:tabular-nums;}
+.sp-diagram-missing .sp-diagram-value {font-weight:400;fill:var(--muted);}
+.sp-diagram-dim {opacity:.25;}
+@media (max-width:850px) {
+  .sp-lower.sp-lower-diagram {grid-template-columns:1fr;gap:24px;}
+}
