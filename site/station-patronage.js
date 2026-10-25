@@ -158,9 +158,14 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
     if(!catalogue.has(key))catalogue.set(key,{id,name,lines});
   }
   const recorded=new Map((observations||[]).map(r=>[r.id,r]));
-  const max=Math.max(1,...(observations||[]).map(r=>r.value??0));
+  // Scale visual markers relative to the plotted stops, not unrelated network stations.
+  const plotted=[...plan.trunk,...plan.branches.flatMap(b=>b.stations)];
+  const max=Math.max(1,...plotted.map(stop=>{
+    const station=catalogue.get(stopNameKey(stop));
+    return station?(recorded.get(station.id)?.value??0):0;
+  }));
   const nodes=[],paths=[],shown=new Set(),mainX=58,branchX=548,top=68,step=47;
-  function add(stop,x,y) {
+  function add(stop,x,y,service=plan.line) {
     const key=stopNameKey(stop);
     if(shown.has(key))return;
     shown.add(key);
@@ -170,20 +175,33 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
       id:station?.id??null, name:station?.name??stop, lines:station?.lines||[],
       entries:record?.entries??null, exits:record?.exits??null,
       value:record?.value??null, unreported:!record, unmatched:!station,
-      x,y, intensity:record?Math.sqrt(Math.max(0,record.value)/max):0,
+      x,y,service,intensity:record?Math.sqrt(Math.max(0,record.value)/max):0,
     });
   }
-  plan.trunk.forEach((stop,i)=>add(stop,mainX,top+i*step));
-  if(plan.trunk.length>1)
-    paths.push({d:'M'+mainX+' '+top+' V'+(top+(plan.trunk.length-1)*step),branch:false});
+  const waterfall=plan.line==='T4_SCO'
+    ? plan.trunk.findIndex(stop=>stopNameKey(stop)==='waterfall') : -1;
+  plan.trunk.forEach((stop,i)=>add(stop,mainX,top+i*step,
+    plan.line==='T4_SCO'?(waterfall>=0&&i>waterfall?'SCO':'T4'):plan.line));
+  if(plan.trunk.length>1){
+    if(waterfall>0&&waterfall<plan.trunk.length-1){
+      paths.push({d:'M'+mainX+' '+top+' V'+(top+waterfall*step),
+        branch:false,service:'T4'});
+      paths.push({d:'M'+mainX+' '+(top+waterfall*step)+' V'+
+        (top+(plan.trunk.length-1)*step),branch:false,service:'SCO'});
+    }else paths.push({d:'M'+mainX+' '+top+' V'+
+      (top+(plan.trunk.length-1)*step),branch:false,service:plan.line});
+  }
   let highest=top+Math.max(0,plan.trunk.length-1)*step;
   for(const branch of plan.branches) {
     const anchorIndex=plan.trunk.findIndex(s=>stopNameKey(s)===stopNameKey(branch.at));
     if(anchorIndex<0 || !branch.stations.length)continue;
     const y=top+anchorIndex*step,firstY=y+step;
+    const service=plan.line==='T4_SCO'
+      ? (stopNameKey(branch.stations.at(-1))==='cronulla'?'T4':'SCO')
+      : plan.line;
     paths.push({d:'M'+mainX+' '+y+' H'+branchX+' V'+(firstY+(branch.stations.length-1)*step),
-      branch:true});
-    branch.stations.forEach((stop,i)=>add(stop,branchX,firstY+i*step));
+      branch:true,service});
+    branch.stations.forEach((stop,i)=>add(stop,branchX,firstY+i*step,service));
     highest=Math.max(highest,firstY+(branch.stations.length-1)*step);
   }
   // Mirror railway geometry vertically without rotating SVG labels.
@@ -208,27 +226,38 @@ function svgNode(tag,attributes={},...children) {
   return el;
 }
 
-export function makeStationDiagram(model, {name,metric,search='',selectedId=null,onSelect}) {
+export function makeStationDiagram(model, {name,metric,search='',selectedId=null,onSelect,colors={}}) {
+  // Use only hexadecimal line colours from the app's published line catalogue.
+  const colour=line=>/^#[0-9a-f]{6}$/i.test(colors[line]||'')
+    ? colors[line] : '#526777';
+  const ink=line=>{
+    const value=colour(line).slice(1),r=parseInt(value.slice(0,2),16),
+      g=parseInt(value.slice(2,4),16),b=parseInt(value.slice(4,6),16);
+    return (r*299+g*587+b*114)/1000>145?'#17202b':'#ffffff';
+  };
   const svg=svgNode('svg',{
     class:'sp-diagram-svg',viewBox:'0 0 '+model.width+' '+model.height,
     width:model.width,height:model.height,role:'group',
     'aria-label':name+' station patronage schematic, '+metric+'; select a station for its profile',
   });
-  // Compact line identifier inspired by the user's T4 reference diagram.
-  // It is generated from the selected route rather than embedding an old
-  // screenshot that could misrepresent current stations or monthly figures.
-  const lineLabel=model.line==='T4_SCO'?'T4 + SCO':model.line;
-  const badgeWidth=lineLabel.length>4?116:52;
-  svg.append(
-    svgNode('rect',{class:'sp-diagram-line-badge',x:19,y:13,width:badgeWidth,height:33,rx:6}),
-    svgNode('text',{class:'sp-diagram-line-code',x:19+badgeWidth/2,y:35,
-      'text-anchor':'middle'},lineLabel),
-    svgNode('text',{class:'sp-diagram-header-label',x:34+badgeWidth,y:34},
-      'Station-level '+metric+' · historical Opal counts'),
-  );
+  // T4 + SCO is two distinct corridor labels; do not paint both as T4.
+  const badgeLines=model.line==='T4_SCO'?['T4','SCO']:[model.line];
+  let badgeRight=19;
+  for(const line of badgeLines){
+    const width=line.length>2?64:52;
+    svg.append(
+      svgNode('rect',{class:'sp-diagram-line-badge',x:badgeRight,y:13,
+        width,height:33,rx:6,style:'--sp-badge-colour:'+colour(line)}),
+      svgNode('text',{class:'sp-diagram-line-code',x:badgeRight+width/2,y:35,
+        'text-anchor':'middle',style:'--sp-badge-ink:'+ink(line)},line),
+    );
+    badgeRight+=width+5;
+  }
+  svg.append(svgNode('text',{class:'sp-diagram-header-label',x:badgeRight+12,y:34},
+    'Station-level '+metric+' · historical Opal counts'));
   for(const p of model.paths)svg.append(svgNode('path',{
     class:'sp-diagram-track'+(p.branch?' sp-diagram-branch':''),d:p.d,
-    transform:p.transform,
+    stroke:colour(p.service||model.line),transform:p.transform,
   }));
   const term=search.trim().toLowerCase(),groups=[];
   for(const st of model.nodes) {
@@ -247,7 +276,8 @@ export function makeStationDiagram(model, {name,metric,search='',selectedId=null
       svgNode('rect',{x:st.x-23,y:st.y-22,width:450,height:44,rx:5,
         class:'sp-diagram-hit'}),
       svgNode('circle',{cx:st.x,cy:st.y,r:radius,
-        class:'sp-diagram-dot',opacity:st.value===null?1:(0.45+0.55*st.intensity).toFixed(2)}),
+        class:'sp-diagram-dot',style:'--sp-station-colour:'+colour(st.service||model.line),
+        opacity:st.value===null?1:(0.45+0.55*st.intensity).toFixed(2)}),
       svgNode('text',{x:st.x+26,y:st.y+5,class:'sp-diagram-label'},st.name),
       svgNode('text',{x:st.x+435,y:st.y+5,class:'sp-diagram-value',
         'text-anchor':'end'},label),
@@ -449,6 +479,7 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     const ordered=f.line!=='all' && selectedRoute.route;
     const listRows=ordered ? stationRouteRows(data,stations,routes,f) : patronageRows(data,stations,f);
     const plan=stationDiagramPlan(routes,f.line,f.route);
+    const diagramColors=Object.fromEntries(lineItems.map(l=>[l.id,l.color]));
     const allObservations=plan ? patronageRows(data,stations,{...f,line:'all',search:''}) : [];
     const diagramModel=plan ? stationDiagramModel(plan,stations,allObservations,
       {flip:f.diagramFlip}) : null;
@@ -525,6 +556,11 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
           'Reference station order, not a timetable. Circle size represents the selected station-level '+
           metric+'. Branches remain connected at their junctions when the diagram is flipped. '+
           'Station entries and exits do not identify the direction or train service used by a passenger.'),
+        node('div',{class:'sp-diagram-legend','aria-label':'Patronage diagram legend'},
+          node('span',{},'● Larger circles: more published '+metric+' on this diagram'),
+          node('span',{},'○ Hollow circle: missing or suppressed station figures'),
+          node('span',{},'0 is a published zero, not missing data'),
+          node('span',{},'Line colours indicate the diagram route, not passenger travel direction')),
         node('p',{class:'muted'},'On a phone, scroll the diagram sideways if needed. Select a station to see its source values.'),
         search,node('div',{class:'sp-diagram-scroll'}),
       );
@@ -538,6 +574,7 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
         const host=diagram.querySelector('.sp-diagram-scroll');
         host.replaceChildren(makeStationDiagram(diagramModel,{
           name:plan.name,metric,search:f.search,selectedId:f.station,
+          colors:diagramColors,
           onSelect:st=>{f.station=st.id;paintDetail(st);},
         }));
       }
