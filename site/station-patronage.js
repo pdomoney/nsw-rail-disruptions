@@ -128,18 +128,31 @@ export const PATRONAGE_SEQUENTIAL_STOPS=Object.freeze([
 // Compatibility name for older consumers; not a rainbow scale.
 export const PATRONAGE_RAINBOW_STOPS=PATRONAGE_SEQUENTIAL_STOPS;
 
-// Five discrete, high-contrast Viridis steps make relative differences easy
-// to compare on phone. A ranked scale (rather than linear max scaling) prevents
-// one ordinary high-volume station flattening every other marker to purple.
-// Numeric labels remain exact published tap counts.
+// Seven visibly separated, ordered Viridis hues. Colour bands are based on
+// magnitude relative to the busiest included station, using square-root spacing
+// to make mid-range volumes distinguishable even on strongly skewed corridors.
+// Unlike equal-rank buckets, a large change in tap volume cannot share a band
+// merely because several nearby stations have similar counts.
 export const PATRONAGE_VISUAL_COLOURS=Object.freeze([
-  '#440154','#31688e','#21918c','#5ec962','#fde725',
+  '#440154','#443983','#31688e','#21918c','#35b779','#90d743','#fde725',
 ]);
-export function stationPatronageRankBands(values) {
-  const ordered=[...new Set((values||[]).filter(Number.isFinite))].sort((a,b)=>a-b);
+export function stationPatronageVolumeBands(values) {
+  const ordered=[...new Set((values||[])
+    .filter(n=>Number.isFinite(n)&&n>=0))].sort((a,b)=>a-b);
   const bands=new Map();
-  ordered.forEach((value,i)=>bands.set(value,ordered.length===1
-    ? 2 : Math.floor(4*i/(ordered.length-1))));
+  if(!ordered.length)return bands;
+  const last=PATRONAGE_VISUAL_COLOURS.length-1;
+  const max=ordered.at(-1);
+  // An all-equal dataset has no measured range. Display a neutral midpoint
+  // for a single positive count, or the lowest band for published zero.
+  if(ordered.length===1){
+    bands.set(ordered[0],max===0?0:Math.floor(last/2));
+    return bands;
+  }
+  for(const value of ordered){
+    const scaled=Math.sqrt(Math.min(1,value/max));
+    bands.set(value,Math.min(last,Math.floor(scaled*(last+1))));
+  }
   return bands;
 }
 export function patronageHeatColour(intensity) {
@@ -229,9 +242,10 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
     .map(st=>st.value));
   const excludedHubCount=excludeHubs
     ? published.filter(st=>patronageHubKeys.has(st.key)).length : 0;
-  // All included stations (including other interchanges) contribute to the
-  // ordered groups. Identical published values always have identical colours.
-  const colourBands=stationPatronageRankBands((excludeHubs?ordinary:published)
+  // All included stations (including interchanges other than the five
+  // exclusions) define the maximum for seven square-root-spaced volume bands.
+  // Identical published figures always receive identical colours.
+  const colourBands=stationPatronageVolumeBands((excludeHubs?ordinary:published)
     .map(st=>st.value));
   const nodes=[],paths=[],shown=new Set(),mainX=58,branchX=412,top=68,step=47;
   function add(stop,x,y,service=plan.line) {
@@ -769,24 +783,24 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
           },'⇅ Flip diagram'),
         ),
         node('div',{class:'sp-diagram-quick-guide'},
-          node('div',{class:'sp-diagram-five-band',role:'group',
-            'aria-label':'Five relative patronage bands, from lower to higher'},
+          node('div',{class:'sp-diagram-seven-band',role:'group',
+            'aria-label':'Seven relative patronage volume bands, from lower to higher'},
             node('span',{class:'sp-band-label'},'Less'),
             ...PATRONAGE_VISUAL_COLOURS.map((colour,i)=>
               node('span',{class:'sp-band-swatch',style:'background-color:'+colour,
-                title:['Lowest','Low','Middle','High','Highest'][i]+' relative station patronage',
-                'aria-label':['Lowest','Low','Middle','High','Highest'][i]+' patronage band'})),
+                title:['Lowest','Very low','Low','Moderate','High','Very high','Highest'][i]+' relative station patronage',
+                'aria-label':['Lowest','Very low','Low','Moderate','High','Very high','Highest'][i]+' patronage band'})),
             node('span',{class:'sp-band-label'},'More')),
           node('span',{class:'sp-diagram-guide-note'},
-            'Colours rank stations on this corridor; grey = excluded hub.')),
+            'Seven volume bands; grey = one of five excluded stations.')),
         search,
         node('details',{class:'sp-diagram-explainer'},
           node('summary',{},'About this diagram, colours and data'),
           node('p',{},'Main corridor: '+topStation+' → '+bottomStation+
             '. Flip changes stop order, not where passengers travelled. Branches connect at their junctions.'),
-          node('p',{},'Colour groups show relative ranking across the published stations on this route. '+
-            'They are five equal steps along the ordered range of distinct station values, not five equal passenger-count intervals. '+
-            'Circle size reflects passenger tap volume against the largest included station.'),
+          node('p',{},'Seven colour bands show relative passenger tap volume using a square-root scale against '+
+            'the busiest included station. They are not seven equal-count groups or equal-number-of-stations groups. '+
+            'Both colour and circle size reflect station tap counts; the exact published counts appear beside each station.'),
           node('p',{},'Missing/suppressed values use a hollow marker; a published zero remains a filled marker. '+
             'Counts describe station-level Opal taps, not a live train, boarding direction or timetable.'),
           node('p',{},'Martin Place, Town Hall, Central, Redfern and Sydenham alone are excluded from visual comparisons. '+
