@@ -118,3 +118,17 @@
 @media (max-width:850px) {
   .sp-lower.sp-lower-diagram {grid-template-columns:1fr;gap:24px;}
 }
+
+/* Diagram is now reversible without mirroring text or changing Opal values.
+   Keep the control beside its diagram on phone and desktop. */
+.sp-diagram-toolbar {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
+.sp-diagram-toolbar h2 {margin:0;}
+.sp-diagram-flip {min-height:44px;min-width:126px;padding:9px 15px;border:1px solid var(--rule-strong);
+  border-radius:7px;background:var(--surface);color:var(--ink);font:600 .92rem var(--font);cursor:pointer;}
+.sp-diagram-flip:hover {background:var(--surface-2);}
+.sp-diagram-flip:focus-visible {outline:3px solid var(--focus);outline-offset:2px;}
+.sp-diagram-flip[aria-pressed="true"] {border-color:#1c63a4;box-shadow:inset 0 0 0 1px #1c63a4;}
+.sp-diagram-orientation {margin:3px 0 12px;font-size:.88rem;color:var(--ink-2);font-weight:550;}
+.sp-diagram-line-badge {fill:#005aa9;stroke:#fff;stroke-width:1.5;}
+.sp-diagram-line-code {font-size:17px;fill:#fff;font-weight:750;letter-spacing:.01em;}
+.sp-diagram-header-label {font-size:16px;fill:currentColor;font-weight:600;}

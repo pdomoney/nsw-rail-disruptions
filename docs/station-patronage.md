@@ -1,3 +1,13 @@
+## Diagram orientation and reference-style line badge (PR #20)
+
+The interactive station schematic originally delivered in PR #19 opens **automatically when a physical rail line/corridor is selected** under **Station Patronage → Rail line / connected corridor**. **All rail stations** still defaults to the original ranked List view; the **List view** button remains available for every selected line. The user's T4 diagram image is the visual reference. The application uses its own generated SVG, not a static screenshot, so the actual validated entries/exits and missing-data indicators stay accurate as months change.
+
+Use **⇅ Flip diagram** beside the heading to reverse the **top-to-bottom order of the main corridor**, for example **Bondi Junction → Waterfall** becomes **Waterfall → Bondi Junction**, or **Central → Bomaderry** becomes **Bomaderry → Central**. The branch tracks also mirror their positions, while text, values and line labels remain right-side up. The control has keyboard focus and a pressed state for assistive technology. It does not replace the original List-view **Stop direction** setting, which remains available independently.
+
+**Important:** diagram flip is a visual reading preference, **not evidence that passengers travelled toward or away from Sydney**. Opal station counts belong to each station; the same entry/exit values and distinct-station totals are preserved in both orientations. The line badge and selected-month caption are dynamically drawn so stale image-based totals are never displayed. The schematic is a reference to physical station order, not a promise that every service stops everywhere.
+
+---
+
 ## Interactive station patronage diagram
 
 After choosing a rail line or the connected **T4 + SCO** corridor, use **Diagram view** to see named stations in their actual physical sequence, drawn as a station schematic. The existing **List view** and its highest-patronage ranking remain available. A line without a verified reference station sequence cannot offer the diagram.
