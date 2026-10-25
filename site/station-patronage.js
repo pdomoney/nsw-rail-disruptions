@@ -128,13 +128,14 @@ export const PATRONAGE_SEQUENTIAL_STOPS=Object.freeze([
 // Compatibility name for older consumers; not a rainbow scale.
 export const PATRONAGE_RAINBOW_STOPS=PATRONAGE_SEQUENTIAL_STOPS;
 
-// Seven visibly separated, ordered Viridis hues. Colour bands are based on
-// magnitude relative to the busiest included station, using square-root spacing
-// to make mid-range volumes distinguishable even on strongly skewed corridors.
-// Unlike equal-rank buckets, a large change in tap volume cannot share a band
-// merely because several nearby stations have similar counts.
+// Nine distinct volume shades, with a warmer orange-to-red high end.
+// Values are compared against the highest included station using the same
+// square-root scale as before; colour changes do not change source tap counts.
+// A legend step represents a value band, not equal numbers of stations.
+// Intentionally more saturated at the top than the older Viridis yellow end.
 export const PATRONAGE_VISUAL_COLOURS=Object.freeze([
-  '#440154','#443983','#31688e','#21918c','#35b779','#90d743','#fde725',
+  '#440154','#482878','#3e4989','#31688e','#26828e',
+  '#1f9e89','#73d055','#f8961e','#d62828',
 ]);
 export function stationPatronageVolumeBands(values) {
   const ordered=[...new Set((values||[])
@@ -243,7 +244,7 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
   const excludedHubCount=excludeHubs
     ? published.filter(st=>patronageHubKeys.has(st.key)).length : 0;
   // All included stations (including interchanges other than the five
-  // exclusions) define the maximum for seven square-root-spaced volume bands.
+  // exclusions) define the maximum for nine square-root-spaced volume bands.
   // Identical published figures always receive identical colours.
   const colourBands=stationPatronageVolumeBands((excludeHubs?ordinary:published)
     .map(st=>st.value));
@@ -783,23 +784,26 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
           },'⇅ Flip diagram'),
         ),
         node('div',{class:'sp-diagram-quick-guide'},
-          node('div',{class:'sp-diagram-seven-band',role:'group',
-            'aria-label':'Seven relative patronage volume bands, from lower to higher'},
+          node('div',{class:'sp-diagram-nine-band',role:'group',
+            'aria-label':'Nine relative patronage volume bands, from lower to higher'},
             node('span',{class:'sp-band-label'},'Less'),
             ...PATRONAGE_VISUAL_COLOURS.map((colour,i)=>
               node('span',{class:'sp-band-swatch',style:'background-color:'+colour,
-                title:['Lowest','Very low','Low','Moderate','High','Very high','Highest'][i]+' relative station patronage',
-                'aria-label':['Lowest','Very low','Low','Moderate','High','Very high','Highest'][i]+' patronage band'})),
+                title:['Lowest','Very low','Low','Lower middle','Middle',
+                  'Upper middle','High','Very high','Highest'][i]+' relative station patronage',
+                'aria-label':['Lowest','Very low','Low','Lower middle','Middle',
+                  'Upper middle','High','Very high','Highest'][i]+' patronage band'})),
             node('span',{class:'sp-band-label'},'More')),
           node('span',{class:'sp-diagram-guide-note'},
-            'Seven volume bands; grey = one of five excluded stations.')),
+            'Nine volume bands; grey = one of five excluded stations.')),
         search,
         node('details',{class:'sp-diagram-explainer'},
           node('summary',{},'About this diagram, colours and data'),
           node('p',{},'Main corridor: '+topStation+' → '+bottomStation+
             '. Flip changes stop order, not where passengers travelled. Branches connect at their junctions.'),
-          node('p',{},'Seven colour bands show relative passenger tap volume using a square-root scale against '+
-            'the busiest included station. They are not seven equal-count groups or equal-number-of-stations groups. '+
+          node('p',{},'Nine colour bands show relative station tap volume using a square-root scale against '+
+            'the busiest included station. They are not nine equal-count groups or equal-number-of-stations groups. '+
+            'The warmer orange and red end highlights higher patronage. '+
             'Both colour and circle size reflect station tap counts; the exact published counts appear beside each station.'),
           node('p',{},'Missing/suppressed values use a hollow marker; a published zero remains a filled marker. '+
             'Counts describe station-level Opal taps, not a live train, boarding direction or timetable.'),
