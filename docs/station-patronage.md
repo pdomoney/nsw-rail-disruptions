@@ -1,3 +1,11 @@
+## Diagram marker scale and line identity (PR #21)
+
+The selected diagram now scales station-circle sizes using **only the stations plotted on that route and its branches**, rather than the largest recorded station anywhere in the NSW network. Switching to a quieter line therefore still makes the relative differences between its stops visible. The SVG legend explicitly distinguishes available counts (including a published zero) from missing, suppressed or unmatched records. No observed entry or exit counts are changed.
+
+Line badges and track segments obtain their colours from the same published rail-line catalogue as the rest of the application. This corrects the previous hardcoded blue T4 styling on unrelated routes such as T1 and M1. The connected **T4 + SCO** diagram now displays two named badges and identifies the T4 approach, South Coast continuation, Cronulla spur and Port Kembla spur in the underlying diagram model. Because TfNSW's current catalogue represents T4 and SCO with the same blue, those two sections may legitimately have the same colour; **the separate line labels establish the distinction**, not an invented colour. These route colours represent station corridors only, never the travel direction, actual train used, or allocation of Opal taps to a train line.
+
+---
+
 ## Diagram orientation and reference-style line badge (PR #20)
 
 The interactive station schematic originally delivered in PR #19 opens **automatically when a physical rail line/corridor is selected** under **Station Patronage → Rail line / connected corridor**. **All rail stations** still defaults to the original ranked List view; the **List view** button remains available for every selected line. The user's T4 diagram image is the visual reference. The application uses its own generated SVG, not a static screenshot, so the actual validated entries/exits and missing-data indicators stay accurate as months change.
