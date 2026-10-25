@@ -59,7 +59,7 @@ test('Central, Redfern and nominated hubs do not set the gradient maximum',()=>{
   assert.equal(hurstville.heatIntensity,1);
   assert.equal(hurstville.markerSize,26);
   assert.equal(hurstville.hubExcludedFromScale,false);
-  assert.equal(patronageHeatColour(hurstville.heatIntensity),'#dc2626');
+  assert.equal(patronageHeatColour(hurstville.heatIntensity),'#fde725');
   assert.equal(model.nodes.find(n=>n.id==='suth').hubExcludedFromScale,false);
   assert.equal(model.nodes.find(n=>n.id==='wong').hubExcludedFromScale,false);
   assert.equal(central.value,500000);
@@ -125,7 +125,7 @@ test('active responsive view and legacy SVG use hub-excluded heat, while normal 
   const sourceCode=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const styles=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
   assert.match(sourceCode,/const fill=excludedHub\?'#e4e9ef'/);
-  assert.match(sourceCode,/node\('span',\{\},'Higher patronage \('\+number\(diagramModel\.gradientMaximum\)/);
+  assert.match(sourceCode,/node\('span',\{\},'More taps \('\+number\(diagramModel\.gradientMaximum\)/);
   assert.match(sourceCode,/Only Martin Place, Town Hall, Central, Redfern and Sydenham are excluded/);
   assert.match(sourceCode,/Other interchanges are included/);
   assert.match(sourceCode,/node\('p',\{class:'sp-diagram-scale-note'/);

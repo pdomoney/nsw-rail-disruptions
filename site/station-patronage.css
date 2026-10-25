@@ -153,8 +153,9 @@
   width:clamp(100px,30vw,190px);height:12px;display:inline-block;flex:none;
   border:1px solid var(--rule-strong);border-radius:10px;
   background:linear-gradient(to right,
-    #6d28d9 0%,#2563eb 16.6667%,#06b6d4 33.3333%,#16a34a 50%,
-    #fde047 66.6667%,#f97316 83.3333%,#dc2626 100%);
+    #440154 0%,#482475 10%,#414487 20%,#355f8d 30%,
+    #2a788e 40%,#21918c 50%,#22a884 60%,#44bf70 70%,
+    #7ad151 80%,#bddf26 90%,#fde725 100%);
 }
 
 
@@ -304,4 +305,55 @@
 .sp-diagram-scale-note {
   flex:1 1 100%;margin:1px 0 4px;max-width:72ch;
   font-size:.81rem;line-height:1.45;color:var(--ink-2);
+}
+
+/* Mobile-first summary. Data controls should appear above the first fold, not
+   behind three full-size notices. Full source caveats remain in disclosures. */
+.sp-heading { padding: 14px 0 4px; }
+.sp-heading h1 { margin: 3px 0 5px;font-size:clamp(1.75rem,4vw,2.35rem);line-height:1.15; }
+.sp-heading .sp-eyebrow { margin:0;color:var(--muted); }
+.sp-intro { margin:6px 0;color:var(--ink-2);font-size:.96rem;line-height:1.38; }
+.sp-scope-summary { margin:6px 0;font-size:.84rem;line-height:1.35;color:var(--ink-2); }
+.sp-scope-summary strong { color:var(--ink);font-weight:650; }
+.sp-methodology-disclosure {
+  margin:3px 0 7px;max-width:78ch;
+  font-size:.83rem;line-height:1.38;color:var(--ink-2);
+}
+.sp-methodology-disclosure summary { cursor:pointer;color:var(--focus);font-weight:600; }
+.sp-methodology-disclosure p { margin:5px 0 7px;padding:8px 10px;background:var(--surface-2);border-radius:5px; }
+.sp-source-status {
+  display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;
+  margin:8px 0 6px;padding:7px 11px;border-radius:6px;
+  font-size:.83rem;line-height:1.34;max-width:none;
+}
+.sp-source-status strong { display:inline;font-weight:650; }
+.sp-source-date { color:var(--ink-2); }
+.sp-source-status a { margin:0; }
+.sp-unmatched-details {
+  padding:7px 10px;margin:6px 0 8px;
+  font-size:.82rem;line-height:1.4;max-width:none;
+  background:var(--surface);
+}
+.sp-unmatched-details summary {
+  font-weight:650;cursor:pointer;color:var(--ink);
+}
+.sp-unmatched-details p { margin:7px 0 2px;color:var(--ink-2); }
+.sp-controls { margin:7px 0 12px;gap:8px; }
+.sp-overview { margin:10px 0 14px;gap:9px; }
+.sp-view-toggle { margin:5px 0 11px; }
+@media (max-width:600px) {
+  .sp-heading {padding:7px 0 2px;}
+  .sp-heading h1 {font-size:1.68rem;line-height:1.16;}
+  .sp-intro {font-size:.9rem;line-height:1.34;}
+  .sp-source-status {gap:3px 9px;padding:6px 9px;}
+  .sp-source-date {font-size:.77rem;line-height:1.3;}
+  .sp-controls {gap:7px;margin:7px 0 12px;}
+  .sp-field {flex:1 1 calc(50% - 8px);min-width:0;font-size:.76rem;}
+  .sp-field select {min-height:42px;padding:8px 6px;font-size:.82rem;}
+  .sp-overview {grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;}
+  .sp-kpi {padding:7px 3px;gap:2px;}
+  .sp-kpi strong {font-size:1.1rem;}
+  .sp-kpi span {font-size:.75rem;}
+  .sp-kpi small {display:none;}
+  .sp-kpi:last-child {grid-column:1 / -1;}
 }

@@ -119,20 +119,22 @@ export function stationRouteRows(data, stations, routes, opts={}) {
 }
 
 
-// Strong rainbow scale for station-level Opal activity. The end stops are
-// intentionally vivid (violet -> blue -> cyan -> green -> yellow -> orange -> red),
-// unlike the previous muted pastel/earth tones. The source count is unchanged.
-export const PATRONAGE_RAINBOW_STOPS=Object.freeze([
-  '#6d28d9','#2563eb','#06b6d4','#16a34a','#fde047','#f97316','#dc2626',
+// Viridis: perceptually ordered sequential colours sampled from Matplotlib.
+// Brightness progresses smoothly from dark purple to clear yellow.
+export const PATRONAGE_SEQUENTIAL_STOPS=Object.freeze([
+  '#440154','#482475','#414487','#355f8d','#2a788e','#21918c',
+  '#22a884','#44bf70','#7ad151','#bddf26','#fde725',
 ]);
+// Compatibility name for older consumers; not a rainbow scale.
+export const PATRONAGE_RAINBOW_STOPS=PATRONAGE_SEQUENTIAL_STOPS;
 export function patronageHeatColour(intensity) {
   const value=Number.isFinite(intensity)?Math.max(0,Math.min(1,intensity)):0;
-  const scaled=value*(PATRONAGE_RAINBOW_STOPS.length-1);
-  const index=Math.min(PATRONAGE_RAINBOW_STOPS.length-2,Math.floor(scaled));
+  const scaled=value*(PATRONAGE_SEQUENTIAL_STOPS.length-1);
+  const index=Math.min(PATRONAGE_SEQUENTIAL_STOPS.length-2,Math.floor(scaled));
   const fraction=scaled-index;
   const rgb=hex=>[1,3,5].map(i=>Number.parseInt(hex.slice(i,i+2),16));
-  const from=rgb(PATRONAGE_RAINBOW_STOPS[index]);
-  const to=rgb(PATRONAGE_RAINBOW_STOPS[index+1]);
+  const from=rgb(PATRONAGE_SEQUENTIAL_STOPS[index]);
+  const to=rgb(PATRONAGE_SEQUENTIAL_STOPS[index+1]);
   return '#'+from.map((v,i)=>Math.round(v+(to[i]-v)*fraction)
     .toString(16).padStart(2,'0')).join('');
 }
@@ -145,7 +147,7 @@ export function patronageHeatTextColour(hex) {
   const linear=rgb.map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
   const luminance=linear[0]*0.2126+linear[1]*0.7152+linear[2]*0.0722;
   return (luminance+0.05)/0.05 >= 1.05/(luminance+0.05)
-    ? '#111827' : '#ffffff';
+    ? '#000000' : '#ffffff';
 }
 
 // Only these five user-specified stations are removed from the visual scaling.
@@ -544,19 +546,27 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     metric: 'entries', line: 'all', route:'', direction:'forward',
     sort:'patronage', view:'list', diagramFlip:false, search:'', station: null };
   const heading = node('header', { class: 'sp-heading' },
-    node('p', { class: 'sp-eyebrow' }, 'Opal network / historical station usage'),
-    node('h1', {}, 'Station patronage hotspots'),
-    node('p', { class: 'sp-intro' }, 'Explore which stations recorded the most entries and exits and how historical travel patterns changed through the day. Filter by a rail line or individual station.'),
-    node('p', { class: 'sp-warning' },
-      node('strong', {}, 'Not live crowding or directional ridership. '),
-      'The connected-corridor view follows stations along T4 and SCO, including interchanges and branches. Inbound/outbound changes the DISPLAY ORDER only. Opal station entries and exits cannot determine which train or travel direction a passenger used. Station counts are never attributed to a particular line.'));
+    node('p', { class: 'sp-eyebrow' }, 'Opal station activity'),
+    node('h1', {}, 'Station patronage'),
+    node('p', { class: 'sp-intro' },
+      'Compare station entries and exits by month, rail line and corridor.'),
+    node('p', { class: 'sp-scope-summary' },
+      node('strong', {}, 'Historical Opal taps, not live crowding. '),
+      'Counts do not identify passenger direction or a specific train.'),
+    node('details', { class: 'sp-methodology-disclosure' },
+      node('summary', {}, 'How to interpret station and corridor figures'),
+      node('p', {},
+        'T4 and South Coast corridors follow station order, including interchanges and branches. '+
+        'Inbound/outbound changes display order only. Entries and exits cannot identify '+
+        'a journey direction, train service or the number aboard a particular line.')));
   const recent = recentMonthlyStatus(data);
   heading.append(node('section', {
     class: 'sp-source-status' + (recent.hasRecent ? ' sp-source-status-current' : ' sp-source-status-missing'),
     role: 'status', 'aria-label': 'Latest monthly station data status',
   },
-    node('strong', {}, recent.title),
-    node('p', {}, recent.details),
+    node('strong', {}, recent.hasRecent
+      ? 'Latest Opal month: '+recent.latestMonth : recent.title),
+    node('span', { class: 'sp-source-date' }, recent.details),
     !recent.hasRecent ? node('a', {
       href: sourceData, target: '_blank', rel: 'noopener noreferrer',
     }, 'View TfNSW monthly station dataset') : null,
@@ -597,15 +607,18 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
   }
 
   if (data.coverage?.unmatchedCount) {
-    heading.append(node('p', { class: 'sp-warning' },
-      node('strong', {}, 'Incomplete station matching: '),
-      number(data.coverage.unmatchedCount) + ' source station names could not be uniquely matched and were excluded. The data importer must reconcile these names before figures are accepted.'));
+    heading.append(node('details', { class: 'sp-warning sp-unmatched-details' },
+      node('summary', {},
+        number(data.coverage.unmatchedCount)+' source station names could not be matched'),
+      node('p', {},
+        'These source names were excluded because they could not be uniquely matched to the station catalogue. '+
+        'The importer must reconcile them before their figures are accepted. Verified station values are unchanged.')));
   }
 
   function renderControls() {
     const allMonthly = f.period === 'historical' ? legacyMonths : months;
     if(allMonthly.length && !allMonthly.includes(f.month))f.month=allMonthly.at(-1);
-    form.replaceChildren(
+    const controls = [
       field('Dataset', [
         ...(samples.length ? [['windows','Historic sampled day (time windows)']] : []),
         ...(years.length ? [['typical', 'Historical hourly sample (separate source)']] : []),
@@ -650,7 +663,10 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
         field('Sort stations', [['stops','Route stop order'],['patronage','Highest patronage first']],
           f.sort,v=>{f.sort=v;f.station=null;render();})]),
       ]:[]),
-      field('Measure', [['entries', 'Entries'], ['exits', 'Exits'], ['total', 'Entries + exits']], f.metric, v => { f.metric = v; render(); }));
+      field('Measure', [['entries', 'Entries'], ['exits', 'Exits'], ['total', 'Entries + exits']], f.metric, v => { f.metric = v; render(); })];
+    // Passing a null conditional child to replaceChildren() generates visible
+    // "null" text on mobile Safari. Filter disabled choices explicitly.
+    form.replaceChildren(...controls.filter(Boolean));
   }
 
   function render() {
@@ -737,22 +753,22 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
           metric+'. Branches remain connected at their junctions when the diagram is flipped. '+
           'Station entries and exits do not identify the direction or train service used by a passenger.'),
         node('div',{class:'sp-diagram-legend','aria-label':'Patronage diagram legend'},
-          node('span',{},'● All stations except the five named exclusions: larger markers and rainbow colours indicate more '+metric),
+          node('span',{},'● Bigger and brighter markers indicate more '+metric),
           node('span',{},'○ Hollow circle: missing or suppressed station figures'),
           node('span',{},'0 is a published zero, not missing data'),
           node('span',{},'Grey markers: Martin Place, Town Hall, Central, Redfern and Sydenham are excluded from both scales'),
           node('span',{},'Track colours indicate the route, not passenger travel direction'),
           node('div',{class:'sp-diagram-heat-legend','aria-label':'Station patronage colour gradient from low to high'},
-            node('span',{},'Lower patronage'),
+            node('span',{},'Fewer taps'),
             node('span',{class:'sp-diagram-heat-ramp','aria-hidden':'true'}),
-            node('span',{},'Higher patronage ('+number(diagramModel.gradientMaximum)+' '+metric+')')),
+            node('span',{},'More taps ('+number(diagramModel.gradientMaximum)+' '+metric+')')),
         node('p',{class:'sp-diagram-scale-note'},
           diagramModel.hubScaleExclusionActive
             ? 'Only Martin Place, Town Hall, Central, Redfern and Sydenham are excluded from colour and size scaling ('+
               number(diagramModel.excludedHubCount)+' published excluded station'+
               (diagramModel.excludedHubCount===1?'':'s')+
               ' on this corridor). Other interchanges are included. Actual counts are unchanged.'
-            : 'The rainbow scale uses all published station observations on this route; '+
+            : 'The sequential colour scale uses all published station observations on this route; '+
               'no other published stations were available for the exclusions to apply.')),
         node('p',{class:'muted'},'Read the main route from top to bottom. Open a branch at its junction; tap a station to reveal its entry and exit counts beside the route.'),
         search,node('div',{class:'sp-diagram-scroll'}),

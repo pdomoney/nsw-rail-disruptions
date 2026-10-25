@@ -128,7 +128,7 @@ test('unreported observations remain hollow and true zero is a low-end filled ma
   assert.equal(text(byClass(missing,'sp-route-amount')[0]),'Not published');
   assert.ok(!byClass(zero,'sp-route-dot')[0].attrs.class.includes('missing'));
   assert.ok(byClass(missing,'sp-route-dot')[0].attrs.class.includes('missing'));
-  assert.match(byClass(zero,'sp-route-dot')[0].attrs.style,/background-color:#6d28d9/);
+  assert.match(byClass(zero,'sp-route-dot')[0].attrs.style,/background-color:#440154/);
   assert.doesNotMatch(byClass(missing,'sp-route-dot')[0].attrs.style,/background-color:/);
 });
 

@@ -53,8 +53,8 @@ function render(plan,model){
 }
 
 test('heat scale interpolates from saturated violet to red, including true zero',()=>{
-  assert.equal(patronageHeatColour(0),'#6d28d9');
-  assert.equal(patronageHeatColour(1),'#dc2626');
+  assert.equal(patronageHeatColour(0),'#440154');
+  assert.equal(patronageHeatColour(1),'#fde725');
   assert.equal(patronageHeatColour(-2),patronageHeatColour(0));
   assert.equal(patronageHeatColour(2),patronageHeatColour(1));
   assert.equal(patronageHeatColour(NaN),patronageHeatColour(0));
@@ -97,8 +97,8 @@ test('heat markers reflect station value and missing observations remain hollow'
   assert.notEqual(central.attrs.style,jannali.attrs.style);
   assert.match(central.attrs.style,/--sp-heat-colour:#e4e9ef/);
   assert.match(central.attrs.class||'sp-diagram-dot',/sp-diagram-dot/);
-  assert.match(zero.attrs.style,/--sp-heat-colour:#6d28d9/,
-    'a reported zero is filled with lowest rainbow colour');
+  assert.match(zero.attrs.style,/--sp-heat-colour:#440154/,
+    'a reported zero is filled with lowest sequential colour');
   const absent=byId('pk');
   assert.ok(absent.attrs.class.includes('sp-diagram-missing'));
   assert.equal(findAll(absent,n=>n.attrs.class==='sp-diagram-value')[0]
@@ -129,7 +129,7 @@ test('mobile legend and CSS advertise a continuous relative colour gradient',()=
   const ui=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
   assert.match(ui,/Station patronage colour gradient from low to high/);
-  assert.match(ui,/Higher patronage \('\+number\(diagramModel.gradientMaximum\)/);
+  assert.match(ui,/More taps \('\+number\(diagramModel.gradientMaximum\)/);
   assert.match(ui,/patronageHeatColour\(st.heatIntensity\?\?st.intensity\)/);
   assert.match(ui,/svgNode\('tspan',\{class:'sp-diagram-value',dx:12\}/);
   assert.doesNotMatch(ui,/x:st.x\+435/);

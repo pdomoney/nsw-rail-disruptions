@@ -1,3 +1,15 @@
+## Perceptually ordered scale and compact mobile header (PR #27)
+
+**Current colour treatment:** Station activity is a quantitative magnitude, not a set of categories. The previous red/orange/green/violet rainbow is replaced by **Viridis**, a perceptually ordered **deep violet → blue → teal → green → bright yellow** scale. This follows Matplotlib's guidance to use a perceptually uniform sequential palette for ordered values (https://matplotlib.org/stable/tutorials/colors/colormaps.html) and ColorBrewer's guidance that sequential palettes should present ordered magnitudes (https://colorbrewer2.org/learnmore/schemes_full.html). All eleven reference colour anchors are sampled from Matplotlib's Viridis at equal 0.1 intervals. The numerical Opal entries/exits are not modified.
+
+The original **five-station exclusion policy remains unchanged**: Martin Place, Town Hall, Central, Redfern and Sydenham are neutral and fixed-size, with their actual published figures retained. All other stations, including other major interchanges, contribute normally to the selected corridor's marker-size and colour scales. The visible scale uses the selected metric/period and the maximum among published, non-excluded stations. Missing values remain hollow, a published zero remains a filled minimum-size marker, and labels retain the real numbers.
+
+**Mobile layout:** The Station Patronage page now puts the selected data controls near the top. The header keeps a brief, always-visible historical-not-live caveat; the longer methodology is available from a native expandable disclosure. The latest published Opal month and import information display in a compact, wrapping status row. Unmatched catalogue names remain disclosed prominently in a one-line expandable notice, preserving the quality warning without occupying a large block. The small-screen overview uses two columns instead of three tall stacked KPI cards. The filter renderer discards nullable conditional fields rather than showing `nullnullnull` in Safari.
+
+These are presentation-only changes. They do not change the underlying source periods, verified station counts, update schedule, route order, branches or other application pages. Visually verify the new layout in iPhone Safari and the installed Home Screen app before merging.
+
+---
+
 ## Five-station exclusion and vivid rainbow scale (PR #26)
 
 **Current policy:** Exclude **only Martin Place, Town Hall, Central, Redfern and Sydenham** from the station-level colour and marker-size reference calculation. All other stations and interchanges, including **Wolli Creek, Hurstville, Sutherland, Wollongong, Chatswood, Strathfield and Parramatta**, remain eligible to determine the selected corridor's visual scale when present and published. The original entries, exits and totals of every station are always displayed without modification.

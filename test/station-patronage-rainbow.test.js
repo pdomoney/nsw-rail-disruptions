@@ -4,12 +4,12 @@ import fs from 'node:fs';
 import {buildSchematic} from '../src/lib/schematic.js';
 import {buildPatronageRoutes} from '../src/lib/patronage-routes.js';
 import {
-  patronageHeatColour,patronageHeatTextColour,PATRONAGE_RAINBOW_STOPS,
+  patronageHeatColour,patronageHeatTextColour,PATRONAGE_SEQUENTIAL_STOPS,
   PATRONAGE_HEAT_EXCLUDED_HUBS,stationDiagramPlan,stationDiagramModel,patronageRows,
 } from '../site/station-patronage.js';
 
-const colours=['#6d28d9','#2563eb','#06b6d4','#16a34a',
-  '#fde047','#f97316','#dc2626'];
+const colours=['#440154','#482475','#414487','#355f8d','#2a788e',
+  '#21918c','#22a884','#44bf70','#7ad151','#bddf26','#fde725'];
 function rgbLuminance(hex) {
   const linear=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255)
     .map(c=>c<=0.04045?c/12.92:((c+0.055)/1.055)**2.4);
@@ -20,19 +20,19 @@ function contrast(a,b) {
   return (l[0]+0.05)/(l[1]+0.05);
 }
 
-test('the scale is an ordered, saturated seven-colour rainbow, not muted earth colours',()=>{
-  assert.deepEqual([...PATRONAGE_RAINBOW_STOPS],colours);
+test('the scale is the ordered eleven-anchor Viridis sequential palette',()=>{
+  assert.deepEqual([...PATRONAGE_SEQUENTIAL_STOPS],colours);
   assert.deepEqual([...PATRONAGE_HEAT_EXCLUDED_HUBS],
     ['Martin Place','Town Hall','Central','Redfern','Sydenham']);
   for(let i=0;i<colours.length;i++) {
     const actual=patronageHeatColour(i/(colours.length-1));
-    assert.equal(actual,colours[i],'rainbow stop '+i+' must be accurate');
+    assert.equal(actual,colours[i],'Viridis stop '+i+' must be accurate');
     const foreground=patronageHeatTextColour(actual);
     assert.ok(contrast(actual,foreground)>=4.5,'chip text must remain legible on '+actual);
   }
-  assert.equal(patronageHeatColour(-1),'#6d28d9');
-  assert.equal(patronageHeatColour(1.5),'#dc2626');
-  assert.equal(patronageHeatColour(NaN),'#6d28d9');
+  assert.equal(patronageHeatColour(-1),'#440154');
+  assert.equal(patronageHeatColour(1.5),'#fde725');
+  assert.equal(patronageHeatColour(NaN),'#440154');
   assert.notEqual(patronageHeatColour(.18),patronageHeatColour(.25));
 });
 
@@ -79,11 +79,11 @@ test('only the requested stations are neutral, not other interchanges',()=>{
   }
   assert.equal(model.nodes.find(n=>n.id==='suth').markerSize,26);
   assert.equal(patronageHeatColour(model.nodes.find(n=>n.id==='suth').heatIntensity),
-    '#dc2626');
+    '#fde725');
   assert.equal(model.nodes.find(n=>n.id==='cen').value,2000000);
 });
 
-test('changes to included interchange volume, but not excluded hubs, alter the rainbow scale',()=>{
+test('changes to included interchange volume, but not excluded hubs, alter the sequential scale',()=>{
   const routes=buildPatronageRoutes(buildSchematic().seqs);
   const plan=stationDiagramPlan(routes,'T4_SCO');
   const stations=[
