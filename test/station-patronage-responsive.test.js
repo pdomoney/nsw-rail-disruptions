@@ -40,6 +40,8 @@ const byClass=(root,cls)=>traverse(root,n=>
 
 class FakeElement {
   constructor(tag){this.tag=tag;this.attrs={};this.children=[];this.events={};this.hidden=false;}
+  set className(value){this.attrs.class=String(value);}
+  get className(){return this.attrs.class||'';}
   setAttribute(k,v){this.attrs[k]=String(v);}
   append(...children){this.children.push(...children);}
   addEventListener(k,fn){this.events[k]=fn;}
