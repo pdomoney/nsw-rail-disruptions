@@ -143,7 +143,7 @@ test('Safari-facing HTML neutralises hubs but shows their original numbers and s
    patronageHeatColour(modelFor().nodes.find(n=>n.id==='kog').heatIntensity)));
  const sDot=descendants(byName(tree,'Sutherland Station'),'sp-route-dot')[0];
  assert.match(sDot.attrs.style,/--sp-marker-size:26px/);
- assert.match(sDot.attrs.style,/background-color:#dc2626/);
+ assert.match(sDot.attrs.style,/background-color:#fde725/);
  assert.notEqual(kDot.attrs.style,jDot.attrs.style,
    'ordinary stations have independent colour and size contrast');
 });
