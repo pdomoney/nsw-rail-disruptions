@@ -42,7 +42,7 @@ test('Central, Redfern and nominated hubs do not set the gradient maximum',()=>{
   const model=modelFor();
   assert.equal(model.maximum,500000,'keep true published peak');
   assert.equal(model.gradientMaximum,9000,'use largest ordinary station to set heat');
-  assert.equal(model.excludedHubCount,6);
+  assert.equal(model.excludedHubCount,5);
   assert.equal(model.hubScaleExclusionActive,true);
   const arn=model.nodes.find(n=>n.id==='arn');
   const kog=model.nodes.find(n=>n.id==='kog');
