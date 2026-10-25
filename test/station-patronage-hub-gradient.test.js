@@ -36,8 +36,8 @@ const modelFor=(data=source,extra={})=>stationDiagramModel(plan,stations,
 
 test('Central, Redfern and nominated hubs do not set the gradient maximum',()=>{
   assert.deepEqual([...PATRONAGE_HEAT_EXCLUDED_HUBS],
-    ['Central','Redfern','Sydenham'],'the only permitted excluded stops');
-  for(const included of ['Town Hall','Wolli Creek','Hurstville','Wollongong',
+    ['Martin Place','Town Hall','Central','Redfern','Sydenham'],'the only permitted excluded stops');
+  for(const included of ['Wolli Creek','Hurstville','Wollongong',
     'Parramatta','Strathfield','Chatswood','Sutherland','Bondi Junction']){
     assert.ok(!PATRONAGE_HEAT_EXCLUDED_HUBS.includes(included),
       included+' must remain in both scales');
@@ -126,7 +126,7 @@ test('active responsive view and legacy SVG use hub-excluded heat, while normal 
   const styles=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
   assert.match(sourceCode,/const fill=excludedHub\?'#e4e9ef'/);
   assert.match(sourceCode,/node\('span',\{\},'Higher patronage \('\+number\(diagramModel\.gradientMaximum\)/);
-  assert.match(sourceCode,/Only Central, Redfern and Sydenham are excluded/);
+  assert.match(sourceCode,/Only Martin Place, Town Hall, Central, Redfern and Sydenham are excluded/);
   assert.match(sourceCode,/Other interchanges are included/);
   assert.match(sourceCode,/node\('p',\{class:'sp-diagram-scale-note'/);
   assert.match(styles,/\.sp-diagram-scale-note/);
