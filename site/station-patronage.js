@@ -422,7 +422,12 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
       ], f.line, v => {
         f.line=v;f.route='';f.direction=v==='T4_SCO'?'city':'forward';
         f.sort=v==='all'?'patronage':'stops';
-        f.station=null;if(v==='all')f.view='list';render();
+        f.station=null;
+        // Whole-network analysis remains a ranked list. Selecting a physical
+        // railway line defaults to the diagram, with the List view one tap away.
+        // Without ordered route metadata preserve the existing list fallback.
+        f.view=v!=='all'&&patronageRouteChoice(routes,v,'').route?'diagram':'list';
+        render();
       }),
       ...(f.line!=='all' && patronageRouteChoice(routes,f.line,f.route).route ? [
         ...(f.view==='diagram' && (f.line==='T4'||f.line==='T4_SCO') ? [] : [field('Route / branch',patronageRouteChoice(routes,f.line,f.route).choices.map(r=>[r.id,r.name]),
