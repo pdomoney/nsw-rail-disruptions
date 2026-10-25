@@ -399,3 +399,14 @@
   .sp-diagram-panel > input[type="search"] {margin:4px 0 7px;}
   .sp-diagram-explainer {margin:0 0 6px;}
 }
+
+/* Annual totals are sums of published station months, not annual projections.
+   Keep the coverage warning visible without pushing the diagram below the fold. */
+.sp-annual-note {
+  margin:3px 0 9px;padding:7px 10px;line-height:1.4;font-size:.8rem;
+  color:var(--ink-2);background:var(--surface-2);
+  border-left:3px solid var(--rule-strong);border-radius:3px;
+}
+@media (max-width:600px) {
+  .sp-annual-note {padding:6px 9px;margin:2px 0 8px;font-size:.76rem;}
+}
