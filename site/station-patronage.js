@@ -208,7 +208,7 @@ function svgNode(tag,attributes={},...children) {
   return el;
 }
 
-function makeStationDiagram(model, {name,metric,search='',selectedId=null,onSelect}) {
+export function makeStationDiagram(model, {name,metric,search='',selectedId=null,onSelect}) {
   const svg=svgNode('svg',{
     class:'sp-diagram-svg',viewBox:'0 0 '+model.width+' '+model.height,
     width:model.width,height:model.height,role:'group',
