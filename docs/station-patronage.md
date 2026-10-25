@@ -1,6 +1,20 @@
+## Interchange hubs use neutral, fixed-size markers (PR #25)
+
+The mobile patronage diagram now uses the **same hub-excluded reference maximum for both ordinary-station circle sizes and gradient colours**. Previously PR #24 removed hubs from the colour maximum but still displayed Central, Redfern, and other excluded interchanges at the largest red colour and left the older marker-size model tied to the absolute corridor peak. This overwhelmed the intended comparison.
+
+- **Excluded hubs** show a restrained neutral-grey value chip, a fixed-size 18 px circle, and a small **Hub** label. Their source count stays fully visible and interactive, but they do not influence or compete in the ordinary-station colour/size comparison.
+- **Ordinary stations** use the busiest published ordinary station on the selected corridor as the reference for *both* visual scales, with marker diameters from **12 px to 26 px** and the pale-blue-to-red scale. Distinguishable colours and circle sizes remain when large hub values change.
+- **Zero** is a small filled marker. **Missing/suppressed** is a hollow marker with no invented passenger count.
+- The icon remains centred on the blue track regardless of diameter, including narrow iPhone layouts.
+- With no published ordinary-station data the display safely falls back to the available hub data, instead of displaying an empty gradient.
+
+Nothing changes in the imported Opal figures, total entries/exits, station profile, data period/metric filters, or line/branch order. The exclusions are presentational and remain explicitly defined in `PATRONAGE_HEAT_EXCLUDED_HUBS`.
+
+---
+
 ## Major interchange hubs excluded from the patronage colour range (PR #24)
 
-To prevent very busy interchange stations from washing out the station-colour gradient, the diagram normalises its **colour scale** against the largest *published, ordinary station* on the selected route. Central, Redfern and other major hubs are omitted from the colour-range calculation, but remain visible with their exact published figures and the highest saturated colour when their values exceed the ordinary-station maximum. The separate marker-size model, totals, station selection, direction-independent interpretation and source datasets are unchanged.
+To prevent very busy interchange stations from washing out the station-colour gradient, the diagram normalises its **colour scale** against the largest *published, ordinary station* on the selected route. Central, Redfern and other major hubs are omitted from the colour-range calculation, but in that release were still shown in saturated colours. **Superseded by PR #25:** hubs now use a fixed grey style and ordinary-station marker sizes use the hub-excluded reference too. Totals, station selection, direction-independent interpretation and source datasets remain unchanged.
 
 The initial, explicitly maintained exclusion set is **Central, Redfern, Town Hall, Wynyard, Strathfield, Parramatta, Chatswood, Hornsby, Epping, Blacktown, Lidcombe, Liverpool, Campbelltown, Bondi Junction, Sydenham, Wolli Creek, Hurstville, Sutherland and Wollongong**. The station names are normalised to match records with or without the suffix “Station”. These are display-scale exclusions, not a claim that every one of these stops is officially classified by TfNSW as a hub, and they can be revised without altering imported Opal data.
 
