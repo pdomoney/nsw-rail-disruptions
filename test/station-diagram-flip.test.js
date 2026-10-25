@@ -122,6 +122,8 @@ test('diagram includes a real, accessible flip control rather than a hidden list
   const ui=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
   assert.match(ui,/diagramFlip:false/);
+  assert.match(ui,/f\.view=v!=='all'&&patronageRouteChoice\(routes,v,''\)\.route\?'diagram':'list'/,
+    'a selected rail corridor must reveal the new picture by default, with list fallback');
   assert.match(ui,/flip:f\.diagramFlip/);
   assert.match(ui,/f\.diagramFlip=!f\.diagramFlip/);
   assert.match(ui,/sp-diagram-flip/);
