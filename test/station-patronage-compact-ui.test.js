@@ -35,7 +35,7 @@ test('exact five-station exclusion policy remains intact after palette change',(
     ['Martin Place','Town Hall','Central','Redfern','Sydenham']);
   assert.match(source,/const ordinary=published.filter\(st=>!patronageHubKeys.has\(st.key\)\)/);
   assert.match(source,/const markerSize=!record\?16:hubExcludedFromScale\?18:/);
-  assert.match(source,/const fill=excludedHub\?'#e4e9ef'/);
+  assert.match(source,/const fill=st\.visualColour\?\?/);
 });
 
 test('Station Patronage header is brief with native expandable methodology and quality warning',()=>{
