@@ -119,6 +119,20 @@ export function stationRouteRows(data, stations, routes, opts={}) {
 }
 
 
+// Colour published station activity using a continuous, perceptually ordered
+// cool-to-warm ramp. Values are scaled against the displayed corridor only.
+// A published zero has a pale filled marker; absent/suppressed data is hollow.
+export function patronageHeatColour(intensity) {
+  const value=Number.isFinite(intensity)?Math.max(0,Math.min(1,intensity)):0;
+  const palette=[[226,242,247],[88,174,189],[233,153,75],[177,45,52]];
+  const scaled=value*(palette.length-1);
+  const index=Math.min(palette.length-2,Math.floor(scaled));
+  const fraction=scaled-index;
+  const rgb=palette[index].map((channel,i)=>
+    Math.round(channel+(palette[index+1][i]-channel)*fraction));
+  return '#'+rgb.map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
 // Build a railway diagram from the same ordered stops used by the published
 // patronage view. This is a branching *station schematic*, not TfNSW map art,
 // train movement, a stopping timetable, or inferred journey direction.
@@ -164,7 +178,7 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
     const station=catalogue.get(stopNameKey(stop));
     return station?(recorded.get(station.id)?.value??0):0;
   }));
-  const nodes=[],paths=[],shown=new Set(),mainX=58,branchX=548,top=68,step=47;
+  const nodes=[],paths=[],shown=new Set(),mainX=58,branchX=412,top=68,step=47;
   function add(stop,x,y,service=plan.line) {
     const key=stopNameKey(stop);
     if(shown.has(key))return;
@@ -199,7 +213,14 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
     const service=plan.line==='T4_SCO'
       ? (stopNameKey(branch.stations.at(-1))==='cronulla'?'T4':'SCO')
       : plan.line;
-    paths.push({d:'M'+mainX+' '+y+' H'+branchX+' V'+(firstY+(branch.stations.length-1)*step),
+    // Exit below the junction station's label. A horizontal track directly
+    // through Sutherland/Coniston obscured names on narrow iPhone screens.
+    const gapY=y+Math.round(step/2),bend=12;
+    paths.push({d:'M'+mainX+' '+y+' V'+(gapY-4)+
+      ' Q'+mainX+' '+gapY+' '+(mainX+4)+' '+gapY+
+      ' H'+(branchX-bend)+
+      ' Q'+branchX+' '+gapY+' '+branchX+' '+(gapY+bend)+
+      ' V'+(firstY+(branch.stations.length-1)*step),
       branch:true,service});
     branch.stations.forEach((stop,i)=>add(stop,branchX,firstY+i*step,service));
     highest=Math.max(highest,firstY+(branch.stations.length-1)*step);
@@ -213,7 +234,7 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
     for(const st of nodes)st.y=axis-st.y;
     for(const path of paths)path.transform='translate(0 '+axis+') scale(1 -1)';
   }
-  return {nodes,paths,width:1030,height:highest+72,maximum:max,flipped:!!flip,
+  return {nodes,paths,width:820,height:highest+72,maximum:max,flipped:!!flip,
     line:plan.line,first:plan.trunk[0],last:plan.trunk.at(-1)};
 }
 
@@ -273,14 +294,17 @@ export function makeStationDiagram(model, {name,metric,search='',selectedId=null
       ...(st.id?{role:'button',tabindex:'0'}:{}),
     });
     group.append(
-      svgNode('rect',{x:st.x-23,y:st.y-22,width:450,height:44,rx:5,
+      svgNode('rect',{x:st.x-23,y:st.y-22,width:350,height:44,rx:5,
         class:'sp-diagram-hit'}),
       svgNode('circle',{cx:st.x,cy:st.y,r:radius,
-        class:'sp-diagram-dot',style:'--sp-station-colour:'+colour(st.service||model.line),
-        opacity:st.value===null?1:(0.45+0.55*st.intensity).toFixed(2)}),
-      svgNode('text',{x:st.x+26,y:st.y+5,class:'sp-diagram-label'},st.name),
-      svgNode('text',{x:st.x+435,y:st.y+5,class:'sp-diagram-value',
-        'text-anchor':'end'},label),
+        class:'sp-diagram-dot',
+        style:'--sp-station-colour:'+colour(st.service||model.line)+
+          ';--sp-heat-colour:'+patronageHeatColour(st.intensity)}),
+      // A tspan is laid out immediately after its station name by the SVG
+      // text engine; never pin the figure to an arbitrary distant x-coordinate.
+      svgNode('text',{x:st.x+26,y:st.y+5,class:'sp-diagram-label'},
+        svgNode('tspan',{class:'sp-diagram-name'},st.name),
+        svgNode('tspan',{class:'sp-diagram-value',dx:12},label)),
     );
     if(st.id) {
       const activate=()=>{
@@ -557,10 +581,14 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
           metric+'. Branches remain connected at their junctions when the diagram is flipped. '+
           'Station entries and exits do not identify the direction or train service used by a passenger.'),
         node('div',{class:'sp-diagram-legend','aria-label':'Patronage diagram legend'},
-          node('span',{},'● Larger circles: more published '+metric+' on this diagram'),
+          node('span',{},'● Larger, warmer circles: more published '+metric+' on this diagram'),
           node('span',{},'○ Hollow circle: missing or suppressed station figures'),
           node('span',{},'0 is a published zero, not missing data'),
-          node('span',{},'Line colours indicate the diagram route, not passenger travel direction')),
+          node('span',{},'Track colours indicate the route, not passenger travel direction'),
+          node('div',{class:'sp-diagram-heat-legend','aria-label':'Station patronage colour gradient from low to high'},
+            node('span',{},'Lower patronage'),
+            node('span',{class:'sp-diagram-heat-ramp','aria-hidden':'true'}),
+            node('span',{},'Higher patronage ('+number(diagramModel.maximum)+' '+metric+')'))),
         node('p',{class:'muted'},'On a phone, scroll the diagram sideways if needed. Select a station to see its source values.'),
         search,node('div',{class:'sp-diagram-scroll'}),
       );
