@@ -33,14 +33,63 @@ export function recentMonthlyStatus(data) {
   };
 }
 
+// Sum published station-month pairs into a calendar-year view, without filling
+// missing or suppressed months with zero. Historical and recent monthly series
+// are never combined: their published reporting methods are different.
+// Years with fewer than 12 published months are explicit partial-year totals.
+export function annualStationPatronage(data, sourceKey='monthly') {
+  if(sourceKey!=='monthly'&&sourceKey!=='legacyMonthly')
+    throw new Error('Only verified historical or recent monthly station totals can be annualised');
+  const source=data?.[sourceKey]||{};
+  const monthKeys=Object.keys(source).filter(month=>
+    /^\d{4}-(0[1-9]|1[0-2])$/.test(month)).sort();
+  const years=[...new Set(monthKeys.map(month=>month.slice(0,4)))];
+  const totals={},coverage={};
+  for(const year of years){
+    const months=monthKeys.filter(month=>month.startsWith(year+'-'));
+    const ids=new Set(months.flatMap(month=>Object.keys(source[month]||{})));
+    const stations={};
+    let missingStationCount=0;
+    for(const id of ids){
+      const pairs=months.map(month=>source[month]?.[id]);
+      // Missing individual months, partial entry/exit pairs or suppression
+      // invalidate that station's annual total; never treat absence as zero.
+      if(!pairs.every(pair=>Array.isArray(pair)&&pair.length>=2&&
+        Number.isSafeInteger(pair[0])&&pair[0]>=0&&
+        Number.isSafeInteger(pair[1])&&pair[1]>=0)){
+        missingStationCount++;
+        continue;
+      }
+      const entries=pairs.reduce((sum,pair)=>sum+pair[0],0);
+      const exits=pairs.reduce((sum,pair)=>sum+pair[1],0);
+      if(!Number.isSafeInteger(entries)||!Number.isSafeInteger(exits)){
+        missingStationCount++;
+        continue;
+      }
+      stations[id]=[entries,exits];
+    }
+    totals[year]=stations;
+    coverage[year]={
+      year,months,monthCount:months.length,
+      completeYear:months.length===12&&months[0]===year+'-01'&&
+        months[11]===year+'-12',
+      publishedStations:Object.keys(stations).length,
+      missingStationCount,
+    };
+  }
+  return {years,totals,coverage};
+}
+
 export function patronageRows(data, stations, {
-  period = 'typical', year = '2023', day = 'weekday', hour = '8',
+  period = 'typical', year = '2023', annualYear = '', day = 'weekday', hour = '8',
   month = '', sample = '2023', window = '06-10', metric = 'entries', line = 'all', search = '',
 } = {}) {
   const rows = [];
   const hourly = period === 'typical', sampled = period === 'windows';
   const source = hourly ? (data?.typical?.[year]?.[day] || {})
     : sampled ? (data?.periods?.[sample] || {})
+    : period === 'annual' ? (data?.annualMonthly?.[annualYear] || {})
+    : period === 'historical-annual' ? (data?.annualLegacyMonthly?.[annualYear] || {})
     : period === 'historical' ? (data?.legacyMonthly?.[month] || {}) : (data?.monthly?.[month] || {});
   const term = search.trim().toLowerCase();
   for (const [id, name, allLines] of stations || []) {
@@ -578,16 +627,21 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     .map(st => [st[0], st[1].replace(/\s+Station$/i, ''), st[2].filter(id => allowed.has(id)), st[3]]);
   const years = data.coverage?.years || [], months = data.coverage?.months || [];
   const samples = data.coverage?.samples || [], legacyMonths = data.coverage?.legacyMonths || [];
+  const recentAnnual=annualStationPatronage(data,'monthly');
+  const historicalAnnual=annualStationPatronage(data,'legacyMonthly');
+  const displayData={...data,annualMonthly:recentAnnual.totals,
+    annualLegacyMonthly:historicalAnnual.totals};
   const f = { period: months.length ? 'monthly' : samples.length ? 'windows' : years.length ? 'typical' : 'historical',
-    year: years.at(-1) || '2023',sample:samples.at(-1)||'2023',
+    year: years.at(-1) || '2023',annualYear:recentAnnual.years.at(-1)||historicalAnnual.years.at(-1)||'',
+    sample:samples.at(-1)||'2023',
     day: 'weekday', hour: '8', window:'06-10', month:months.at(-1)||legacyMonths.at(-1)||'',
-    metric: 'entries', line: 'all', route:'', direction:'forward',
+    metric: 'total', line: 'all', route:'', direction:'forward',
     sort:'patronage', view:'list', diagramFlip:false, search:'', station: null };
   const heading = node('header', { class: 'sp-heading' },
     node('p', { class: 'sp-eyebrow' }, 'Opal station activity'),
     node('h1', {}, 'Station patronage'),
     node('p', { class: 'sp-intro' },
-      'Compare station entries and exits by month, rail line and corridor.'),
+      'Compare monthly and annual station entries and exits by rail line and corridor.'),
     node('p', { class: 'sp-scope-summary' },
       node('strong', {}, 'Historical Opal taps, not live crowding. '),
       'Counts do not identify passenger direction or a specific train.'),
@@ -613,7 +667,7 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
   const content = node('div', { class: 'sp-content' });
   const notes = node('section', { class: 'sp-notes' },
     node('h2', {}, 'Source and limitations'),
-    node('p', {}, 'Source: Transport for NSW Opal-derived station entries and exits. Historical typical-day figures average three sampled weekdays, including three distinct 2020 periods. Source windows are 06–10, 10–15, 15–19, 19–06 and published 24-hour totals, not hourly counts. Historical and newer monthly totals use different methods. Suppressed counts below 50 remain missing, not zero.'),
+    node('p', {}, 'Source: Transport for NSW Opal-derived station entries and exits. Historical typical-day figures average three sampled weekdays, including three distinct 2020 periods. Source windows are 06–10, 10–15, 15–19, 19–06 and published 24-hour totals, not hourly counts. Annual views sum only published months from one source and never fill missing station-months as zero. Historical and newer monthly totals use different methods, so 2024 must be viewed separately by source. Suppressed counts below 50 remain missing, not zero.'),
     node('p', {}, 'Connected T4/SCO and individual rail-line routes show reference station order, NOT exact train stopping patterns. On T4/SCO shared stations, an Opal entry or exit is counted once, never both on T4 and SCO. Station counts have no journey origin, destination or citybound/coastbound field: reverse ordering must never be presented as directional passenger volume. Train stopping patterns and interchange arrangements may change with the timetable.'),
     node('p', {}, 'Dataset: ', node('a', { href: sourceData, target: '_blank', rel: 'noopener noreferrer' }, 'TfNSW Station Entries and Exits'),
       '. For current onboard crowding, use ', node('a', { href: '#/crowding' }, 'Crowding hotspots'), '.'));
@@ -656,18 +710,27 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
   function renderControls() {
     const allMonthly = f.period === 'historical' ? legacyMonths : months;
     if(allMonthly.length && !allMonthly.includes(f.month))f.month=allMonthly.at(-1);
+    const activeAnnual=f.period==='historical-annual'?historicalAnnual:recentAnnual;
+    if((f.period==='annual'||f.period==='historical-annual') &&
+      !activeAnnual.years.includes(f.annualYear))f.annualYear=activeAnnual.years.at(-1)||'';
     const controls = [
       field('Dataset', [
         ...(samples.length ? [['windows','Historic sampled day (time windows)']] : []),
         ...(years.length ? [['typical', 'Historical hourly sample (separate source)']] : []),
         ...(legacyMonths.length ? [['historical','Monthly history 2016–2024']] : []),
+        ...(historicalAnnual.years.length ? [['historical-annual','Annual history 2016–2024']] : []),
         ...(months.length ? [['monthly', 'Recent monthly totals']] : []),
+        ...(recentAnnual.years.length ? [['annual','Recent annual totals']] : []),
       ], f.period, v => { f.period = v; f.station = null; render(); }),
       f.period === 'windows'
         ? field('Historical sample', samples.map(x => [x, x]), f.sample, v => {f.sample=v;f.station=null;render();})
         : f.period === 'typical'
           ? field('Historical year', years.map(x => [x, x]), f.year, v => { f.year = v; f.station = null; render(); })
-          : field('Month', allMonthly.map(x => [x, x]), f.month, v => { f.month = v; f.station = null; render(); }),
+          : f.period === 'annual'||f.period==='historical-annual'
+            ? field('Calendar year',activeAnnual.years.map(x=>[x,
+                x+(activeAnnual.coverage[x]?.completeYear?'':' · partial')]),
+              f.annualYear,v=>{f.annualYear=v;f.station=null;render();})
+            : field('Month', allMonthly.map(x => [x, x]), f.month, v => { f.month = v; f.station = null; render(); }),
       f.period === 'typical' ? field('Typical day', [['weekday','Weekday'],['weekend','Weekend']],f.day,v=>{f.day=v;f.station=null;render();}):null,
       f.period === 'typical' ? field('Hour (Sydney)', [['all','All available hours'],
         ...Array.from({length:24},(_,h)=>[String(h),String(h).padStart(2,'0')+':00'])],
@@ -711,10 +774,10 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     renderControls();
     const selectedRoute=patronageRouteChoice(routes,f.line,f.route);
     const ordered=f.line!=='all' && selectedRoute.route;
-    const listRows=ordered ? stationRouteRows(data,stations,routes,f) : patronageRows(data,stations,f);
+    const listRows=ordered ? stationRouteRows(displayData,stations,routes,f) : patronageRows(displayData,stations,f);
     const plan=stationDiagramPlan(routes,f.line,f.route);
     const diagramColors=Object.fromEntries(lineItems.map(l=>[l.id,l.color]));
-    const allObservations=plan ? patronageRows(data,stations,{...f,line:'all',search:''}) : [];
+    const allObservations=plan ? patronageRows(displayData,stations,{...f,line:'all',search:''}) : [];
     const diagramModel=plan ? stationDiagramModel(plan,stations,allObservations,
       {flip:f.diagramFlip}) : null;
     // Summary cards use all unique plotted stations when both branches are shown;
@@ -723,16 +786,23 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     const published=rows.filter(r=>r.value!==null);
     const metric = f.metric === 'total' ? 'entries plus exits' : f.metric;
     const sample = f.period === 'typical', broadSample=f.period==='windows';
+    const activeAnnual=f.period==='historical-annual'?historicalAnnual:recentAnnual;
+    const annualMode=f.period==='annual'||f.period==='historical-annual';
+    const yearCoverage=annualMode?activeAnnual.coverage[f.annualYear]:null;
+    const annualSource=f.period==='historical-annual'?'historical':'recent';
     const periodDescription = broadSample
       ? f.sample + ' sampled typical weekday, ' + ({
           '06-10':'06:00–10:00','10-15':'10:00–15:00','15-19':'15:00–19:00',
           '19-06':'19:00–06:00','24h':'published 24-hour total'
         }[f.window]||f.window)
       : sample ? f.year + ' sampled typical ' + f.day + ', ' + (f.hour === 'all' ? 'all recorded hours' : String(f.hour).padStart(2, '0') + ':00–' + String(f.hour).padStart(2, '0') + ':59')
+      : annualMode ? f.annualYear+' · '+(yearCoverage?.completeYear?'full calendar year':'partial year')+
+        ' ('+(yearCoverage?.monthCount||0)+'/12 published months, '+annualSource+' source)'
       : f.month + ' whole-month totals';
     const totals = published.reduce((a,r)=>a+r.value,0);
     const headline = node('section', { class: 'sp-overview' },
-      cardValue('Data period', periodDescription, sample||broadSample ? 'Historical typical-day average' : 'Monthly Opal totals'),
+      cardValue('Data period', periodDescription,
+        sample||broadSample?'Historical typical-day average':annualMode?'Sum of available monthly Opal counts':'Monthly Opal totals'),
       cardValue('Stations with records',number(published.length),ordered
         ? number(published.length)+' of '+number(rows.length)+' listed corridor stops with records'
         : 'Within the selected rail-line filter'),
@@ -762,7 +832,17 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     const diagramActive=f.view==='diagram' && !!diagramModel;
     const lower = node('div', { class: 'sp-lower'+(diagramActive?' sp-lower-diagram':'') },
       diagramActive?diagram:ranking, detail);
-    content.replaceChildren(headline,toggle,lower);
+    const annualNote=annualMode?node('p',{class:'sp-annual-note',role:'status'},
+      yearCoverage?.completeYear
+        ? 'Full '+f.annualYear+' calendar year. Stations missing any published month are shown as unavailable.'
+        : 'Partial '+f.annualYear+' year: '+(yearCoverage?.months||[]).join(', ')+
+          '. Totals cover only these '+(yearCoverage?.monthCount||0)+
+          ' published months, not a full calendar year. Stations missing any of these months are shown as unavailable.',
+      ' '+(yearCoverage?.missingStationCount||0)+' station'+
+        (yearCoverage?.missingStationCount===1?'':'s')+' withheld for incomplete month coverage. '+
+        (f.period==='historical-annual'?'Historical source only.':'Recent source only.')+
+        ' Sources use different methods and are never mixed.') : null;
+    content.replaceChildren(...[headline,annualNote,toggle,lower].filter(Boolean));
     if(diagramActive){
       // Branches may extend above the trunk's terminus after flipping, so
       // describe the main-corridor reading order rather than implying the
@@ -815,8 +895,8 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     }
 
     function updateResults() {
-      const visible = ordered ? stationRouteRows(data,stations,routes,f)
-        : patronageRows(data,stations,f);
+      const visible = ordered ? stationRouteRows(displayData,stations,routes,f)
+        : patronageRows(displayData,stations,f);
       const maximum = Math.max(1, ...visible.filter(r=>r.value!==null).map(r => r.value));
       if(diagramActive) {
         const host=diagram.querySelector('.sp-diagram-scroll');
@@ -849,7 +929,7 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     function paintDetail(selected) {
       detail.replaceChildren(node('h2', {}, selected ? selected.name : 'Station profile'));
       if (!selected) {
-        detail.append(node('p', {}, 'Choose a different month, year, rail line or station.'));
+        detail.append(node('p', {}, 'Choose a different month, calendar year, rail line or station.'));
         return;
       }
       if(selected.value===null){
