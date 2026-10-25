@@ -6,19 +6,20 @@ import {
   PATRONAGE_HEAT_EXCLUDED_HUBS,patronageRows,
 } from '../site/station-patronage.js';
 
-test('seven Viridis bands separate different volumes and treat identical counts consistently',()=>{
+test('nine warm-ended bands separate different volumes and preserve tied counts',()=>{
   assert.deepEqual([...PATRONAGE_VISUAL_COLOURS],[
-    '#440154','#443983','#31688e','#21918c','#35b779','#90d743','#fde725']);
+    '#440154','#482878','#3e4989','#31688e','#26828e',
+    '#1f9e89','#73d055','#f8961e','#d62828']);
   const bands=stationPatronageVolumeBands([5000,100,200,200,300,800,1000,1800,5000,2700]);
-  assert.equal(bands.get(100),0);
+  assert.equal(bands.get(100),1);
   assert.equal(bands.get(200),1);
   assert.equal(bands.get(200),bands.get(200),'ties share one colour band');
-  assert.equal(bands.get(5000),6);
-  assert.ok([...bands.values()].every(v=>Number.isInteger(v)&&v>=0&&v<=6));
+  assert.equal(bands.get(5000),8);
+  assert.ok([...bands.values()].every(v=>Number.isInteger(v)&&v>=0&&v<=8));
   assert.equal(new Set(bands.values()).size,7);
   assert.deepEqual([...stationPatronageVolumeBands([0]).values()],[0],
     'an all-zero data set stays in the lowest band');
-  assert.deepEqual([...stationPatronageVolumeBands([800]).values()],[3],
+  assert.deepEqual([...stationPatronageVolumeBands([800]).values()],[4],
     'a single positive observation uses midpoint rather than false extremes');
   assert.deepEqual([...stationPatronageVolumeBands([]).values()],[]);
 });
@@ -57,7 +58,7 @@ test('five excluded station values remain grey; every other interchange particip
   assert.equal(included.length,8);
   assert.ok(new Set(included.map(n=>n.visualColour)).size>=4,
     'display volume-dependent variation without forcing unused bands onto the map');
-  assert.equal(m.nodes.find(n=>n.id==='st5').visualColour,PATRONAGE_VISUAL_COLOURS[6]);
+  assert.equal(m.nodes.find(n=>n.id==='st5').visualColour,PATRONAGE_VISUAL_COLOURS[8]);
   assert.equal(m.nodes.find(n=>n.id==='st12').visualColour,PATRONAGE_VISUAL_COLOURS[0]);
 });
 
@@ -74,12 +75,12 @@ test('changing excluded hub volumes never changes other station colours or sizes
   }
 });
 
-test('diagram stays compact with seven colour swatches and optional method details',()=>{
+test('diagram stays compact with nine colour swatches and optional method details',()=>{
   const js=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
   assert.match(js,/node\('div',\{class:'sp-diagram-quick-guide'\}/);
-  assert.match(js,/node\('div',\{class:'sp-diagram-seven-band'/);
-  assert.match(js,/Seven relative patronage volume bands/);
+  assert.match(js,/node\('div',\{class:'sp-diagram-nine-band'/);
+  assert.match(js,/Nine relative patronage volume bands/);
   assert.match(js,/node\('details',\{class:'sp-diagram-explainer'/);
   assert.match(js,/node\('span',\{class:'sp-band-swatch'/);
   assert.doesNotMatch(js,/node\('p',\{class:'sp-diagram-orientation'/);
@@ -90,7 +91,7 @@ test('diagram stays compact with seven colour swatches and optional method detai
   assert.ok(fragment.indexOf('search,')<fragment.indexOf("node('details',{class:'sp-diagram-explainer'"),
     'search should remain above long disclosures');
   assert.match(css,/\.sp-band-swatch \{/);
-  assert.match(css,/\.sp-diagram-seven-band \{/);
+  assert.match(css,/\.sp-diagram-nine-band \{/);
   assert.match(css,/\.sp-diagram-panel > input\[type="search"\]/);
 });
 
@@ -100,11 +101,11 @@ test('Rockdale and Carlton real screenshot counts map to visibly different colou
   const carlton=64085;
   const bands=stationPatronageVolumeBands([0,32266,34406,57192,60992,64085,64789,
     77874,219364,219522,244036,referenceMaximum]);
-  assert.equal(bands.get(rockdale),4,'Rockdale uses the fifth of seven bands');
-  assert.equal(bands.get(carlton),2,'Carlton uses the third of seven bands');
+  assert.equal(bands.get(rockdale),6,'Rockdale uses the seventh of nine bands');
+  assert.equal(bands.get(carlton),3,'Carlton uses the fourth of nine bands');
   assert.notEqual(PATRONAGE_VISUAL_COLOURS[bands.get(rockdale)],
     PATRONAGE_VISUAL_COLOURS[bands.get(carlton)]);
   assert.equal(bands.get(219522),bands.get(219364),
     'similar activity should remain visually comparable');
-  assert.equal(bands.get(referenceMaximum),6);
+  assert.equal(bands.get(referenceMaximum),8);
 });
