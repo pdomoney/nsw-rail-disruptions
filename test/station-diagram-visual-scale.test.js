@@ -111,7 +111,7 @@ test('explicit legend and adaptive SVG styles preserve true published zero versu
   assert.match(ui,/Hollow circle: missing or suppressed/);
   assert.match(ui,/0 is a published zero, not missing data/);
   assert.match(ui,/colors:diagramColors/);
-  assert.match(css,/\.sp-diagram-dot \{fill:var\(--sp-station-colour/);
+  assert.match(css,/\.sp-diagram-dot \{fill:var\(--sp-heat-colour/);
   assert.match(css,/\.sp-diagram-missing \.sp-diagram-dot/);
   assert.match(css,/\.sp-diagram-track \{stroke-width/);
 });
