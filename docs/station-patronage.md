@@ -1,3 +1,13 @@
+## Compact station diagram and visible ranked colours (PR #28)
+
+On small screens, the Diagram view now uses one compact **five-colour Viridis key (Less → More)** followed by the station search and the route itself. Full explanations of direction, missing data, station matching, branch geometry and methodology remain available through one closed-by-default **About this diagram, colours and data** disclosure. The former repeated five-line legend, extra route paragraph, detailed scale paragraph and station-reading instructions no longer precede the route.
+
+**Visual comparison:** The previous continuous square-root/maximum colour ramp appeared almost entirely dark purple when one (non-excluded) major interchange was much busier than typical stops. The new five-step colour display ranks each *distinct published count* within the selected route and assigns a stable Viridis colour group from lowest to highest. This creates distinguishable visual groups even in highly skewed patronage distributions. Identical published values receive the same group. This is a **relative rank display**, **not five equally spaced passenger-count intervals**. The labels keep exact unmodified Opal tap counts, and station circle sizes retain the previous quantitative maximum-based scale.
+
+The five agreed exclusions remain exactly **Martin Place, Town Hall, Central, Redfern and Sydenham**. Their counts remain visible in neutral grey, and they are omitted from the ranking calculation if published non-excluded data is available. All other stations and interchanges participate normally. Missing/suppressed values remain hollow; a published zero is not treated as unavailable. Changing period/metric recomputes the groups without altering source values. Full instructions remain available to keyboard, screen reader and touch users.
+
+---
+
 ## Perceptually ordered scale and compact mobile header (PR #27)
 
 **Current colour treatment:** Station activity is a quantitative magnitude, not a set of categories. The previous red/orange/green/violet rainbow is replaced by **Viridis**, a perceptually ordered **deep violet → blue → teal → green → bright yellow** scale. This follows Matplotlib's guidance to use a perceptually uniform sequential palette for ordered values (https://matplotlib.org/stable/tutorials/colors/colormaps.html) and ColorBrewer's guidance that sequential palettes should present ordered magnitudes (https://colorbrewer2.org/learnmore/schemes_full.html). All eleven reference colour anchors are sampled from Matplotlib's Viridis at equal 0.1 intervals. The numerical Opal entries/exits are not modified.
