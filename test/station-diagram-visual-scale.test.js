@@ -107,7 +107,7 @@ test('explicit legend and adaptive SVG styles preserve true published zero versu
   const ui=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
   assert.match(ui,/const badgeLines=model\.line==='T4_SCO'\?\['T4','SCO'\]:\[model\.line\]/);
-  assert.match(ui,/Seven relative patronage volume bands, from lower to higher/);
+  assert.match(ui,/Nine relative patronage volume bands, from lower to higher/);
   assert.match(ui,/Missing\/suppressed values use a hollow marker/);
   assert.match(ui,/a published zero remains a filled marker/);
   assert.match(ui,/colors:diagramColors/);
