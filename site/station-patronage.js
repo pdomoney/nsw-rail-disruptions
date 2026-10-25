@@ -419,11 +419,14 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     renderControls();
     const selectedRoute=patronageRouteChoice(routes,f.line,f.route);
     const ordered=f.line!=='all' && selectedRoute.route;
-    const rows=ordered ? stationRouteRows(data,stations,routes,f) : patronageRows(data,stations,f);
-    const published=rows.filter(r=>r.value!==null);
+    const listRows=ordered ? stationRouteRows(data,stations,routes,f) : patronageRows(data,stations,f);
     const plan=stationDiagramPlan(routes,f.line,f.route);
     const allObservations=plan ? patronageRows(data,stations,{...f,line:'all',search:''}) : [];
     const diagramModel=plan ? stationDiagramModel(plan,stations,allObservations) : null;
+    // Summary cards use all unique plotted stations when both branches are shown;
+    // the selected route/list subset would otherwise undercount the diagram.
+    const rows=f.view==='diagram' && diagramModel ? diagramModel.nodes : listRows;
+    const published=rows.filter(r=>r.value!==null);
     const metric = f.metric === 'total' ? 'entries plus exits' : f.metric;
     const sample = f.period === 'typical', broadSample=f.period==='windows';
     const periodDescription = broadSample
