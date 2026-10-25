@@ -23,7 +23,7 @@ function contrast(a,b) {
 test('the scale is an ordered, saturated seven-colour rainbow, not muted earth colours',()=>{
   assert.deepEqual([...PATRONAGE_RAINBOW_STOPS],colours);
   assert.deepEqual([...PATRONAGE_HEAT_EXCLUDED_HUBS],
-    ['Central','Redfern','Sydenham']);
+    ['Martin Place','Town Hall','Central','Redfern','Sydenham']);
   for(let i=0;i<colours.length;i++) {
     const actual=patronageHeatColour(i/(colours.length-1));
     assert.equal(actual,colours[i],'rainbow stop '+i+' must be accurate');
@@ -46,7 +46,7 @@ test('the CSS legend uses the exact seven stops in the same increasing order',()
   assert.match(css,/\.sp-route-amount-hub/);
 });
 
-test('only three stations are neutral regardless of other interchange membership',()=>{
+test('only the requested stations are neutral, not other interchanges',()=>{
   const routes=buildPatronageRoutes(buildSchematic().seqs);
   const plan=stationDiagramPlan(routes,'T4_SCO');
   const stations=[
