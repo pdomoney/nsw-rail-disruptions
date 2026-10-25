@@ -93,24 +93,26 @@ test('mobile station, published value and heat-coloured marker sit together in o
   const amount=byClass(parent,'sp-route-amount')[0];
   assert.ok(amount);
   assert.equal(text(amount),'20,000');
-  assert.match(amount.attrs.style,/background-color:#b12d34/);
+  assert.match(amount.attrs.style,/background-color:#e4e9ef/);
+  assert.equal(text(byClass(parent,'sp-route-hub-tag')[0]),'Hub');
   const button=byClass(root,'sp-route-stop-button').find(el=>
     (el.attrs['aria-label']||'').startsWith('Central Station,'));
   const marker=byClass(button,'sp-route-dot')[0];
-  assert.match(marker.attrs.style,/background-color:#b12d34/);
+  assert.match(marker.attrs.style,/background-color:#e4e9ef/);
+  assert.match(marker.attrs.style,/--sp-marker-size:18px/);
   assert.ok(traverse(button,n=>n.tag==='span').length>=4);
   const smaller=byClass(root,'sp-route-stop-button').find(el=>
     (el.attrs['aria-label']||'').startsWith('Arncliffe Station,'));
   assert.match(byClass(smaller,'sp-route-amount')[0].attrs.style,
     new RegExp('background-color:'+patronageHeatColour(
       model.nodes.find(n=>n.name==='Arncliffe Station').heatIntensity)));
-  // Arncliffe is now the ordinary-route maximum and correctly reaches red,
-  // just as Central does. Compare it with a smaller ordinary station instead.
+  // Arncliffe is the ordinary-route maximum, while Central stays neutral.
   const low=byClass(root,'sp-route-stop-button').find(el=>
     (el.attrs['aria-label']||'').startsWith('Jannali Station,'));
   assert.ok(low);
   assert.notEqual(byClass(low,'sp-route-amount')[0].attrs.style,
     byClass(smaller,'sp-route-amount')[0].attrs.style);
+  assert.match(byClass(smaller,'sp-route-amount')[0].attrs.style,/background-color:#b12d34/);
 });
 
 test('unreported observations remain hollow and true zero is a low-end filled marker',()=>{

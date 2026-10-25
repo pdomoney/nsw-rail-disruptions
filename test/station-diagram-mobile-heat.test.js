@@ -92,9 +92,11 @@ test('heat markers reflect station value and missing observations remain hollow'
   const byId=id=>findAll(svg,n=>n.attrs['data-station-id']===id)[0];
   const marker=id=>findAll(byId(id),n=>n.attrs.class==='sp-diagram-dot')[0];
   const central=marker('c'),jannali=marker('j'),zero=marker('cn');
-  assert.ok(Number(central.attrs.r)>Number(jannali.attrs.r));
+  assert.ok(Number(central.attrs.r)>0);
+  assert.ok(Number(jannali.attrs.r)>0);
   assert.notEqual(central.attrs.style,jannali.attrs.style);
-  assert.match(central.attrs.style,/--sp-heat-colour:#b12d34/);
+  assert.match(central.attrs.style,/--sp-heat-colour:#e4e9ef/);
+  assert.match(central.attrs.class||'sp-diagram-dot',/sp-diagram-dot/);
   assert.match(zero.attrs.style,/--sp-heat-colour:#e2f2f7/,
     'a reported zero is filled with low-end scale colour');
   const absent=byId('pk');

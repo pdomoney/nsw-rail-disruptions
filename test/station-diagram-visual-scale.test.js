@@ -107,7 +107,7 @@ test('explicit legend and adaptive SVG styles preserve true published zero versu
   const ui=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
   assert.match(ui,/const badgeLines=model\.line==='T4_SCO'\?\['T4','SCO'\]:\[model\.line\]/);
-  assert.match(ui,/Larger, warmer circles: more published/);
+  assert.match(ui,/Ordinary stations: larger, warmer markers mean more/);
   assert.match(ui,/Hollow circle: missing or suppressed/);
   assert.match(ui,/0 is a published zero, not missing data/);
   assert.match(ui,/colors:diagramColors/);
