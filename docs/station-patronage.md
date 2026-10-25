@@ -1,3 +1,13 @@
+## Responsive diagram correction (PR #23)
+
+User feedback from iPhone Safari confirmed the original wide SVG diagram remained difficult to use after the PR #22 colour and label adjustments. The main Station Patronage diagram now renders as a **responsive, vertical station-route view** rather than a fixed-width drawing. The line spine is displayed on the left. Each row contains the **station name immediately next to its published entry/exit value**. The value chip and station marker use an explicit inline low-to-high heat colour with a contrasting text colour, avoiding reliance on SVG colour-variable rendering in Safari. There is no side-to-side panning to associate a station with its count.
+
+Route branches appear **immediately after their junction stop** in collapsible, initially open branch sections, labelled for their terminal (for example *Branch to Cronulla* at Sutherland and *Branch to Port Kembla* at Coniston). These sections do not repeat the shared junction station or add passenger counts. Diagram flip still reverses the main spine's reading order, with each branch displayed from its junction towards its terminal. The view uses native buttons for station selection. Tapping one reveals entries and exits **directly under that station row** as well as updating the existing full station profile, so an iPhone user is not forced to scroll to the end of a long corridor to read details.
+
+The prior generated SVG renderer and its regression fixtures remain in the codebase for compatibility and later cleanup, but **are not used by the active diagram view**. The TfNSW data model, station count calculations, existing line colours, source distinctions, and map views remain unchanged. Manual iPhone Safari and Home Screen visual acceptance are still required.
+
+---
+
 ## Mobile station labels and patronage heat gradient (PR #22)
 
 The previous diagram displayed station names near the track but pinned their numeric values to a distant right-aligned SVG column. On an iPhone this separated a station from its count by hundreds of pixels and required horizontal scrolling. The station name and its selected entry, exit or combined figure are now adjacent `<tspan>` elements in the same accessible SVG text node, with a small measured gap supplied by SVG text layout rather than a hardcoded remote x-coordinate. The overall SVG is narrower for mobile browsing.
