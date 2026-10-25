@@ -1,3 +1,21 @@
+## Annual station patronage and default combined taps (PR #31)
+
+Station Patronage supports both the existing month-by-month views **and calendar-year aggregation**. The default **Measure** is now **Entries + exits**, while users can still select entries or exits alone. The starting dataset remains the latest available recent month so a partially published year is not mistaken for a full year.
+
+The dataset selector adds **Recent annual totals** and **Annual history 2016–2024**. Choose a **Calendar year** to sum published monthly entry/exit pairs, then choose any existing rail line, connected corridor, map orientation or view. All annual calculations occur on the verified imported records already published by the application, without fetching a new source or treating a station on several lines as several observations.
+
+**Coverage and source integrity:**
+
+- The historical monthly series covers **2016-07 through 2024-10**, and the recent monthly series starts **2024-11**. These use different source methodologies and are **never blended** into one 2024 total. Users can select the two separate 2024 partial-year annual views, each explicitly marked with its source and month range.
+- Annual figures are **sums of available published months**, never interpolations, annualisations, projections or sampled-day extrapolations. A year with fewer than 12 published calendar months is marked **partial year (N/12 months)**, with a compact, visible coverage note. Only a January–December series is labelled a **full calendar year**.
+- A station must have **both valid entries and exits for every published month of that source/year**. Otherwise the year figure is withheld for that station and it displays as unavailable, not as a misleading partial sum or zero. Real published zeros remain valid.
+- The annual dataset is calculated in the station view from `monthly` or `legacyMonthly`, without changes to the data importer, scheduled refresh, provenance or other maps. Select another dataset, period or measure to see the original counts unchanged.
+- Entries + exits counts **tap events**, not unique passengers; annual figures do not describe passenger travel direction, train occupancy or a particular service.
+
+Automated tests validate full and partial years, the split 2024 source periods, individual station gaps, suppressed pairs, zero, multi-line deduplication, route visualisations, three measure options, and the default.
+
+---
+
 ## Nine station activity colour shades with a warmer high end (PR #30)
 
 The Station Patronage diagram now displays **nine distinct volume shades**, adding two more bands to improve differentiation while warming the high end toward **orange and red**. The active palette is dark purple → violet → indigo → blue → teal → green → lime → orange → red. This is a custom warm-ended sequential scale, not the default Matplotlib Viridis colormap. Its purpose is to make higher-volume stops visually clearer on mobile while retaining recognisable low-to-high order. The compact legend fits within the narrow station diagram.
