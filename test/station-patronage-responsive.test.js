@@ -104,8 +104,7 @@ test('mobile station, published value and heat-coloured marker sit together in o
   const smaller=byClass(root,'sp-route-stop-button').find(el=>
     (el.attrs['aria-label']||'').startsWith('Arncliffe Station,'));
   assert.match(byClass(smaller,'sp-route-amount')[0].attrs.style,
-    new RegExp('background-color:'+patronageHeatColour(
-      model.nodes.find(n=>n.name==='Arncliffe Station').heatIntensity)));
+    new RegExp('background-color:'+model.nodes.find(n=>n.name==='Arncliffe Station').visualColour));
   // Arncliffe remains a normal plotted station, while Central stays neutral.
   // Sutherland is also included in the scale and may set its maximum.
   const low=byClass(root,'sp-route-stop-button').find(el=>
@@ -114,8 +113,7 @@ test('mobile station, published value and heat-coloured marker sit together in o
   assert.notEqual(byClass(low,'sp-route-amount')[0].attrs.style,
     byClass(smaller,'sp-route-amount')[0].attrs.style);
   assert.match(byClass(smaller,'sp-route-amount')[0].attrs.style,
-    new RegExp('background-color:'+patronageHeatColour(
-      model.nodes.find(n=>n.name==='Arncliffe Station').heatIntensity)));
+    new RegExp('background-color:'+model.nodes.find(n=>n.name==='Arncliffe Station').visualColour));
 });
 
 test('unreported observations remain hollow and true zero is a low-end filled marker',()=>{
