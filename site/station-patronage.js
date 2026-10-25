@@ -720,7 +720,7 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
               ' excluded from the range). Their full counts are still shown and their '+
               'colours are capped at the high end.'
             : 'Colour scale uses the available observations on this corridor; '+
-              'no published non-hub station data was available.'),
+              'no published non-hub station data was available.')),
         node('p',{class:'muted'},'Read the main route from top to bottom. Open a branch at its junction; tap a station to reveal its entry and exit counts beside the route.'),
         search,node('div',{class:'sp-diagram-scroll'}),
       );
