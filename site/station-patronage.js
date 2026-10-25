@@ -494,6 +494,9 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
       diagramActive?diagram:ranking, detail);
     content.replaceChildren(headline,toggle,lower);
     if(diagramActive){
+      // Branches may extend above the trunk's terminus after flipping, so
+      // describe the main-corridor reading order rather than implying the
+      // two labels are literally the highest/lowest markers in a branched map.
       const topStation=f.diagramFlip?diagramModel.last:diagramModel.first;
       const bottomStation=f.diagramFlip?diagramModel.first:diagramModel.last;
       diagram.append(
@@ -511,8 +514,8 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
           },'⇅ Flip diagram'),
         ),
         node('p',{class:'sp-diagram-orientation','aria-live':'polite'},
-          'Reading top to bottom: '+topStation+' → '+bottomStation+
-          ' (diagram orientation only)'),
+          'Main corridor, top to bottom: '+topStation+' → '+bottomStation+
+          ' (diagram orientation only; branches may extend beyond the terminus)'),
         node('p',{class:'sp-corridor-note'},
           'Reference station order, not a timetable. Circle size represents the selected station-level '+
           metric+'. Branches remain connected at their junctions when the diagram is flipped. '+
