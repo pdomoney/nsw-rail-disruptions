@@ -115,9 +115,10 @@ test('all-hub and wholly unavailable corridors use safe fallback, no invented co
 test('active responsive view and legacy SVG use hub-excluded heat, while normal counts remain unchanged',()=>{
   const sourceCode=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const styles=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
-  assert.match(sourceCode,/const fill=patronageHeatColour\(st\.heatIntensity\?\?st\.intensity\)/);
+  assert.match(sourceCode,/const fill=excludedHub\?'#e4e9ef'/);
   assert.match(sourceCode,/node\('span',\{\},'Higher patronage \('\+number\(diagramModel\.gradientMaximum\)/);
   assert.match(sourceCode,/High-volume interchange hubs, including Central and Redfern/);
+  assert.match(sourceCode,/Full hub counts remain visible in neutral grey/);
   assert.match(sourceCode,/node\('p',\{class:'sp-diagram-scale-note'/);
   assert.match(styles,/\.sp-diagram-scale-note/);
 });
