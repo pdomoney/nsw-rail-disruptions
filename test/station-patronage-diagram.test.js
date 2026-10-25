@@ -113,7 +113,7 @@ test('diagram is an accessible SVG alternative, not an external map or live ride
   assert.match(src,/aria-pressed/);
   assert.match(src,/e\.key==='Enter'\|\|e\.key===' '/);
   assert.match(src,/Diagram view/);
-  assert.match(src,/makeStationDiagram\(diagramModel/);
+  assert.match(src,/makeResponsiveStationDiagram\(plan,diagramModel/);
   assert.match(src,/f\.view==='diagram' && diagramModel \? diagramModel\.nodes : listRows/);
   assert.match(styles,/overflow-x:auto/);
   assert.match(styles,/focus-visible/);
