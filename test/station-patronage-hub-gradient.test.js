@@ -35,14 +35,17 @@ const modelFor=(data=source,extra={})=>stationDiagramModel(plan,stations,
   patronageRows(data,stations,{...options,...extra}));
 
 test('Central, Redfern and nominated hubs do not set the gradient maximum',()=>{
-  for(const hub of ['Central','Redfern','Town Hall','Wolli Creek','Hurstville',
-    'Wollongong','Parramatta','Strathfield','Chatswood','Sutherland']){
-    assert.ok(PATRONAGE_HEAT_EXCLUDED_HUBS.includes(hub),hub+' in declared exclusions');
+  assert.deepEqual([...PATRONAGE_HEAT_EXCLUDED_HUBS],
+    ['Martin Place','Town Hall','Central','Redfern','Sydenham'],'the only permitted excluded stops');
+  for(const included of ['Wolli Creek','Hurstville','Wollongong',
+    'Parramatta','Strathfield','Chatswood','Sutherland','Bondi Junction']){
+    assert.ok(!PATRONAGE_HEAT_EXCLUDED_HUBS.includes(included),
+      included+' must remain in both scales');
   }
   const model=modelFor();
   assert.equal(model.maximum,500000,'keep true published peak');
-  assert.equal(model.gradientMaximum,9000,'use largest ordinary station to set heat');
-  assert.equal(model.excludedHubCount,5);
+  assert.equal(model.gradientMaximum,150000,'Hurstville included as largest non-excluded station');
+  assert.equal(model.excludedHubCount,2);
   assert.equal(model.hubScaleExclusionActive,true);
   const arn=model.nodes.find(n=>n.id==='arn');
   const kog=model.nodes.find(n=>n.id==='kog');
@@ -51,8 +54,14 @@ test('Central, Redfern and nominated hubs do not set the gradient maximum',()=>{
   const redfern=model.nodes.find(n=>n.id==='redfern');
   assert.ok(arn.heatIntensity>arn.intensity);
   assert.ok(jan.heatIntensity>jan.intensity);
-  assert.equal(kog.heatIntensity,1);
-  assert.equal(patronageHeatColour(kog.heatIntensity),'#b12d34');
+  assert.ok(kog.heatIntensity<1,'Kogarah must not be rendered as the peak');
+  const hurstville=model.nodes.find(n=>n.id==='hville');
+  assert.equal(hurstville.heatIntensity,1);
+  assert.equal(hurstville.markerSize,26);
+  assert.equal(hurstville.hubExcludedFromScale,false);
+  assert.equal(patronageHeatColour(hurstville.heatIntensity),'#dc2626');
+  assert.equal(model.nodes.find(n=>n.id==='suth').hubExcludedFromScale,false);
+  assert.equal(model.nodes.find(n=>n.id==='wong').hubExcludedFromScale,false);
   assert.equal(central.value,500000);
   assert.equal(redfern.value,200000);
   assert.equal(central.heatIntensity,1,'hub colour clamps to top');
@@ -92,7 +101,7 @@ test('flip and metric changes preserve hub exclusion and use selected source val
   assert.deepEqual(flipped.nodes.map(n=>[n.id,n.value,n.heatIntensity]),
     a.nodes.map(n=>[n.id,n.value,n.heatIntensity]));
   const exits=modelFor(source,{metric:'exits'});
-  assert.equal(exits.gradientMaximum,9400);
+  assert.equal(exits.gradientMaximum,151000);
   assert.equal(exits.maximum,470000);
 });
 
@@ -117,8 +126,8 @@ test('active responsive view and legacy SVG use hub-excluded heat, while normal 
   const styles=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
   assert.match(sourceCode,/const fill=excludedHub\?'#e4e9ef'/);
   assert.match(sourceCode,/node\('span',\{\},'Higher patronage \('\+number\(diagramModel\.gradientMaximum\)/);
-  assert.match(sourceCode,/High-volume interchange hubs, including Central and Redfern/);
-  assert.match(sourceCode,/Full hub counts remain visible in neutral grey/);
+  assert.match(sourceCode,/Only Martin Place, Town Hall, Central, Redfern and Sydenham are excluded/);
+  assert.match(sourceCode,/Other interchanges are included/);
   assert.match(sourceCode,/node\('p',\{class:'sp-diagram-scale-note'/);
   assert.match(styles,/\.sp-diagram-scale-note/);
 });

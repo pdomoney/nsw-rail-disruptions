@@ -6,7 +6,7 @@ import {buildSchematic} from '../src/lib/schematic.js';
 import {buildPatronageRoutes} from '../src/lib/patronage-routes.js';
 import {
   patronageRows,stationDiagramPlan,stationDiagramModel,
-  makeResponsiveStationDiagram,
+  makeResponsiveStationDiagram,patronageHeatColour,
 } from '../site/station-patronage.js';
 
 const routes=buildPatronageRoutes(buildSchematic().seqs);
@@ -35,14 +35,15 @@ const modelFor=(data=counts,extra={})=>stationDiagramModel(plan,stations,
 test('exclude high-volume interchange hubs from BOTH visual size and colour scales',()=>{
  const m=modelFor();
  assert.equal(m.maximum,2270013,'full published max is retained for metadata');
- assert.equal(m.gradientMaximum,90000,'ordinary station sets colour and marker maximum');
- assert.equal(m.excludedHubCount,4);
+ assert.equal(m.gradientMaximum,440000,'Sutherland is included and sets the scale');
+ assert.equal(m.excludedHubCount,3);
  const c=m.nodes.find(n=>n.id==='cen');
  const r=m.nodes.find(n=>n.id==='red');
  const s=m.nodes.find(n=>n.id==='syd');
  const k=m.nodes.find(n=>n.id==='kog');
  const a=m.nodes.find(n=>n.id==='arn');
  const j=m.nodes.find(n=>n.id==='jan');
+ const suth=m.nodes.find(n=>n.id==='suth');
  assert.equal(c.value,2270013);
  assert.equal(r.value,659130);
  assert.equal(c.entries,2270013);
@@ -54,9 +55,11 @@ test('exclude high-volume interchange hubs from BOTH visual size and colour scal
    assert.equal(hub.heatIntensity,1,'raw heat intensity still clamps but render ignores it');
  }
  assert.equal(k.hubExcludedFromScale,false);
- assert.equal(k.markerSize,26,'largest ordinary station has largest marker');
- assert.ok(a.markerSize>j.markerSize,'ordinary marker radius varies visibly');
- assert.ok(k.markerSize>c.markerSize,'Central does not dominate ordinary station marker');
+ assert.equal(suth.markerSize,26,'Sutherland is now the largest included station');
+ assert.equal(suth.hubExcludedFromScale,false);
+ assert.ok(a.markerSize>j.markerSize,'included station diameter varies visibly');
+ assert.ok(suth.markerSize>c.markerSize,'Central never dominates an included station');
+ assert.ok(k.markerSize>=j.markerSize);
  assert.ok(j.markerSize>=12);
  assert.equal(m.nodes.find(n=>n.id==='con').markerSize,12,'published zero');
  assert.equal(m.nodes.find(n=>n.id==='pk').markerSize,16,'missing marker is hollow');
@@ -135,8 +138,12 @@ test('Safari-facing HTML neutralises hubs but shows their original numbers and s
  assert.equal(r.children[0],'659,130');
  const kDot=descendants(kogarah,'sp-route-dot')[0];
  const jDot=descendants(jannali,'sp-route-dot')[0];
- assert.match(kDot.attrs.style,/--sp-marker-size:26px/);
- assert.match(kDot.attrs.style,/background-color:#b12d34/);
+ assert.match(kDot.attrs.style,/--sp-marker-size:/);
+ assert.match(kDot.attrs.style,new RegExp('background-color:'+
+   patronageHeatColour(modelFor().nodes.find(n=>n.id==='kog').heatIntensity)));
+ const sDot=descendants(byName(tree,'Sutherland Station'),'sp-route-dot')[0];
+ assert.match(sDot.attrs.style,/--sp-marker-size:26px/);
+ assert.match(sDot.attrs.style,/background-color:#dc2626/);
  assert.notEqual(kDot.attrs.style,jDot.attrs.style,
    'ordinary stations have independent colour and size contrast');
 });

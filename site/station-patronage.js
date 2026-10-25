@@ -119,27 +119,39 @@ export function stationRouteRows(data, stations, routes, opts={}) {
 }
 
 
-// Colour published station activity using a continuous, perceptually ordered
-// cool-to-warm ramp. Values are scaled against the displayed corridor only.
-// A published zero has a pale filled marker; absent/suppressed data is hollow.
+// Strong rainbow scale for station-level Opal activity. The end stops are
+// intentionally vivid (violet -> blue -> cyan -> green -> yellow -> orange -> red),
+// unlike the previous muted pastel/earth tones. The source count is unchanged.
+export const PATRONAGE_RAINBOW_STOPS=Object.freeze([
+  '#6d28d9','#2563eb','#06b6d4','#16a34a','#fde047','#f97316','#dc2626',
+]);
 export function patronageHeatColour(intensity) {
   const value=Number.isFinite(intensity)?Math.max(0,Math.min(1,intensity)):0;
-  const palette=[[226,242,247],[88,174,189],[233,153,75],[177,45,52]];
-  const scaled=value*(palette.length-1);
-  const index=Math.min(palette.length-2,Math.floor(scaled));
+  const scaled=value*(PATRONAGE_RAINBOW_STOPS.length-1);
+  const index=Math.min(PATRONAGE_RAINBOW_STOPS.length-2,Math.floor(scaled));
   const fraction=scaled-index;
-  const rgb=palette[index].map((channel,i)=>
-    Math.round(channel+(palette[index+1][i]-channel)*fraction));
-  return '#'+rgb.map(v=>v.toString(16).padStart(2,'0')).join('');
+  const rgb=hex=>[1,3,5].map(i=>Number.parseInt(hex.slice(i,i+2),16));
+  const from=rgb(PATRONAGE_RAINBOW_STOPS[index]);
+  const to=rgb(PATRONAGE_RAINBOW_STOPS[index+1]);
+  return '#'+from.map((v,i)=>Math.round(v+(to[i]-v)*fraction)
+    .toString(16).padStart(2,'0')).join('');
 }
 
-// Exclude very busy interchange hubs when choosing a useful colour range for
-// ordinary stations. An exclusion does NOT hide a hub's reported figures.
+// Choose the more legible chip text for each shade (including yellow, cyan
+// and green) using WCAG relative luminance and contrasting black/white.
+export function patronageHeatTextColour(hex) {
+  const c=/^#[0-9a-f]{6}$/i.test(hex||'')?hex:'#ffffff';
+  const rgb=[1,3,5].map(i=>Number.parseInt(c.slice(i,i+2),16)/255);
+  const linear=rgb.map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
+  const luminance=linear[0]*0.2126+linear[1]*0.7152+linear[2]*0.0722;
+  return (luminance+0.05)/0.05 >= 1.05/(luminance+0.05)
+    ? '#111827' : '#ffffff';
+}
+
+// Only these five user-specified stations are removed from the visual scaling.
+// All other interchanges must use their normal source-backed colour and size.
 export const PATRONAGE_HEAT_EXCLUDED_HUBS=Object.freeze([
-  'Central','Redfern','Town Hall','Wynyard','Strathfield','Parramatta',
-  'Chatswood','Hornsby','Epping','Blacktown','Lidcombe','Liverpool',
-  'Campbelltown','Bondi Junction','Sydenham','Wolli Creek','Hurstville',
-  'Sutherland','Wollongong',
+  'Martin Place','Town Hall','Central','Redfern','Sydenham',
 ]);
 const patronageHubKeys=new Set(PATRONAGE_HEAT_EXCLUDED_HUBS.map(stopNameKey));
 
@@ -191,8 +203,9 @@ export function stationDiagramModel(plan, stations, observations, { flip = false
   // Retain the actual highest count for reporting and old SVG consumers.
   // Neither mobile marker sizes nor colours should use this hub-skewed peak.
   const max=Math.max(1,...published.map(st=>st.value));
-  // Use non-hub values for both size and colour, but fall back when no ordinary station is
-  // published in this period. Do not turn missing or suppressed into zero.
+  // Remove only Martin Place, Town Hall, Central, Redfern and Sydenham. All other
+  // hubs remain part of the size and rainbow colour calculation. If no other
+  // published values exist, fall back to those available source records.
   const ordinary=published.filter(st=>!patronageHubKeys.has(st.key));
   const excludeHubs=ordinary.length>0;
   const gradientMaximum=Math.max(1,...(excludeHubs?ordinary:published)
@@ -425,8 +438,7 @@ export function makeResponsiveStationDiagram(plan,model,{
         node('span',{class:'sp-route-amount'+(missing?' sp-route-amount-missing':'')+
           (excludedHub?' sp-route-amount-hub':''),
           style:missing?'':('background-color:'+fill+';color:'+
-            (excludedHub?'#354154':
-              (st.heatIntensity??st.intensity)>=.70?'#ffffff':'#17202b'))},label)));
+            (excludedHub?'#354154':patronageHeatTextColour(fill)))},label)));
     const detail=node('div',{class:'sp-route-inline-detail',
       ...(st.id===selectedId?{}:{hidden:'hidden'})},
       missing
@@ -725,10 +737,10 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
           metric+'. Branches remain connected at their junctions when the diagram is flipped. '+
           'Station entries and exits do not identify the direction or train service used by a passenger.'),
         node('div',{class:'sp-diagram-legend','aria-label':'Patronage diagram legend'},
-          node('span',{},'● Ordinary stations: larger, warmer markers mean more '+metric),
+          node('span',{},'● All stations except the five named exclusions: larger markers and rainbow colours indicate more '+metric),
           node('span',{},'○ Hollow circle: missing or suppressed station figures'),
           node('span',{},'0 is a published zero, not missing data'),
-          node('span',{},'Grey Hub markers: displayed but excluded from colour and size comparison'),
+          node('span',{},'Grey markers: Martin Place, Town Hall, Central, Redfern and Sydenham are excluded from both scales'),
           node('span',{},'Track colours indicate the route, not passenger travel direction'),
           node('div',{class:'sp-diagram-heat-legend','aria-label':'Station patronage colour gradient from low to high'},
             node('span',{},'Lower patronage'),
@@ -736,13 +748,12 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
             node('span',{},'Higher patronage ('+number(diagramModel.gradientMaximum)+' '+metric+')')),
         node('p',{class:'sp-diagram-scale-note'},
           diagramModel.hubScaleExclusionActive
-            ? 'High-volume interchange hubs, including Central and Redfern, do not set this colour scale ('+
-              number(diagramModel.excludedHubCount)+' published hub'+
+            ? 'Only Martin Place, Town Hall, Central, Redfern and Sydenham are excluded from colour and size scaling ('+
+              number(diagramModel.excludedHubCount)+' published excluded station'+
               (diagramModel.excludedHubCount===1?'':'s')+
-              ' excluded from the range). Full hub counts remain visible in neutral grey; '+
-              'ordinary stations alone determine both marker size and colour.'
-            : 'Colour scale uses the available observations on this corridor; '+
-              'no published non-hub station data was available.')),
+              ' on this corridor). Other interchanges are included. Actual counts are unchanged.'
+            : 'The rainbow scale uses all published station observations on this route; '+
+              'no other published stations were available for the exclusions to apply.')),
         node('p',{class:'muted'},'Read the main route from top to bottom. Open a branch at its junction; tap a station to reveal its entry and exit counts beside the route.'),
         search,node('div',{class:'sp-diagram-scroll'}),
       );

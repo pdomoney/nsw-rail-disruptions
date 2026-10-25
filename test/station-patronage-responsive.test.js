@@ -106,13 +106,16 @@ test('mobile station, published value and heat-coloured marker sit together in o
   assert.match(byClass(smaller,'sp-route-amount')[0].attrs.style,
     new RegExp('background-color:'+patronageHeatColour(
       model.nodes.find(n=>n.name==='Arncliffe Station').heatIntensity)));
-  // Arncliffe is the ordinary-route maximum, while Central stays neutral.
+  // Arncliffe remains a normal plotted station, while Central stays neutral.
+  // Sutherland is also included in the scale and may set its maximum.
   const low=byClass(root,'sp-route-stop-button').find(el=>
     (el.attrs['aria-label']||'').startsWith('Jannali Station,'));
   assert.ok(low);
   assert.notEqual(byClass(low,'sp-route-amount')[0].attrs.style,
     byClass(smaller,'sp-route-amount')[0].attrs.style);
-  assert.match(byClass(smaller,'sp-route-amount')[0].attrs.style,/background-color:#b12d34/);
+  assert.match(byClass(smaller,'sp-route-amount')[0].attrs.style,
+    new RegExp('background-color:'+patronageHeatColour(
+      model.nodes.find(n=>n.name==='Arncliffe Station').heatIntensity)));
 });
 
 test('unreported observations remain hollow and true zero is a low-end filled marker',()=>{
@@ -125,7 +128,7 @@ test('unreported observations remain hollow and true zero is a low-end filled ma
   assert.equal(text(byClass(missing,'sp-route-amount')[0]),'Not published');
   assert.ok(!byClass(zero,'sp-route-dot')[0].attrs.class.includes('missing'));
   assert.ok(byClass(missing,'sp-route-dot')[0].attrs.class.includes('missing'));
-  assert.match(byClass(zero,'sp-route-dot')[0].attrs.style,/background-color:#e2f2f7/);
+  assert.match(byClass(zero,'sp-route-dot')[0].attrs.style,/background-color:#6d28d9/);
   assert.doesNotMatch(byClass(missing,'sp-route-dot')[0].attrs.style,/background-color:/);
 });
 

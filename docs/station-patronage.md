@@ -1,3 +1,15 @@
+## Five-station exclusion and vivid rainbow scale (PR #26)
+
+**Current policy:** Exclude **only Martin Place, Town Hall, Central, Redfern and Sydenham** from the station-level colour and marker-size reference calculation. All other stations and interchanges, including **Wolli Creek, Hurstville, Sutherland, Wollongong, Chatswood, Strathfield and Parramatta**, remain eligible to determine the selected corridor's visual scale when present and published. The original entries, exits and totals of every station are always displayed without modification.
+
+Station activity now uses a **strong seven-stop rainbow**: violet → blue → cyan → green → yellow → orange → red. The legend matches these colours, and the value-chip foreground is selected by relative luminance for readable contrast on dark or bright colours. Normalised marker diameter and rainbow colour both use the same maximum of the published stations other than the five named exclusions, with fallback to available records if no included station has published figures.
+
+Martin Place, Town Hall, Central, Redfern and Sydenham use neutral-grey, fixed-size markers with their true values and an accessible exclusion note. All other stations are part of the comparison and use rainbow colouring and value-proportional marker sizes. These are presentation rules only; no historical or modern Opal data is filtered, invented or changed.
+
+**Supersedes the much broader hub-exclusion list and muted colour palette in PRs #24 and #25 below.**
+
+---
+
 ## Interchange hubs use neutral, fixed-size markers (PR #25)
 
 The mobile patronage diagram now uses the **same hub-excluded reference maximum for both ordinary-station circle sizes and gradient colours**. Previously PR #24 removed hubs from the colour maximum but still displayed Central, Redfern, and other excluded interchanges at the largest red colour and left the older marker-size model tied to the absolute corridor peak. This overwhelmed the intended comparison.

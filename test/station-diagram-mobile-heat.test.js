@@ -52,9 +52,9 @@ function render(plan,model){
   }
 }
 
-test('heat scale interpolates from low (pale blue) to high (red), including the true zero',()=>{
-  assert.equal(patronageHeatColour(0),'#e2f2f7');
-  assert.equal(patronageHeatColour(1),'#b12d34');
+test('heat scale interpolates from saturated violet to red, including true zero',()=>{
+  assert.equal(patronageHeatColour(0),'#6d28d9');
+  assert.equal(patronageHeatColour(1),'#dc2626');
   assert.equal(patronageHeatColour(-2),patronageHeatColour(0));
   assert.equal(patronageHeatColour(2),patronageHeatColour(1));
   assert.equal(patronageHeatColour(NaN),patronageHeatColour(0));
@@ -97,8 +97,8 @@ test('heat markers reflect station value and missing observations remain hollow'
   assert.notEqual(central.attrs.style,jannali.attrs.style);
   assert.match(central.attrs.style,/--sp-heat-colour:#e4e9ef/);
   assert.match(central.attrs.class||'sp-diagram-dot',/sp-diagram-dot/);
-  assert.match(zero.attrs.style,/--sp-heat-colour:#e2f2f7/,
-    'a reported zero is filled with low-end scale colour');
+  assert.match(zero.attrs.style,/--sp-heat-colour:#6d28d9/,
+    'a reported zero is filled with lowest rainbow colour');
   const absent=byId('pk');
   assert.ok(absent.attrs.class.includes('sp-diagram-missing'));
   assert.equal(findAll(absent,n=>n.attrs.class==='sp-diagram-value')[0]
