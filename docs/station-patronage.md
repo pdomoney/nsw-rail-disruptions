@@ -1,3 +1,17 @@
+## Interactive station patronage diagram
+
+After choosing a rail line or the connected **T4 + SCO** corridor, use **Diagram view** to see named stations in their actual physical sequence, drawn as a station schematic. The existing **List view** and its highest-patronage ranking remain available. A line without a verified reference station sequence cannot offer the diagram.
+
+- T4 shows its Eastern Suburbs–Sutherland trunk and **Cronulla** and **Waterfall** branches together. The combined T4/SCO schematic shows the South Coast spine with separate **Cronulla** and **Port Kembla** branches; shared interchanges are counted once.
+- Each station is labelled by name and the selected **entries, exits or combined tap count**. Larger circles mean more observed tap activity *for the selected dataset/period*; a hollow circle and **Not published** means no complete station-level observation. Stations missing from the current catalogue are labelled explicitly and are not invented as zero.
+- Select a station by tap, mouse or keyboard (Tab, Enter/Space) to open the existing source-backed station profile. The diagram scrolls sideways on narrow screens to preserve readable labels.
+- Dataset, period and measure controls affect the diagram. Station-name search dims nonmatches without breaking the geographic line. In the branched T4 and combined T4/SCO diagrams the **full branched corridor** is shown, so their single-branch selector is reserved for List view. List direction/ranking controls likewise apply only to the list. Other lines' single-route diagrams keep the route selector.
+- The totals above the diagram count each distinct plotted station once, across all visible branches. Historical sampled-day, historical monthly and recent CKAN sources remain separate. A diagram's station entry/exit is not directional ridership or passengers on one train.
+
+The diagram is an **original, schematic visualization** inspired by public route order, not a reproduction of TfNSW copyrighted line art, route planning information or an exact train stopping pattern. The trunk is drawn in one fixed orientation for readability; reversing the List view does not infer inbound or outbound passenger volume.
+
+---
+
 ## Connected rail corridors and station stop ordering
 
 Station Patronage now offers **T4 + SCO · Connected Illawarra / South Coast** as a combined *station corridor*, along with the individual T4, SCO and other railway-line filters. The connected selection offers three **continuous reference station sequences**, each with its own branch:
