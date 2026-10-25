@@ -339,7 +339,7 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-25T10:29:33Z",
+    "at": "2026-10-25T10:34:31Z",
     "endpoint": "/v2/gtfs/vehiclepos/sydneytrains",
     "bytes": 36465,
     "vehicles": 198,
@@ -390,10 +390,11 @@
      "entity.vp.veh.1007:2": 149,
      "entity.vp.veh.2:2": 132,
      "entity.vp.veh.x7.3:2": 149
-    }
+    },
+    "error": "fetch failed"
    },
    "lastError": {
-    "at": "2026-10-23T15:59:09Z",
+    "at": "2026-10-25T10:34:31Z",
     "message": "fetch failed"
    }
   },
@@ -549,7 +550,7 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-25T10:29:33Z",
+    "at": "2026-10-25T10:34:31Z",
     "endpoint": "/v2/gtfs/vehiclepos/metro",
     "bytes": 5155,
     "vehicles": 17,
@@ -604,10 +605,11 @@
      "entity.vp.veh.x7.2:0": 17,
      "entity.vp.veh.x7.3:2": 17,
      "entity.vp.veh.x7.5:0": 17
-    }
+    },
+    "error": "fetch failed"
    },
    "lastError": {
-    "at": "2026-10-23T15:59:09Z",
+    "at": "2026-10-25T10:34:31Z",
     "message": "fetch failed"
    }
   },
@@ -765,7 +767,7 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-25T10:29:33Z",
+    "at": "2026-10-25T10:34:31Z",
     "endpoint": "/v2/gtfs/vehiclepos/lightrail/innerwest",
     "bytes": 915,
     "vehicles": 5,
@@ -807,10 +809,11 @@
      "entity.vp.veh.x7.1:0": 9,
      "entity.vp.veh.x7.2:0": 9,
      "entity.vp.veh.x7.3:2": 9
-    }
+    },
+    "error": "fetch failed"
    },
    "lastError": {
-    "at": "2026-10-23T15:59:09Z",
+    "at": "2026-10-25T10:34:31Z",
     "message": "fetch failed"
    }
   },
@@ -970,7 +973,7 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-25T10:29:33Z",
+    "at": "2026-10-25T10:34:31Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/cbdandsoutheast",
     "bytes": 1590,
     "vehicles": 9,
@@ -1008,10 +1011,11 @@
      "entity.vp.veh.x7.2:0": 8,
      "entity.vp.veh.x7.3:2": 8,
      "entity.vp.veh.x7.5:0": 8
-    }
+    },
+    "error": "fetch failed"
    },
    "lastError": {
-    "at": "2026-10-23T15:59:09Z",
+    "at": "2026-10-25T10:34:31Z",
     "message": "fetch failed"
    }
   },
@@ -1166,7 +1170,7 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-25T10:29:33Z",
+    "at": "2026-10-25T10:34:31Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/parramatta",
     "bytes": 1069,
     "vehicles": 6,
@@ -1207,10 +1211,11 @@
      "entity.vp.veh.x7.2:0": 7,
      "entity.vp.veh.x7.3:2": 7,
      "entity.vp.veh.x7.5:0": 7
-    }
+    },
+    "error": "fetch failed"
    },
    "lastError": {
-    "at": "2026-10-23T15:59:09Z",
+    "at": "2026-10-25T10:34:31Z",
     "message": "fetch failed"
    }
   },
@@ -1369,7 +1374,7 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-25T10:29:33Z",
+    "at": "2026-10-25T10:34:31Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/newcastle",
     "bytes": 235,
     "vehicles": 1,
@@ -1420,19 +1425,28 @@
      "entity.vp.veh.x7.3:2": 1,
      "entity.vp.veh.x7.4:0": 1,
      "entity.vp.veh.x7.5:0": 1
-    }
+    },
+    "error": "fetch failed"
    },
    "lastError": {
-    "at": "2026-10-23T15:59:09Z",
+    "at": "2026-10-25T10:34:31Z",
     "message": "fetch failed"
    }
   }
  },
- "lastRunAt": "2026-10-25T10:29:33Z",
- "lastRunErrors": [],
+ "lastRunAt": "2026-10-25T10:34:31Z",
+ "lastRunErrors": [
+  "alerts: fetch failed",
+  "sydneytrains: fetch failed",
+  "metro: fetch failed",
+  "lr-innerwest: fetch failed",
+  "lr-cbdandsoutheast: fetch failed",
+  "lr-parramatta: fetch failed",
+  "lr-newcastle: fetch failed"
+ ],
  "alertsLastError": {
-  "at": "2026-10-24T22:35:24Z",
-  "message": "alerts feed returned 111 alerts after 409; waiting for the next run to confirm"
+  "at": "2026-10-25T10:34:31Z",
+  "message": "fetch failed"
  },
  "alertsLastTotal": 414
 }
