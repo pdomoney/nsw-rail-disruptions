@@ -1,3 +1,13 @@
+## Major interchange hubs excluded from the patronage colour range (PR #24)
+
+To prevent very busy interchange stations from washing out the station-colour gradient, the diagram normalises its **colour scale** against the largest *published, ordinary station* on the selected route. Central, Redfern and other major hubs are omitted from the colour-range calculation, but remain visible with their exact published figures and the highest saturated colour when their values exceed the ordinary-station maximum. The separate marker-size model, totals, station selection, direction-independent interpretation and source datasets are unchanged.
+
+The initial, explicitly maintained exclusion set is **Central, Redfern, Town Hall, Wynyard, Strathfield, Parramatta, Chatswood, Hornsby, Epping, Blacktown, Lidcombe, Liverpool, Campbelltown, Bondi Junction, Sydenham, Wolli Creek, Hurstville, Sutherland and Wollongong**. The station names are normalised to match records with or without the suffix “Station”. These are display-scale exclusions, not a claim that every one of these stops is officially classified by TfNSW as a hub, and they can be revised without altering imported Opal data.
+
+The legend shows the **ordinary-station maximum** for the chosen metric/period and states how many published hubs were excluded. If the selected corridor has no published non-hub stations, the colour range safely falls back to the available published hubs instead. A published zero still maps to the lightest shade; missing/suppressed cells are never interpreted as zero.
+
+---
+
 ## Responsive diagram correction (PR #23)
 
 User feedback from iPhone Safari confirmed the original wide SVG diagram remained difficult to use after the PR #22 colour and label adjustments. The main Station Patronage diagram now renders as a **responsive, vertical station-route view** rather than a fixed-width drawing. The line spine is displayed on the left. Each row contains the **station name immediately next to its published entry/exit value**. The value chip and station marker use an explicit inline low-to-high heat colour with a contrasting text colour, avoiding reliance on SVG colour-variable rendering in Safari. There is no side-to-side panning to associate a station with its count.

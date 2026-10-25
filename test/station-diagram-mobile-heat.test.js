@@ -127,8 +127,8 @@ test('mobile legend and CSS advertise a continuous relative colour gradient',()=
   const ui=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
   assert.match(ui,/Station patronage colour gradient from low to high/);
-  assert.match(ui,/Higher patronage \('\+number\(diagramModel.maximum\)/);
-  assert.match(ui,/patronageHeatColour\(st.intensity\)/);
+  assert.match(ui,/Higher patronage \('\+number\(diagramModel.gradientMaximum\)/);
+  assert.match(ui,/patronageHeatColour\(st.heatIntensity\?\?st.intensity\)/);
   assert.match(ui,/svgNode\('tspan',\{class:'sp-diagram-value',dx:12\}/);
   assert.doesNotMatch(ui,/x:st.x\+435/);
   assert.match(css,/\.sp-diagram-heat-ramp/);

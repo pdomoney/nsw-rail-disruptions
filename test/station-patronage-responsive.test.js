@@ -103,8 +103,14 @@ test('mobile station, published value and heat-coloured marker sit together in o
     (el.attrs['aria-label']||'').startsWith('Arncliffe Station,'));
   assert.match(byClass(smaller,'sp-route-amount')[0].attrs.style,
     new RegExp('background-color:'+patronageHeatColour(
-      model.nodes.find(n=>n.name==='Arncliffe Station').intensity)));
-  assert.notEqual(byClass(smaller,'sp-route-amount')[0].attrs.style,amount.attrs.style);
+      model.nodes.find(n=>n.name==='Arncliffe Station').heatIntensity)));
+  // Arncliffe is now the ordinary-route maximum and correctly reaches red,
+  // just as Central does. Compare it with a smaller ordinary station instead.
+  const low=byClass(root,'sp-route-stop-button').find(el=>
+    (el.attrs['aria-label']||'').startsWith('Jannali Station,'));
+  assert.ok(low);
+  assert.notEqual(byClass(low,'sp-route-amount')[0].attrs.style,
+    byClass(smaller,'sp-route-amount')[0].attrs.style);
 });
 
 test('unreported observations remain hollow and true zero is a low-end filled marker',()=>{
