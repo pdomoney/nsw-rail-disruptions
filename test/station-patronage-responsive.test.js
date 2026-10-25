@@ -103,7 +103,7 @@ test('mobile station, published value and heat-coloured marker sit together in o
     (el.attrs['aria-label']||'').startsWith('Arncliffe Station,'));
   assert.match(byClass(smaller,'sp-route-amount')[0].attrs.style,
     new RegExp('background-color:'+patronageHeatColour(
-      model.nodes.find(n=>n.name==='Arncliffe Station').intensity)));
+      model.nodes.find(n=>n.name==='Arncliffe Station').heatIntensity)));
   assert.notEqual(byClass(smaller,'sp-route-amount')[0].attrs.style,amount.attrs.style);
 });
 
