@@ -978,15 +978,22 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
         detail.append(profile, node('p', { class: 'muted sp-footnote' },
           '24-hour station profile, sampled typical ' + f.day + ' in ' + f.year + '. Blank columns mean unavailable observations.'));
       } else {
-        const history = (f.period==='historical'?legacyMonths:months).map(m=>({month:m,
-          value:(f.period==='historical'?data.legacyMonthly:data.monthly)?.[m]?.[selected.id]}));
+        const historicalSource=f.period==='historical'||f.period==='historical-annual';
+        const sourceMonths=historicalSource?legacyMonths:months;
+        const sourceMap=historicalSource?data.legacyMonthly:data.monthly;
+        const includedMonths=annualMode
+          ? (yearCoverage?.months||[])
+          : sourceMonths.slice(-12);
+        const history=includedMonths.map(m=>({month:m,value:sourceMap?.[m]?.[selected.id]}));
         const list = node('div', { class: 'sp-month-list' });
-        for (const point of history.filter(x => x.value).slice(-12)) {
+        for (const point of history.filter(x => x.value)) {
           const value = point.value[f.metric === 'exits' ? 1 : 0] +
             (f.metric === 'total' ? point.value[1] : 0);
           list.append(node('div', {}, node('span', {}, point.month), node('strong', {}, number(value))));
         }
-        detail.append(node('h3', {}, 'Recent recorded months'), list);
+        detail.append(node('h3', {},
+          annualMode ? 'Months included in '+f.annualYear :
+            historicalSource ? 'Recent historical months' : 'Recent recorded months'), list);
       }
     }
     updateResults();
