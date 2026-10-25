@@ -106,7 +106,7 @@ test('SVG badges and track colours follow metadata, including non-T4 lines and b
 test('explicit legend and adaptive SVG styles preserve true published zero versus unavailable data',()=>{
   const ui=fs.readFileSync(new URL('../site/station-patronage.js',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../site/station-patronage.css',import.meta.url),'utf8');
-  assert.match(ui,/The combined corridor is explicitly two line badges/);
+  assert.match(ui,/const badgeLines=model\.line==='T4_SCO'\?\['T4','SCO'\]:\[model\.line\]/);
   assert.match(ui,/Larger circles: more published/);
   assert.match(ui,/Hollow circle: missing or suppressed/);
   assert.match(ui,/0 is a published zero, not missing data/);
