@@ -99,7 +99,7 @@
   -webkit-overflow-scrolling:touch;}
 .sp-diagram-svg {width:1030px;max-width:none;display:block;height:auto;
   color:var(--ink);font-family:var(--font);}
-.sp-diagram-track {stroke:#1c63a4;stroke-width:6;stroke-linejoin:round;
+.sp-diagram-track {stroke-width:6;stroke-linejoin:round;
   stroke-linecap:round;fill:none;pointer-events:none;}
 .sp-diagram-branch {stroke-width:5;}
 .sp-diagram-hit {fill:transparent;stroke:transparent;stroke-width:2;}
@@ -109,8 +109,8 @@
 .sp-diagram-stop[role="button"]:focus-visible {outline:none;}
 .sp-diagram-stop[role="button"]:focus-visible .sp-diagram-hit {
   fill:var(--surface-2);stroke:var(--focus);stroke-width:2;}
-.sp-diagram-dot {fill:#1c63a4;stroke:var(--surface);stroke-width:3;}
-.sp-diagram-missing .sp-diagram-dot {fill:var(--surface);stroke:#1c63a4;stroke-width:3;opacity:1;}
+.sp-diagram-dot {fill:var(--sp-station-colour, #526777);stroke:var(--surface);stroke-width:3;}
+.sp-diagram-missing .sp-diagram-dot {fill:var(--surface);stroke:var(--sp-station-colour, #526777);stroke-width:3;opacity:1;}
 .sp-diagram-label {font-size:15px;font-weight:550;fill:currentColor;}
 .sp-diagram-value {font-size:14px;font-weight:600;fill:currentColor;font-variant-numeric:tabular-nums;}
 .sp-diagram-missing .sp-diagram-value {font-weight:400;fill:var(--muted);}
@@ -129,6 +129,14 @@
 .sp-diagram-flip:focus-visible {outline:3px solid var(--focus);outline-offset:2px;}
 .sp-diagram-flip[aria-pressed="true"] {border-color:#1c63a4;box-shadow:inset 0 0 0 1px #1c63a4;}
 .sp-diagram-orientation {margin:3px 0 12px;font-size:.88rem;color:var(--ink-2);font-weight:550;}
-.sp-diagram-line-badge {fill:#005aa9;stroke:#fff;stroke-width:1.5;}
-.sp-diagram-line-code {font-size:17px;fill:#fff;font-weight:750;letter-spacing:.01em;}
+.sp-diagram-line-badge {fill:var(--sp-badge-colour, #526777);stroke:#fff;stroke-width:1.5;}
+.sp-diagram-line-code {font-size:17px;fill:var(--sp-badge-ink, #fff);font-weight:750;letter-spacing:.01em;}
 .sp-diagram-header-label {font-size:16px;fill:currentColor;font-weight:600;}
+
+/* Marker sizes are relative to the currently displayed route, never the
+   entire network. Explain their meaning without encoding any travel direction. */
+.sp-diagram-legend {
+  display:flex;flex-wrap:wrap;gap:7px 16px;margin:11px 0;
+  font-size:.82rem;line-height:1.35;color:var(--ink-2);
+}
+.sp-diagram-legend span {padding:4px 0;}
