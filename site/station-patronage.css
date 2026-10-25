@@ -154,3 +154,131 @@
   border:1px solid var(--rule-strong);border-radius:10px;
   background:linear-gradient(to right,#e2f2f7 0%,#58aebd 33.333%,#e9994b 66.666%,#b12d34 100%);
 }
+
+
+/* Responsive station-map layout. No fixed-width 820px SVG in the live page.
+   Each route entry keeps its station, patronage and colour within one row. */
+.sp-diagram-scroll {
+  overflow:visible;
+  max-width:100%;
+  border:0;
+  border-radius:0;
+  background:transparent;
+}
+.sp-responsive-network {
+  max-width:100%;
+  padding:10px 12px 14px;
+  border:1px solid var(--rule-strong);
+  background:var(--surface);
+  border-radius:12px;
+}
+.sp-route-stop-list {list-style:none;margin:0;padding:0;min-width:0;}
+.sp-route-stop {
+  list-style:none;position:relative;
+  margin:0;padding:0 0 0 36px;min-height:54px;min-width:0;
+  --sp-route-colour:#526777;
+}
+.sp-route-stop::before {
+  content:"";position:absolute;left:12px;top:0;bottom:0;
+  width:4px;border-radius:1px;background:var(--sp-route-colour);
+}
+.sp-route-stop:first-child::before {top:23px;}
+.sp-route-stop:last-child::before {bottom:calc(100% - 23px);}
+.sp-route-stop-button {
+  position:relative;display:block;
+  width:100%;min-height:51px;
+  margin:0;padding:9px 7px 9px 0;
+  border:0;border-bottom:1px solid var(--rule);
+  color:var(--ink);background:transparent;
+  text-align:left;cursor:pointer;font:inherit;
+}
+.sp-route-stop-button:disabled {cursor:default;}
+.sp-route-stop-button:focus-visible {
+  outline:3px solid var(--focus);outline-offset:1px;border-radius:5px;
+}
+.sp-route-stop-button[aria-pressed="true"] .sp-route-name {
+  text-decoration:underline;text-decoration-thickness:2px;
+  text-underline-offset:4px;
+}
+.sp-route-stop-button:hover:not(:disabled) {background:var(--surface-2);}
+.sp-route-dot {
+  position:absolute;left:-33px;top:15px;z-index:1;
+  width:22px;height:22px;box-sizing:border-box;
+  border:3px solid var(--sp-route-colour);
+  border-radius:50%;background-color:var(--surface);
+  box-shadow:0 0 0 3px var(--surface);
+}
+.sp-route-dot-missing {background:var(--surface) !important;}
+.sp-route-text {
+  display:flex;align-items:center;justify-content:flex-start;gap:8px;
+  flex-wrap:wrap;width:100%;min-width:0;
+}
+.sp-route-name {
+  font-size:clamp(.89rem,1.6vw,.99rem);
+  line-height:1.35;font-weight:600;color:var(--ink);
+  overflow-wrap:anywhere;
+}
+.sp-route-amount {
+  display:inline-flex;align-items:center;
+  padding:5px 10px;min-height:27px;box-sizing:border-box;
+  border-radius:7px;line-height:1.1;
+  font-size:.88rem;font-weight:750;font-variant-numeric:tabular-nums;
+  white-space:nowrap;flex-shrink:0;
+  border:1px solid rgba(0,0,0,.12);
+}
+.sp-route-amount-missing {
+  background:var(--surface-2);border:1px dashed var(--rule-strong);
+  color:var(--muted);font-weight:500;font-size:.78rem;
+}
+.sp-route-inline-detail {
+  padding:9px 11px;margin:0 0 10px;
+  font-size:.84rem;line-height:1.45;color:var(--ink-2);
+  border-left:3px solid var(--sp-route-colour);
+  border-radius:3px;background:var(--surface-2);
+}
+.sp-route-inline-detail[hidden] {display:none;}
+.sp-route-dim .sp-route-stop-button {opacity:.32;}
+.sp-route-branch-wrapper {
+  position:relative;list-style:none;margin:8px 0 16px;
+  padding:0 0 0 30px;
+}
+.sp-route-branch-wrapper::before {
+  content:"";position:absolute;top:-8px;left:12px;width:23px;height:28px;
+  border-left:4px solid var(--rule-strong);border-bottom:4px solid var(--rule-strong);
+  border-radius:0 0 0 10px;pointer-events:none;
+}
+.sp-route-branch {
+  min-width:0;max-width:100%;
+  padding:0 12px 8px;border:1px solid var(--rule-strong);
+  border-radius:8px;background:var(--surface-2);
+}
+.sp-route-branch-title {
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  min-height:46px;padding:8px 0;
+  font-size:.89rem;color:var(--ink);font-weight:650;
+  cursor:pointer;list-style:none;
+}
+.sp-route-branch-title::-webkit-details-marker {display:none;}
+.sp-route-branch-title::after {
+  content:"⌄";font-size:1.1rem;margin-left:auto;
+}
+.sp-route-branch:not([open]) .sp-route-branch-title::after {content:"›";}
+.sp-route-branch-title small {font-size:.76rem;font-weight:450;color:var(--muted);}
+.sp-route-branch-icon {font-size:1.1rem;}
+.sp-route-branch-context {margin:0 0 12px;font-size:.78rem;color:var(--ink-2);}
+.sp-route-branch-stops {background:var(--surface-2);}
+.sp-route-branch-stops .sp-route-stop::before {background:var(--sp-route-colour);}
+.sp-route-branch-stops .sp-route-stop-button {border-bottom-color:var(--rule-strong);}
+.sp-route-branch-stops .sp-route-dot {box-shadow:0 0 0 3px var(--surface-2);}
+@media (max-width:600px) {
+  .sp-responsive-network {padding:8px 8px 10px;}
+  .sp-route-stop {padding-left:33px;}
+  .sp-route-stop-button {padding-right:2px;}
+  .sp-route-name {font-size:.92rem;}
+  .sp-route-amount {font-size:.81rem;padding:5px 8px;}
+  .sp-route-branch-wrapper {padding-left:16px;}
+  .sp-route-branch-wrapper::before {width:12px;}
+  .sp-route-branch {padding:0 7px 6px;}
+  .sp-diagram-panel {width:100%;min-width:0;}
+  .sp-lower.sp-lower-diagram {grid-template-columns:minmax(0,1fr);}
+}
