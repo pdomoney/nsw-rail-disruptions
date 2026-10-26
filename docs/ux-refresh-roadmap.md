@@ -35,6 +35,12 @@ Historical deep links, selected query strings, route IDs, data periods and expor
 
 **Phase 4, separate PRs**: Align Trackwork, Reliability, Crowding, Station Patronage (including nine shades, combined Entries + Exits and annual totals), Alert History and Trip. Share labels, headers, filters and source badges; do not alter data semantics. Validate all existing old route URLs and mobile workflows.
 
+**Phase 4A, PR #36 — Trackwork UX**: The existing page now begins with three short status summaries (published significant changes today/tonight, published weekend closures, and the source publication horizon); it places filterable full notice cards before the optional line-by-line timeline. The shared rail-line selector drives both the cards and the timeline and preserves `#/trackwork?line=...` deep links. The SVG timeline remains intact with all keyboard, hover and notice drilldown behaviours but renders only when its native disclosure is opened, preventing collapsed-container sizing bugs on mobile Safari. Existing severity colours, weekly groups, line detail pages and refresh logic remain unchanged. Statements are explicitly scoped to **published notices**, avoiding any unwarranted assertion that a line is clear. The original Network Map files and verified stop calibration are not modified.
+
+**Phase 4B (next)**: Refine Reliability/Crowding/Stations/History inside Insights using consistent headings and independent metric definitions; preserve all historic charts, patronage source/method separation and previously accepted nine-band station map.
+
+**Phase 4C (later)**: Simplify the Trip Planner entry and disruption context, keeping the existing station matching and official journey planning handoff.
+
 ### Acceptance
 - Responsive header with five destinations; Insight sections are accessible by keyboard and touch (>=44px targets as a design goal)
 - Independent logo legible at favicon and header sizes; no Government marks

@@ -521,3 +521,120 @@ select,input[type="search"],input[type="text"],input[type="datetime-local"] {
   .map-legend {font-size:.79rem;gap:5px}
   .map-source-credit {font-size:.73rem}
 }
+
+/* Phase 4A — Trackwork prioritises actionable notices over the dense SVG.
+   Existing severity colours, source descriptions and interactions are retained. */
+.tw-page-heading {margin-bottom:2px}
+.tw-source-intro {max-width:78ch;font-size:.9rem;line-height:1.46}
+.tw-summary {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin:14px 0 9px;
+}
+.tw-summary-card {
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:var(--ux-radius);
+  padding:15px 16px;
+  min-width:0;
+}
+.tw-summary-kicker {
+  margin:0 0 6px;
+  font-size:.71rem;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-weight:700;
+  color:var(--muted);
+}
+.tw-summary-title {margin:0 0 5px;font-size:1.25rem;line-height:1.2}
+.tw-summary-description {
+  margin:0;color:var(--ink-2);
+  font-size:.83rem;line-height:1.46;
+}
+.tw-summary-lines {
+  display:flex;flex-wrap:wrap;
+  gap:4px;margin:10px 0 0;
+  font-size:.86rem;
+}
+.tw-summary-lines .badge {font-size:.82rem}
+.tw-list-section {border:0;margin-top:8px;padding-top:9px}
+.tw-list-section .section-head {margin-bottom:5px}
+.tw-filter-bar {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:end;
+  gap:8px 18px;
+  padding:10px 13px;
+  background:var(--surface-2);
+  border:1px solid var(--rule);
+  border-radius:8px;
+  margin-bottom:10px;
+}
+.tw-line-field {min-width:min(310px,100%)}
+.tw-line-field select {width:100%;min-height:44px}
+.tw-filter-context {color:var(--ink-2);font-size:.85rem;margin:0 0 8px}
+.tw-group h3 {margin:17px 0 5px}
+.tw-items {gap:10px 12px;align-items:stretch}
+.tw-item {
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:8px;
+  padding:13px 13px 13px 19px;
+  min-width:0;
+}
+.tw-item::before {left:5px;top:10px;bottom:10px}
+.tw-item-title {font-size:1.01rem}
+.tw-item-when {font-size:.9rem}
+.tw-item-text {font-size:.87rem}
+.tw-item-foot summary {min-height:36px;padding:7px 0}
+.tw-timeline-disclosure {
+  margin:15px 0 12px;
+  border:1px solid var(--rule);
+  border-radius:var(--ux-radius);
+  background:var(--surface);
+  padding:0 13px;
+}
+.tw-timeline-disclosure>summary {
+  display:list-item;cursor:pointer;
+  padding:13px 5px;
+  min-height:55px;
+}
+.tw-timeline-disclosure>summary:focus-visible {
+  outline:3px solid var(--focus);
+  outline-offset:2px;
+}
+.tw-timeline-name {font-size:.96rem;font-weight:650}
+.tw-timeline-hint {display:block;font-size:.79rem;color:var(--ink-2)}
+.tw-timeline-content {
+  border-top:1px solid var(--rule);
+  padding:11px 0 15px;
+}
+.tw-timeline-content .tw-chart {min-width:0}
+.tw-timeline-content .chart-note {font-size:.85rem}
+.tw-data-note {margin:12px 0 18px;font-size:.8rem}
+@media (max-width:900px){
+  .tw-summary {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .tw-summary-card:last-child {grid-column:1 / -1}
+  .tw-summary-card {padding:12px}
+}
+@media (max-width:640px){
+  .tw-source-intro {font-size:.83rem;margin:4px 0 9px}
+  .tw-summary {grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:9px 0}
+  .tw-summary-card {padding:10px;min-height:0}
+  .tw-summary-kicker {font-size:.62rem;letter-spacing:.04em}
+  .tw-summary-title {font-size:1.06rem;overflow-wrap:anywhere}
+  .tw-summary-description {font-size:.76rem}
+  .tw-summary-lines {font-size:.7rem;gap:3px}
+  .tw-summary-lines .badge {font-size:.8rem}
+  .tw-list-section {padding-top:9px}
+  .tw-filter-bar {padding:9px 10px;gap:3px}
+  .tw-line-field {width:100%;min-width:0}
+  .tw-filter-context {margin:3px 0;font-size:.77rem}
+  .tw-items {grid-template-columns:minmax(0,1fr);gap:7px}
+  .tw-item {padding:9px 11px 9px 17px}
+  .tw-group h3 {margin:12px 0 4px}
+  .tw-timeline-disclosure {padding:0 10px}
+  .tw-timeline-name {font-size:.9rem}
+  .tw-timeline-hint {font-size:.73rem}
+}
