@@ -428,7 +428,9 @@ function nowSection(head, sub, stale) {
   const late = lateNowBlock();
   return h('section', { class: 'now', 'aria-labelledby': 'now-h' },
     banner,
-    h('div', { class: 'now-head' }, Object.assign(head, { id: 'now-h' }), sub, stale),
+    h('div', { class: 'now-head' },
+      h('p', { class: 'page-eyebrow' }, 'Today · NSW network'),
+      Object.assign(head, { id: 'now-h' }), sub, stale),
     late ? h('div', { class: 'now-side' }, late) : null,
     alerts ? h('div', { class: 'now-list-wrap' }, alerts) : null);
 }
@@ -2500,12 +2502,36 @@ function resetView() {
   pageRefresh = null;
 }
 
+// Insights is one navigation destination with four distinct data models.
+ // Keep all historical deep links intact: /service, /crowding, /stations and
+ // /log continue to resolve to their original renderers and existing data.
+const INSIGHT_SECTIONS=Object.freeze([
+  ['service','Reliability','#/service'],
+  ['crowding','Crowding','#/crowding'],
+  ['stations','Stations','#/stations'],
+  ['log','History','#/log'],
+]);
+function addInsightsNavigation(main,hash) {
+  const active=hash.startsWith('#/crowding')?'crowding'
+    :hash.startsWith('#/stations')?'stations'
+    :hash.startsWith('#/log')?'log':'service';
+  const tabs=h('nav', { class:'insights-tabs',
+    'aria-label':'Insights sections' },
+    ...INSIGHT_SECTIONS.map(([key,label,url])=>
+      h('a', { href:url,
+        ...(key===active?{'aria-current':'page'}:{}),
+      }, label)));
+  main.prepend(tabs);
+}
 async function route() {
   resetView();
   const main = document.getElementById('main');
   const hash = location.hash || '#/';
-  const navKey = hash.startsWith('#/log') ? 'log' : hash.startsWith('#/about') ? 'about' : hash.startsWith('#/trip') ? 'trip'
-    : hash.startsWith('#/service') ? 'service' : hash.startsWith('#/crowding') ? 'crowding' : hash.startsWith('#/stations') ? 'stations' : hash.startsWith('#/trackwork') ? 'trackwork' : hash.startsWith('#/map') ? 'map' : hash.startsWith('#/line') ? '' : 'overview';
+  const insightRoute=hash.startsWith('#/service')||hash.startsWith('#/crowding')||
+    hash.startsWith('#/stations')||hash.startsWith('#/log')||hash.startsWith('#/insights');
+  const navKey = insightRoute?'insights':hash.startsWith('#/about')?''
+    :hash.startsWith('#/trip')?'trip':hash.startsWith('#/trackwork')?'trackwork'
+    :hash.startsWith('#/map')?'map':hash.startsWith('#/line')?'':'overview';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === navKey) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let m;
@@ -2513,12 +2539,13 @@ async function route() {
     else if (hash.startsWith('#/log')) await viewLog(main);
     else if (hash.startsWith('#/about')) viewAbout(main);
     else if (hash.startsWith('#/trip')) await viewTrip(main);
-    else if (hash.startsWith('#/service')) await viewService(main);
+    else if (hash.startsWith('#/service')||hash.startsWith('#/insights')) await viewService(main);
     else if (hash.startsWith('#/crowding')) await viewPatronage(main, D.meta);
     else if (hash.startsWith('#/stations')) await viewStationPatronage(main, D.meta);
     else if (hash.startsWith('#/trackwork')) await viewTrackwork(main);
     else if (hash.startsWith('#/map')) await viewMap(main);
     else { document.title = 'NSW Rail Disruptions'; viewOverview(main); }
+    if(insightRoute)addInsightsNavigation(main,hash);
   } catch (e) {
     console.error(e);
     main.replaceChildren(h('div', { class: 'error-box' }, h('h1', {}, 'Something went wrong'), h('p', {}, e.message), h('p', {}, 'Reload the page to try again.')));
