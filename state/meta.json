@@ -347,7 +347,7 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-26T08:38:33Z",
+    "at": "2026-10-26T08:43:26Z",
     "endpoint": "/v2/gtfs/vehiclepos/sydneytrains",
     "bytes": 50410,
     "vehicles": 228,
@@ -398,11 +398,12 @@
      "entity.vp.veh.1007:2": 229,
      "entity.vp.veh.2:2": 213,
      "entity.vp.veh.x7.3:2": 229
-    }
+    },
+    "error": "HTTP 401 for /v1/gtfs/vehiclepos/sydneytrains ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-379a66f\", \"ErrorDateTime\":\"2026-10-26T19:43:29.131+11:00\", \"Message\":\"The calling application is unauthenti)"
    },
    "lastError": {
-    "at": "2026-10-25T10:34:31Z",
-    "message": "fetch failed"
+    "at": "2026-10-26T08:43:26Z",
+    "message": "HTTP 401 for /v2/gtfs/realtime/sydneytrains ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-379a67a\", \"ErrorDateTime\":\"2026-10-26T19:43:29.329+11:00\", \"Message\":\"The calling application is unauthenti)"
    }
   },
   "metro": {
@@ -560,25 +561,17 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-26T08:38:33Z",
-    "endpoint": "/v2/gtfs/vehiclepos/metro",
-    "bytes": 7006,
-    "vehicles": 23,
-    "withTrip": 23,
-    "occupancy": {
-     "1": 10,
-     "2": 9,
-     "3": 4
-    },
+    "at": "2026-10-26T08:43:26Z",
+    "endpoint": "/v1/gtfs/vehiclepos/metro",
+    "bytes": 7090,
+    "vehicles": 19,
+    "withTrip": 19,
+    "occupancy": {},
     "withPercent": 0,
-    "withConsist": 23,
-    "consistLevels": {
-     "1": 38,
-     "2": 70,
-     "3": 30
-    },
+    "withConsist": 19,
+    "consistLevels": {},
     "models": {
-     "Alstom Metropolis": 23
+     "Alstom Metropolis": 19
     },
     "fields": {
      "1:2": 1,
@@ -618,8 +611,8 @@
     }
    },
    "lastError": {
-    "at": "2026-10-25T10:34:31Z",
-    "message": "fetch failed"
+    "at": "2026-10-26T08:43:26Z",
+    "message": "HTTP 401 for /v2/gtfs/realtime/metro ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-379a6ac\", \"ErrorDateTime\":\"2026-10-26T19:43:30.001+11:00\", \"Message\":\"The calling application is unauthenti)"
    }
   },
   "lr-innerwest": {
@@ -689,22 +682,22 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-26T08:38:33Z",
+    "at": "2026-10-26T08:43:26Z",
     "endpoint": "/v2/gtfs/realtime/lightrail/innerwest",
-    "bytes": 23289,
+    "bytes": 23584,
     "entities": 22,
     "trips": 22,
     "matched": 22,
-    "feedAgeS": -2,
+    "feedAgeS": 6,
     "unmatched": [],
     "shape": {
      "withTimes": 19,
      "delayOnly": 0,
      "noStops": 0,
      "tripDelay": 19,
-     "active": 14,
+     "active": 13,
      "notStarted": 2,
-     "finished": 3,
+     "finished": 4,
      "noDelay": 0
     },
     "occupancy": {
@@ -776,7 +769,7 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-26T08:38:33Z",
+    "at": "2026-10-26T08:43:26Z",
     "endpoint": "/v2/gtfs/vehiclepos/lightrail/innerwest",
     "bytes": 1659,
     "vehicles": 9,
@@ -819,7 +812,8 @@
      "entity.vp.veh.x7.1:0": 13,
      "entity.vp.veh.x7.2:0": 13,
      "entity.vp.veh.x7.3:2": 13
-    }
+    },
+    "error": "HTTP 401 for /v1/gtfs/vehiclepos/lightrail/innerwest ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-379a6e2\", \"ErrorDateTime\":\"2026-10-26T19:43:30.400+11:00\", \"Message\":\"The calling application is unauthenti)"
    },
    "lastError": {
     "at": "2026-10-25T10:34:31Z",
@@ -983,17 +977,17 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-26T08:38:33Z",
+    "at": "2026-10-26T08:43:26Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/cbdandsoutheast",
-    "bytes": 2292,
-    "vehicles": 13,
-    "withTrip": 13,
+    "bytes": 1939,
+    "vehicles": 11,
+    "withTrip": 11,
     "occupancy": {},
     "withPercent": 0,
     "withConsist": 0,
     "consistLevels": {},
     "models": {
-     "CitadisX05": 13
+     "CitadisX05": 11
     },
     "fields": {
      "1:2": 1,
@@ -1024,8 +1018,8 @@
     }
    },
    "lastError": {
-    "at": "2026-10-26T08:33:35Z",
-    "message": "HTTP 401 for /v1/gtfs/realtime/lightrail/cbdandsoutheast ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-3789d17\", \"ErrorDateTime\":\"2026-10-26T19:33:51.452+11:00\", \"Message\":\"The calling application is unauthenti)"
+    "at": "2026-10-26T08:43:26Z",
+    "message": "HTTP 401 for /v1/gtfs/realtime/lightrail/cbdandsoutheast ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-379a73a\", \"ErrorDateTime\":\"2026-10-26T19:43:31.070+11:00\", \"Message\":\"The calling application is unauthenti)"
    }
   },
   "lr-parramatta": {
@@ -1180,7 +1174,7 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-26T08:38:33Z",
+    "at": "2026-10-26T08:43:26Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/parramatta",
     "bytes": 1069,
     "vehicles": 6,
@@ -1224,8 +1218,8 @@
     }
    },
    "lastError": {
-    "at": "2026-10-25T10:34:31Z",
-    "message": "fetch failed"
+    "at": "2026-10-26T08:43:26Z",
+    "message": "HTTP 401 for /v1/gtfs/realtime/lightrail/parramatta ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-379a765\", \"ErrorDateTime\":\"2026-10-26T19:43:31.455+11:00\", \"Message\":\"The calling application is unauthenti)"
    }
   },
   "lr-newcastle": {
@@ -1383,22 +1377,16 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-26T08:38:33Z",
+    "at": "2026-10-26T08:43:26Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/newcastle",
-    "bytes": 455,
-    "vehicles": 2,
-    "withTrip": 2,
-    "occupancy": {
-     "1": 2
-    },
+    "bytes": 15,
+    "vehicles": 0,
+    "withTrip": 0,
+    "occupancy": {},
     "withPercent": 0,
-    "withConsist": 2,
-    "consistLevels": {
-     "1": 2
-    },
-    "models": {
-     "CAF Urbos 100": 2
-    },
+    "withConsist": 0,
+    "consistLevels": {},
+    "models": {},
     "fields": {
      "1:2": 1,
      "2:2": 2,
@@ -1437,16 +1425,23 @@
     }
    },
    "lastError": {
-    "at": "2026-10-25T10:34:31Z",
-    "message": "fetch failed"
+    "at": "2026-10-26T08:43:26Z",
+    "message": "HTTP 401 for /v1/gtfs/realtime/lightrail/newcastle ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a1197736ef-aae9da6\", \"ErrorDateTime\":\"2026-10-26T19:43:31.982+11:00\", \"Message\":\"The calling application is unauthenti)"
    }
   }
  },
- "lastRunAt": "2026-10-26T08:38:33Z",
- "lastRunErrors": [],
+ "lastRunAt": "2026-10-26T08:43:26Z",
+ "lastRunErrors": [
+  "alerts: HTTP 401 for /v1/tp/add_info ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a1197736ef-aae9c20\", \"ErrorDateTime\":\"2026-10-26T19:43:28.124+11:00\", \"Message\":\"The calling application is unauthenti)",
+  "sydneytrains: HTTP 401 for /v2/gtfs/realtime/sydneytrains ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-379a67a\", \"ErrorDateTime\":\"2026-10-26T19:43:29.329+11:00\", \"Message\":\"The calling application is unauthenti)",
+  "metro: HTTP 401 for /v2/gtfs/realtime/metro ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-379a6ac\", \"ErrorDateTime\":\"2026-10-26T19:43:30.001+11:00\", \"Message\":\"The calling application is unauthenti)",
+  "lr-cbdandsoutheast: HTTP 401 for /v1/gtfs/realtime/lightrail/cbdandsoutheast ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-379a73a\", \"ErrorDateTime\":\"2026-10-26T19:43:31.070+11:00\", \"Message\":\"The calling application is unauthenti)",
+  "lr-parramatta: HTTP 401 for /v1/gtfs/realtime/lightrail/parramatta ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a158958200-379a765\", \"ErrorDateTime\":\"2026-10-26T19:43:31.455+11:00\", \"Message\":\"The calling application is unauthenti)",
+  "lr-newcastle: HTTP 401 for /v1/gtfs/realtime/lightrail/newcastle ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a1197736ef-aae9da6\", \"ErrorDateTime\":\"2026-10-26T19:43:31.982+11:00\", \"Message\":\"The calling application is unauthenti)"
+ ],
  "alertsLastError": {
-  "at": "2026-10-26T04:11:07Z",
-  "message": "HTTP 500 for /v1/tp/add_info ({\n\t\"ErrorDetails\":\n\t{\n\t\t\"TransactionId\":\"000001a1197736ef-a96304f\",\n\t\t\"ErrorDateTime\":\"2026-10-26T15:11:14.573+11:00\",\n\t\t\"Message\":\"An unexpected error has occu)"
+  "at": "2026-10-26T08:43:26Z",
+  "message": "HTTP 401 for /v1/tp/add_info ({ \"ErrorDetails\":{ \"TransactionId\":\"000001a1197736ef-aae9c20\", \"ErrorDateTime\":\"2026-10-26T19:43:28.124+11:00\", \"Message\":\"The calling application is unauthenti)"
  },
  "alertsLastTotal": 397
 }
