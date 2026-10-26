@@ -85,7 +85,7 @@ test('new Trip Planner layout is responsive and does not affect the Network Map 
 test('Trip now follows the accepted async route-epoch protection, including refresh',()=>{
   assert.match(trip,/const requestRoute = main\.dataset\.routeId/);
   assert.match(trip,/main\.replaceChildren\(h\('p', \{ class:'loading', role:'status' \}, 'Loading NSW stations…'\)\)/);
-  assert.match(trip,/await loadStations\(\);\s*if \(main\.dataset\.routeId !== requestRoute\) return/);
+  assert.match(trip,/await loadStations\(\);[\s\S]*?if \(main\.dataset\.routeId !== requestRoute\) return/);
   assert.match(trip,/const renderResults = \(\) => \{\s*if \(main\.dataset\.routeId !== requestRoute\) return/);
   assert.match(trip,/const update = \(\) => \{\s*if \(main\.dataset\.routeId !== requestRoute\) return/);
   assert.match(trip,/pageRefresh = \(\) => \{\s*if \(main\.dataset\.routeId !== requestRoute\) return/);
