@@ -14,7 +14,7 @@ test('Trackwork places published today/weekend summaries before searchable notic
   assert.match(view,/summaryCard\('Today and tonight'/);
   assert.match(view,/summaryCard\('This weekend'/);
   assert.match(view,/summaryCard\('Published schedule'/);
-  assert.match(view,/class: 'tw-list-section'/);
+  assert.match(view,/class: 'section tw-list-section'/);
   assert.match(view,/h\('h2', \{ id: 'tw-list-h' \}, 'Upcoming changes'\)/);
   assert.ok(view.indexOf('summary,')<view.indexOf('filterBar, list'),
     'Headline cards appear ahead of detailed notices');
