@@ -134,7 +134,7 @@ test('full static build with no Opal input keeps the existing site and publishes
     assert.ok(fs.existsSync(path.join(output, 'data', 'crowding.json')));
     assert.ok(fs.existsSync(path.join(output, 'data', 'site-version.json')));
     const html = fs.readFileSync(path.join(output, 'index.html'), 'utf8');
-    assert.ok(html.includes('href="#/stations"'));
+    assert.match(fs.readFileSync(path.resolve('site/app.js'),'utf8'),/hash\.startsWith\('#\/stations'\)/);
     assert.match(html, /station-patronage\.[a-f0-9]{12}\.css/);
     const assets = fs.readdirSync(output);
     assert.ok(assets.some(f => /^station-patronage\.[a-f0-9]{12}\.js$/.test(f)));
