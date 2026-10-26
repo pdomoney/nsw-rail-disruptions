@@ -1418,61 +1418,144 @@ async function viewTrackwork(main) {
   document.title = 'Trackwork ahead | NSW Rail Disruptions';
   const tw = await loadTrackwork();
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
-  let lineFilter = q.get('line') || '';
   const items = tw.items.filter(it => it.l.some(trackedLine));
-  const lines = [...new Set(items.flatMap(it => it.l))].filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
+  const lines = [...new Set(items.flatMap(it => it.l))].filter(trackedLine)
+    .sort((a, b) => orderOf(a) - orderOf(b));
+  let lineFilter = lines.includes(q.get('line')) ? q.get('line') : '';
   const now = Date.now();
-
-  // Headline: this weekend's closures, and what is on today.
   const wk = weekendRange(tw.days);
-  const head = h('div', { class: 'tw-head' });
-  if (wk) {
-    const closed = [...new Set(items.filter(it => it.sev >= 3 && overlaps(it.w, wk[0], wk[1])).flatMap(it => it.l))].filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
-    const other = [...new Set(items.filter(it => it.sev >= 1 && overlaps(it.w, wk[0], wk[1])).flatMap(it => it.l))].filter(id => trackedLine(id) && !closed.includes(id));
-    head.append(h('p', { class: 'tw-headline' }, closed.length
-      ? ['This weekend, trackwork closes parts of ', ...badgeList(closed), '.']
-      : 'No line is closed for trackwork this weekend.'));
-    head.append(h('p', { class: 'tw-sub' }, `${dayLabel(wk[0])} and ${dayLabel(wk[1] - 6 * 3600e3)}.`,
-      other.length ? ` Trains also run to a changed timetable on ${plural(other.length, 'other line')}.` : ''));
-  }
-  const todayEnd = ms(tw.days[1][1]) + 4 * 3600e3;
-  const tonight = [...new Set(items.filter(it => it.sev >= 2 && overlaps(it.w, now, todayEnd)).flatMap(it => it.l))].filter(trackedLine).sort((a, b) => orderOf(a) - orderOf(b));
-  if (tonight.length) head.append(h('p', { class: 'tw-sub' }, 'Today and tonight: work on ', ...badgeList(tonight), '.'));
+  const todayEnd = tw.days[1] ? ms(tw.days[1][1]) + 4 * 3600e3 : now + 24 * 3600e3;
+  const last = tw.days[tw.days.length - 1][0];
+
+  // Begin with useful decisions rather than a full-width technical timeline.
+  // All labels describe *published* works, not the definitive absence of work.
+  const summary = h('section', {
+    class: 'tw-summary', 'aria-label': 'Published trackwork at a glance'
+  });
+  const summaryCard = (label, title, description, badges = []) =>
+    h('article', { class: 'tw-summary-card' },
+      h('p', { class: 'tw-summary-kicker' }, label),
+      h('h2', { class: 'tw-summary-title' }, title),
+      h('p', { class: 'tw-summary-description' }, description),
+      badges.length ? h('div', { class: 'tw-summary-lines' }, ...badgeList(badges)) : null);
+  const visibleItems = () => items.filter(it => !lineFilter || it.l.includes(lineFilter));
+  const updateSummary = () => {
+    const scoped = visibleItems();
+    const today = scoped.filter(it => it.sev >= 2 && overlaps(it.w, now, todayEnd));
+    const affectedNow = [...new Set(today.flatMap(it => it.l))].filter(id =>
+      trackedLine(id) && (!lineFilter || id === lineFilter))
+      .sort((a, b) => orderOf(a) - orderOf(b));
+    const weekend = wk ? scoped.filter(it => it.sev >= 3 &&
+      overlaps(it.w, wk[0], wk[1])) : [];
+    const affectedWeekend = [...new Set(weekend.flatMap(it => it.l))].filter(id =>
+      trackedLine(id) && (!lineFilter || id === lineFilter))
+      .sort((a, b) => orderOf(a) - orderOf(b));
+    summary.replaceChildren(
+      summaryCard('Today and tonight',
+        affectedNow.length ? plural(affectedNow.length, 'line') + ' affected' : 'No major work listed',
+        affectedNow.length ? 'Published replacement or significant service changes remaining today.'
+          : 'No major planned changes in the published alerts for this period.',
+        affectedNow),
+      summaryCard('This weekend',
+        !wk ? 'Outside published range' :
+          affectedWeekend.length ? plural(affectedWeekend.length, 'line') + ' with closures'
+          : 'No closures listed',
+        wk ? dayLabel(wk[0]) + ' – ' + dayLabel(wk[1] - 6 * 3600e3) +
+          '. Based on published closure notices.'
+          : 'The current feed does not include the next complete weekend.',
+        affectedWeekend),
+      summaryCard('Published schedule',
+        plural(scoped.length, 'notice'),
+        'Published works available through ' +
+          F.dateUTC.format(dateFromKey(addDays(last, -1))) + '.')
+    );
+  };
 
   const chart = h('div', { class: 'tw-chart' });
-  const listHead = h('div', { class: 'filters' });
   const list = h('div', { class: 'tw-list' });
-  const last = tw.days[tw.days.length - 1][0];
-  mount(main,
-    h('div', { class: 'line-head' }, h('h1', {}, 'Trackwork ahead')),
-    h('p', { class: 'section-intro' }, `Planned trackwork from the alerts TfNSW publishes, usually about three weeks ahead. Published so far up to ${F.dateUTC.format(dateFromKey(addDays(last, -1)))}.`),
-    head,
-    h('section', { class: 'section tw-timeline', 'aria-labelledby': 'tw-time-h' },
-      h('h2', { id: 'tw-time-h' }, 'Line by line'),
-      h('p', { class: 'chart-note' }, 'Each line is a track and each block is planned work. Stronger blocks change journeys more. Weekends are shaded. Select a block to read about it, or a line to list only its work.'),
+  const filterContext = h('p', { class: 'tw-filter-context', role: 'status' });
+  const lineSelect = h('select', {
+    onchange: ev => setLine(ev.target.value),
+    'aria-label': 'Show planned trackwork for rail line'
+  }, h('option', { value: '' }, 'All rail lines'),
+    lines.map(id => {
+      const option = h('option', { value: id }, id + ' ' + lineInfo(id).name);
+      if (id === lineFilter) option.selected = true;
+      return option;
+    }));
+  const filterBar = h('div', { class: 'tw-filter-bar' },
+    h('label', { class: 'field tw-line-field' }, 'Show planned work for', lineSelect),
+    filterContext);
+  // Render the detailed SVG only when the timeline is visible. Measuring a
+  // collapsed chart returns 0px on Safari and yields broken column widths.
+  const timeline = h('details', { class: 'tw-timeline-disclosure' },
+    h('summary', {},
+      h('span', { class: 'tw-timeline-name' }, 'Explore the line-by-line timeline'),
+      h('span', { class: 'tw-timeline-hint' }, 'View dates and select affected lines')),
+    h('div', { class: 'tw-timeline-content' },
+      h('p', { class: 'chart-note' },
+        'Each rail line is a row and each block is published planned work. ' +
+        'Weekends are shaded. Select a block to read its notice below.'),
       chart,
-      h('div', { class: 'key tw-key' }, [3, 2, 1].map(s => h('span', {}, h('i', { class: `tw-sw ${TW_SEV[s].cls}` }), TW_SEV[s].label)))),
-    h('section', { class: 'section', 'aria-labelledby': 'tw-list-h' }, h('h2', { id: 'tw-list-h' }, 'What changes, week by week'), listHead, list));
-
-  const setLine = v => {
-    lineFilter = v;
-    history.replaceState(null, '', `#/trackwork${v ? `?line=${v}` : ''}`);
+      h('div', { class: 'key tw-key' },
+        [3, 2, 1].map(n => h('span', {},
+          h('i', { class: 'tw-sw ' + TW_SEV[n].cls }), TW_SEV[n].label)))));
+  const drawChart = () => {
+    if (!timeline.open || !timeline.isConnected) return;
+    trackworkChart(chart, { items, lines, days: tw.days, selected: lineFilter,
+      onLine: id => {
+        setLine(id === lineFilter ? '' : id);
+        document.getElementById('tw-list-h')?.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  };
+  timeline.addEventListener('toggle', () => {
+    if (timeline.open) requestAnimationFrame(drawChart);
+  });
+  const drawList = () => {
+    const shown = visibleItems();
+    filterContext.textContent = lineFilter
+      ? plural(shown.length, 'published notice') + ' for ' + lineFilter + '.'
+      : plural(shown.length, 'published notice') + ' across listed rail lines.';
+    list.replaceChildren(...trackworkGroups(shown, tw.days));
+  };
+  const setLine = value => {
+    lineFilter = value;
+    lineSelect.value = value;
+    history.replaceState(null, '', '#/trackwork' +
+      (value ? '?line=' + encodeURIComponent(value) : ''));
+    updateSummary();
     drawList();
     drawChart();
   };
-  const drawList = () => {
-    listHead.replaceChildren(h('label', { class: 'field inline' }, 'Line ',
-      h('select', { onchange: ev => setLine(ev.target.value) },
-        h('option', { value: '' }, 'All lines'),
-        lines.map(id => { const o = h('option', { value: id }, `${id} ${lineInfo(id).name}`); if (id === lineFilter) o.selected = true; return o; }))));
-    const shown = items.filter(it => !lineFilter || it.l.includes(lineFilter));
-    list.replaceChildren(...trackworkGroups(shown, tw.days));
-  };
-  const drawChart = () => trackworkChart(chart, { items, lines, days: tw.days, selected: lineFilter, onLine: id => { setLine(id === lineFilter ? '' : id); document.getElementById('tw-list-h')?.scrollIntoView({ behavior: 'smooth' }); } });
+
+  mount(main,
+    h('div', { class: 'line-head tw-page-heading' },
+      h('div', {},
+        h('p', { class: 'page-eyebrow' }, 'Plan ahead · Trackwork'),
+        h('h1', {}, 'Trackwork ahead'))),
+    h('p', { class: 'section-intro tw-source-intro' },
+      'Planned trackwork published by TfNSW, usually about three weeks ahead. ' +
+      'Notices can change. Check the official alerts before travelling.'),
+    summary,
+    h('section', { class: 'section tw-list-section',
+      'aria-labelledby': 'tw-list-h' },
+      h('div', { class: 'section-head' },
+        h('h2', { id: 'tw-list-h' }, 'Upcoming changes')),
+      filterBar, list),
+    timeline,
+    h('p', { class: 'chart-note tw-data-note' },
+      'This page only shows planned notices in the available TfNSW data. ' +
+      'Select a notice for full details on transportnsw.info.'));
+
+  updateSummary();
   drawList();
-  requestAnimationFrame(drawChart);
   onResize(drawChart);
-  pageRefresh = async () => { D.trackwork = null; await loadTrackwork(); viewTrackwork(main); };
+  pageRefresh = async () => {
+    D.trackwork = null;
+    await loadTrackwork();
+    viewTrackwork(main);
+  };
 }
 
 // Line page: this line's planned trackwork.
