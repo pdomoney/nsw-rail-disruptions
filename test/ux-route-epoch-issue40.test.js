@@ -53,7 +53,8 @@ test('History year and search requests use both an update number and mounted vie
   assert.match(log,/if \(main\.dataset\.routeId !== requestRoute \|\| !listHolder\.isConnected\) return/);
   assert.match(log,/const searchId = \+\+newestSearch/);
   assert.match(log,/const year = f\.year/);
-  assert.match(log,/D\.log\[year\] \|\| \(D\.log\[year\] = await getJson/);
+  assert.match(log,/list = D\.log\[year\] \|\| await getJson/);
+  assert.match(log,/D\.log\[year\] = list/);
   assert.match(log,/if \(searchId !== newestSearch \|\| main\.dataset\.routeId !== requestRoute \|\|\s*!listHolder\.isConnected\) return/);
   assert.match(log,/countLine\.textContent = \`\$\{plural\(rows\.length, 'alert'\)\} in \$\{year\}/);
   assert.match(log,/function update|async function update/);
