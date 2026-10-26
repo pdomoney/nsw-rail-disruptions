@@ -16,7 +16,7 @@ test('protected map modes and source artwork remain connected to their original 
   assert.match(map,/drawOfficialOverlay\(holder, \{ network:D\.network, live:D\.live/);
   assert.match(map,/createGeographicMap\(holder, \{/);
   assert.match(map,/schematicMap\(holder, \{ sch:\s*D\.schematic/);
-  assert.match(map,/networkMap\(holder, \{ net:D\.network/);
+  assert.match(map,/networkMap\(holder, \{ net:\s*D\.network/);
   assert.match(map,/onTrainHover:showTip,onHoverEnd:hideTip/);
   assert.match(map,/onTrainSelect:showSelectedTrain,onStationSelect:showSelectedStation/);
   assert.match(map,/mapViewCleanup = \(\) =>/);
