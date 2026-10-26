@@ -936,7 +936,21 @@ async function viewLog(main) {
     history.replaceState(null, '', `#/log?${p}`);
     if (!f.year) { countLine.textContent = 'No alerts have been recorded yet.'; return; }
     listHolder.style.opacity = '0.5';
-    const list = D.log[year] || (D.log[year] = await getJson(`data/log/${year}.json`));
+    let list;
+    try {
+      list = D.log[year] || await getJson(`data/log/${year}.json`);
+      D.log[year] = list;
+    } catch {
+      if (searchId !== newestSearch || main.dataset.routeId !== requestRoute ||
+          !listHolder.isConnected) return;
+      countLine.textContent = 'Recorded alerts for ' + year + ' could not be loaded.';
+      listHolder.replaceChildren(h('div', { class:'history-load-error', role:'alert' },
+        h('p', {}, 'The archived alerts for this year are unavailable. Check your connection and try again.'),
+        h('button', { type:'button', class:'history-retry',
+          onclick:() => update() }, 'Retry loading history')));
+      listHolder.style.opacity = '';
+      return;
+    }
     if (searchId !== newestSearch || main.dataset.routeId !== requestRoute ||
         !listHolder.isConnected) return;
     const needle = f.text.trim().toLowerCase();
@@ -2822,13 +2836,19 @@ async function route() {
 let lastHashPath = null;
 window.addEventListener('hashchange', () => {
   const pathOnly = location.hash.split('?')[0];
-  // Filter changes on the log and service pages update the query string without re-rendering.
-  if ((pathOnly === '#/log' || pathOnly === '#/service' || pathOnly === '#/trackwork' || pathOnly === '#/map') && lastHashPath === pathOnly) return;
+  const sameView = lastHashPath === pathOnly;
   lastHashPath = pathOnly;
+  // Every real hashchange, including query-only changes and browser Back,
+  // must apply its route parameters. In-page filter controls use
+  // history.replaceState(), which does NOT dispatch a hashchange event.
   route().then(rendered => {
     if (!rendered) return;
-    if (!location.hash.startsWith('#/log')) window.scrollTo(0, 0);
-    document.getElementById('main').focus({ preventScroll: true });
+    // Preserve the reader's position for query-only updates; a change of
+    // destination should still begin at the top and focus the new page.
+    if (!sameView) {
+      if (!location.hash.startsWith('#/log')) window.scrollTo(0, 0);
+      document.getElementById('main').focus({ preventScroll: true });
+    }
   });
 });
 
@@ -2892,7 +2912,9 @@ function isStale() {
 }
 function onOverview() {
   const hash = location.hash || '#/';
-  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip|service|trackwork|map|crowding|stations)/.test(hash);
+  // #/insights is a supported alias of #/service and must never redraw Today
+  // when the five-minute collector reports a newer dataset.
+  return hash === '#/' || hash === '#' || !/^#\/(line|log|about|trip|service|insights|trackwork|map|crowding|stations)(?:[/?]|$)/.test(hash);
 }
 function userIsInteracting() {
   const main = document.getElementById('main');
