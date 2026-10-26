@@ -394,11 +394,31 @@ function viewOverview(main) {
       h('div', { class: 'board-col' }, BOARD_RIGHT.map(m => group(m)))),
     modes.filter(m => !BOARD_LEFT.includes(m) && !BOARD_RIGHT.includes(m)).map(m => group(m, true)));
 
+  // This landing page serves immediate travel decisions. Long-running
+  // disruption calendar/ranking charts now live under Insights → History,
+  // where they keep their existing data, filters and interactive elements.
+  const shortcuts=h('nav', { class:'today-shortcuts',
+    'aria-label':'Useful actions for travelling today' },
+    h('a', { href:'#/map', class:'today-shortcut' },
+      h('strong', {}, 'Explore network map'),
+      h('span', {}, 'Train positions and stations')),
+    h('a', { href:'#/trackwork', class:'today-shortcut' },
+      h('strong', {}, 'Check trackwork'),
+      h('span', {}, 'Planned changes and closures')),
+    h('a', { href:'#/trip', class:'today-shortcut' },
+      h('strong', {}, 'Plan a trip'),
+      h('span', {}, 'Check a route and its alerts')));
+  const historical=h('aside', { class:'today-history-link',
+    'aria-label':'Historical rail disruption analysis' },
+    h('div', {},
+      h('strong', {}, 'Looking for historical performance?'),
+      h('p', {}, 'Find the disruption calendar, line comparisons and causes alongside the full alert archive.')),
+    h('a', { href:'#/log' }, 'Explore Insights → History'));
   main.replaceChildren(
     nowSection(head, sub, stale),
+    shortcuts,
     board,
-    calendarSection(),
-    rankingSection(),
+    historical,
   );
 }
 
@@ -872,9 +892,29 @@ async function viewLog(main) {
   const sel = (label, key, options) => h('label', { class: 'field' }, label,
     h('select', { onchange: ev => { f[key] = ev.target.value; update(); } }, options.map(([v, t]) => { const o = h('option', { value: v }, t); if (v === f[key]) o.selected = true; return o; })));
   const search = h('input', { type: 'search', placeholder: 'Station, cause or any word', value: f.text, oninput: ev => { f.text = ev.target.value; clearTimeout(search._t); search._t = setTimeout(update, 200); } });
+  // Render expensive SVG charts only when requested, in a *visible*
+  // container. Rendering while a native <details> is closed would give
+  // inaccurate chart widths on iPhone Safari.
+  const trendContent=h('div', { class:'history-trends-content' });
+  const trends=h('details', { class:'history-trends' },
+    h('summary', {}, 'Disruption calendar and comparisons'),
+    h('p', { class:'history-trends-intro' },
+      'Explore disruption intensity over time, most affected lines and recorded causes. '+
+      'These charts show historical observations, not current service conditions.'),
+    trendContent);
+  let trendChartsMounted=false;
+  trends.addEventListener('toggle', () => {
+    if (!trends.open || trendChartsMounted || !trends.isConnected) return;
+    trendChartsMounted=true;
+    // Both pre-existing components retain their time-range and measure
+    // coordination, table view, keyboard navigation and responsive redraw.
+    trendContent.replaceChildren(calendarSection(),rankingSection());
+  });
   main.replaceChildren(
-    h('div', { class: 'line-head' }, h('h1', {}, 'Alert log')),
+    h('div', { class: 'line-head' }, h('h1', {}, 'Alert history')),
     h('p', { class: 'section-intro' }, 'Every train, metro and light rail alert recorded since July 2023, as published by Transport for NSW. Times are when the alert was first and last seen in the feed.'),
+    trends,
+    h('h2', { class:'history-log-heading' }, 'Search recorded alerts'),
     h('div', { class: 'filters' },
       sel('Line', 'line', [['', 'All lines'], ...D.meta.lines.map(l => [l.id, fullName(l)])]),
       sel('Type', 'kind', [['incident', 'Unplanned'], ['planned', 'Planned'], ['advisory', 'Advisory'], ['', 'All types']]),
