@@ -6,7 +6,10 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
-const baseFiles = ['app.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'official-vector-stops.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css'];
+// Every local asset referenced by index.html must receive an immutable URL.
+// ux-refresh.css was previously copied but not stamped, so cached Safari/PWA
+// sessions could mix old UX layouts with newly published JavaScript.
+const baseFiles = ['app.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'official-vector-stops.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css', 'ux-refresh.css', 'favicon.svg', 'rail-mark.svg'];
 
 function filesUnder(dir, prefix = '') {
   return fs.readdirSync(path.join(dir, prefix), { withFileTypes: true })
@@ -66,9 +69,13 @@ export function publishSiteRelease(siteDir, outputDir, { generatedAt = Date.now(
   fs.writeFileSync(path.join(outputDir, stamped['app.js']), app);
 
   let html = fs.readFileSync(path.join(siteDir, 'index.html'), 'utf8');
-  for (const name of ['styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css']) {
+  // Version the presentation stylesheet *and* SVG header identity. The
+  // original source files stay in the output for backwards-compatible URLs,
+  // but the generated page never refers to an unversioned local asset.
+  for (const name of ['styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css', 'ux-refresh.css', 'favicon.svg']) {
     html = replaceOnce(html, 'href="' + name + '"', 'href="' + stamped[name] + '"', 'index.html');
   }
+  html = replaceOnce(html, 'src="rail-mark.svg"', 'src="' + stamped['rail-mark.svg'] + '"', 'index.html');
   html = replaceOnce(html, 'src="app.js"', 'src="' + stamped['app.js'] + '"', 'index.html');
   fs.writeFileSync(path.join(outputDir, 'index.html'), html);
 
