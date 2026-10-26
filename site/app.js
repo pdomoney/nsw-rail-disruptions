@@ -729,10 +729,12 @@ function pagedList(list, render, step = 30) {
 
 // ----- line page -----
 async function viewLine(main, id) {
+  const requestRoute = main.dataset.routeId;
   const l = lineInfo(id);
   if (!D.meta.lines.some(x => x.id === id)) { notFound(main, `There is no line called “${id}”.`); return; }
   document.title = `${fullName(l)} | NSW Rail Disruptions`;
   const data = D.line[id] || (D.line[id] = await getJson(`data/line/${id}.json`));
+  if (main.dataset.routeId !== requestRoute) return;
   const st = D.status.lines[id] || {};
   const L = D.daily.lines[id];
   let range = prefs.get('range', '90d');
@@ -883,6 +885,8 @@ function drawDelays(holder, id, cDelay, cLate) {
 
 // ----- alert log -----
 async function viewLog(main) {
+  const requestRoute = main.dataset.routeId;
+  let newestSearch = 0;
   document.title = 'Alert log | NSW Rail Disruptions';
   const years = [...D.meta.logYears].reverse();
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
@@ -924,16 +928,21 @@ async function viewLog(main) {
     countLine, listHolder);
 
   async function update() {
+    if (main.dataset.routeId !== requestRoute || !listHolder.isConnected) return;
+    const searchId = ++newestSearch;
+    const year = f.year;
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries({ line: f.line, kind: f.kind, cause: f.cause, year: f.year, q: f.text })) if (v) p.set(k, v);
     history.replaceState(null, '', `#/log?${p}`);
     if (!f.year) { countLine.textContent = 'No alerts have been recorded yet.'; return; }
     listHolder.style.opacity = '0.5';
-    const list = D.log[f.year] || (D.log[f.year] = await getJson(`data/log/${f.year}.json`));
+    const list = D.log[year] || (D.log[year] = await getJson(`data/log/${year}.json`));
+    if (searchId !== newestSearch || main.dataset.routeId !== requestRoute ||
+        !listHolder.isConnected) return;
     const needle = f.text.trim().toLowerCase();
     const rows = list.filter(e => (!f.line || e.l.includes(f.line)) && (!f.kind || e.k === f.kind) && (!f.cause || e.c === f.cause) &&
       (!needle || `${e.t} ${e.x}`.toLowerCase().includes(needle)));
-    countLine.textContent = `${plural(rows.length, 'alert')} in ${f.year}, newest first.`;
+    countLine.textContent = `${plural(rows.length, 'alert')} in ${year}, newest first.`;
     listHolder.replaceChildren(rows.length ? pagedList(rows, e => alertItem(e), 40) : h('p', { class: 'empty-chart' }, 'No alerts match these filters. Try another year or clear the search.'));
     listHolder.style.opacity = '';
   }
@@ -1034,8 +1043,11 @@ function serviceTotals(dayIdx) {
 const SVC_PERIODS = [['today', 'Today'], ['yesterday', 'Yesterday'], ['7d', 'Last 7 days'], ['30d', 'Last 30 days']];
 
 async function viewService(main) {
+  const requestRoute = main.dataset.routeId;
   document.title = 'Reliability | NSW Rail Disruptions';
+  main.replaceChildren(h('p', { class:'loading', role:'status' }, 'Loading service reliability…'));
   await loadService();
+  if (main.dataset.routeId !== requestRoute) return;
   const ride = D.clock?.assumptions?.rideMinutes ?? 30;
   const levelNames = ['empty', 'many seats free', 'few seats free', 'standing room only', 'crowded', 'full'];
   const loads = (D.clock?.assumptions?.carLoad?.train || []).map((n, i) => `${n} people when ${levelNames[i]}`).join(', ') || 'see the source code';
@@ -1224,7 +1236,7 @@ async function viewService(main) {
     }
     let detail = null;
     try { detail = await loadServiceDay(date); } catch { detail = null; }
-    if (my !== drawing) return;
+    if (my !== drawing || main.dataset.routeId !== requestRoute) return;
     const lineIds = Object.keys(detail?.trips || {}).filter(trackedLine).sort((a, b) => order(a) - order(b));
     listHead.replaceChildren(
       h('label', { class: 'field inline' }, 'Line ',
@@ -1415,8 +1427,11 @@ function badgeList(ids) {
 }
 
 async function viewTrackwork(main) {
+  const requestRoute = main.dataset.routeId;
   document.title = 'Trackwork ahead | NSW Rail Disruptions';
+  main.replaceChildren(h('p', { class:'loading', role:'status' }, 'Loading planned trackwork…'));
   const tw = await loadTrackwork();
+  if (main.dataset.routeId !== requestRoute) return;
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   const items = tw.items.filter(it => it.l.some(trackedLine));
   const lines = [...new Set(items.flatMap(it => it.l))].filter(trackedLine)
@@ -1554,6 +1569,7 @@ async function viewTrackwork(main) {
   pageRefresh = async () => {
     D.trackwork = null;
     await loadTrackwork();
+    if (main.dataset.routeId !== requestRoute) return;
     viewTrackwork(main);
   };
 }
@@ -1720,7 +1736,9 @@ const delayClass = d => (d == null ? 'mt-none' : MAP_DELAY.find(b => d < b.max).
 const sizeOf = pax => (pax == null ? 4 : MAP_SIZE.find(([m]) => pax < m)[1]);
 
 async function viewMap(main) {
+  const requestRoute = main.dataset.routeId;
   document.title = 'Live map | NSW Rail Disruptions';
+  main.replaceChildren(h('p', { class:'loading', role:'status' }, 'Loading the rail network map…'));
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
   // Three presentations: actual TfNSW PDF overlay, geographical map, custom diagram.
   // Network diagram links from earlier releases now open the authentic PDF
@@ -1734,6 +1752,7 @@ async function viewMap(main) {
   let officialAvailable = null;
   let officialImageUrl = OFFICIAL_MAP.image;
   await loadMap(true, kind);
+  if (main.dataset.routeId !== requestRoute) return;
   // The geographic view uses TfNSW coordinates and a street basemap. An offline/CDN
   // failure preserves the existing vector track view as a usable fallback.
   let geographicReady = false;
@@ -1752,6 +1771,7 @@ async function viewMap(main) {
     return loaded;
   }
   if (kind === 'official') await checkOfficialMap();
+  if (main.dataset.routeId !== requestRoute) return;
   let view = ['city', 'sydney', 'all'].includes(q.get('view')) ? q.get('view') : prefs.get('mapView', 'sydney');
   if (!['city', 'sydney', 'all'].includes(view)) view = 'sydney';
   let diagramStyle = prefs.get('mapDiagramStyle', 'light') === 'dark' ? 'dark' : 'light';
@@ -2009,6 +2029,7 @@ async function viewMap(main) {
         catch(e){console.warn('Using offline track drawing:',e.message);}
       }
       await loadMap(false,kind);
+      if (main.dataset.routeId !== requestRoute) return;
       prefs.set('mapKind',kind);
       setState();draw();
     },'Map type');
@@ -2103,7 +2124,10 @@ async function viewMap(main) {
     if (geographic) { geographic.destroy(); geographic = null; }
   };
   onResize(() => { if (geographic) geographic.resize(); else draw(); });
-  pageRefresh = async () => { await loadMap(true,kind==='official'?'diagram':kind); draw(); };
+  pageRefresh = async () => {
+    await loadMap(true,kind==='official'?'diagram':kind);
+    if (main.dataset.routeId === requestRoute) draw();
+  };
 }
 
 // Shared hover treatment for both SVG maps. Hover is transient; click/tap remains
@@ -2757,9 +2781,12 @@ function addInsightsNavigation(main,hash) {
   // including async station and crowding loaders.
   main.prepend(kicker,tabs,guide);
 }
+let routeSequence = 0;
 async function route() {
   resetView();
   const main = document.getElementById('main');
+  const routeId = String(++routeSequence);
+  main.dataset.routeId = routeId;
   const hash = location.hash || '#/';
   const insightRoute=hash.startsWith('#/service')||hash.startsWith('#/crowding')||
     hash.startsWith('#/stations')||hash.startsWith('#/log')||hash.startsWith('#/insights');
@@ -2780,10 +2807,15 @@ async function route() {
     else if (hash.startsWith('#/trackwork')) await viewTrackwork(main);
     else if (hash.startsWith('#/map')) await viewMap(main);
     else { document.title = 'NSW Rail Disruptions'; viewOverview(main); }
+    if (main.dataset.routeId !== routeId) return false;
     if(insightRoute)addInsightsNavigation(main,hash);
+    return true;
   } catch (e) {
+    // An older route must not overwrite a newer screen with a stale error.
+    if (main.dataset.routeId !== routeId) return false;
     console.error(e);
     main.replaceChildren(h('div', { class: 'error-box' }, h('h1', {}, 'Something went wrong'), h('p', {}, e.message), h('p', {}, 'Reload the page to try again.')));
+    return false;
   }
 }
 
@@ -2793,7 +2825,11 @@ window.addEventListener('hashchange', () => {
   // Filter changes on the log and service pages update the query string without re-rendering.
   if ((pathOnly === '#/log' || pathOnly === '#/service' || pathOnly === '#/trackwork' || pathOnly === '#/map') && lastHashPath === pathOnly) return;
   lastHashPath = pathOnly;
-  route().then(() => { if (!location.hash.startsWith('#/log')) window.scrollTo(0, 0); document.getElementById('main').focus({ preventScroll: true }); });
+  route().then(rendered => {
+    if (!rendered) return;
+    if (!location.hash.startsWith('#/log')) window.scrollTo(0, 0);
+    document.getElementById('main').focus({ preventScroll: true });
+  });
 });
 
 // ---------- Home Screen app release updates ----------
