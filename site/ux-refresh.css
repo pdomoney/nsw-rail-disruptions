@@ -867,3 +867,218 @@ select,input[type="search"],input[type="text"],input[type="datetime-local"] {
   outline:3px solid var(--focus);
   outline-offset:2px;
 }
+
+/* Phase 4C — trip planning: station-first journey card and explicit TfNSW handoff.
+   No local journey routing is invented; original tripResults and URL API stay intact. */
+.trip-page-heading {margin-bottom:3px}
+.trip-page-heading .page-eyebrow {margin:0 0 5px}
+.trip-page-heading h1 {margin:0}
+.trip-page-intro {
+  max-width:78ch;
+  font-size:.94rem;
+  line-height:1.48;
+  margin:4px 0 16px;
+}
+.trip-planner-card {
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:17px;
+  margin:10px 0 19px;
+  padding:20px 21px 17px;
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:var(--ux-radius);
+  box-shadow:0 2px 8px #1631490a;
+}
+.trip-form-title h2 {
+  font-size:1.18rem;
+  margin:0 0 4px;
+  line-height:1.28;
+}
+.trip-form-title p {font-size:.87rem;color:var(--ink-2);margin:0}
+.trip-planner-card .trip-stations {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);
+  gap:13px;
+  align-items:start;
+  width:100%;
+}
+.trip-planner-card .trip-stations .field {min-width:0;width:100%;display:grid;gap:6px}
+.trip-planner-card .trip-stations .field>span:first-child {font-weight:650;color:var(--ink)}
+.trip-planner-card input[type="text"] {
+  width:100%;
+  min-height:49px;
+  padding:10px 12px;
+  background:var(--surface);
+  color:var(--ink);
+  border:1px solid var(--rule-strong);
+  border-radius:8px;
+  font-size:1rem;
+}
+.trip-planner-card input[type="text"]:focus-visible,
+.trip-planner-card input[type="datetime-local"]:focus-visible {
+  outline:3px solid var(--focus);
+  outline-offset:2px;
+}
+.trip-planner-card input[aria-invalid="true"] {
+  border-color:var(--critical);
+}
+.trip-planner-card .swap {
+  width:44px;
+  height:44px;
+  min-width:44px;
+  min-height:44px;
+  margin:25px 0 0;
+  border-radius:8px;
+}
+.trip-planner-card .swap:focus-visible {outline:3px solid var(--focus);outline-offset:2px}
+.trip-planner-card .field-hint {font-size:.78rem;line-height:1.3;min-height:1em}
+.trip-time-row {
+  display:grid;
+  gap:7px;
+  padding-top:13px;
+  border-top:1px solid var(--rule);
+}
+.trip-time-heading {font-weight:650;color:var(--ink);margin:0;font-size:.9rem}
+.trip-planner-card .trip-when {display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.trip-planner-card .trip-when .seg button {min-height:44px}
+.trip-planner-card .trip-time-input {display:grid;gap:4px;min-width:190px}
+.trip-planner-card .trip-time-input input {min-height:44px;width:100%}
+.trip-form-footnote {
+  margin:0;
+  color:var(--ink-2);
+  font-size:.8rem;
+  line-height:1.45;
+}
+.trip-outcome {max-width:100%;min-width:0}
+.trip-feedback {
+  padding:15px 18px;
+  border:1px dashed var(--rule-strong);
+  border-radius:9px;
+  background:var(--surface-2);
+  color:var(--ink-2);
+  font-size:.91rem;
+  margin:0 0 12px;
+  line-height:1.45;
+}
+.trip-feedback:empty {display:none}
+.trip-results-host {max-width:100%;min-width:0}
+.trip-results-host .trip-results {
+  max-width:none;
+  border-top:0;
+  padding:1px 0 25px;
+}
+.trip-results-host .trip-results>h2 {
+  font-size:clamp(1.3rem,3vw,1.9rem);
+  margin:8px 0 12px;
+}
+.trip-results-host .trip-summary {
+  background:var(--surface-2);
+  border:1px solid var(--rule);
+  border-radius:9px;
+  padding:12px 15px;
+  max-width:none;
+  font-size:.92rem;
+  line-height:1.48;
+}
+.trip-results-host .trip-summary p {margin:0 0 5px}
+.trip-results-host .trip-cta {
+  border:1px solid var(--rule);
+  border-left:3px solid var(--ux-teal);
+  background:var(--surface);
+  border-radius:9px;
+  padding:15px;
+  margin:13px 0 16px;
+}
+.trip-results-host .trip-cta .button {
+  min-height:48px;
+  max-width:100%;
+  justify-content:center;
+  line-height:1.35;
+  text-align:center;
+}
+.trip-results-host .trip-cta p {
+  max-width:88ch;
+  margin:10px 0 0;
+  font-size:.82rem;
+  line-height:1.5;
+}
+.trip-results-host .trip-results>h3 {
+  margin:19px 0 9px;
+  font-size:1.08rem;
+}
+.trip-results-host .trip-lines {border-radius:8px;overflow:hidden}
+@media (max-width:760px) {
+  .trip-planner-card {padding:14px;gap:11px}
+  .trip-planner-card .trip-stations {
+    grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);
+    gap:8px;
+  }
+  .trip-planner-card input[type="text"] {min-height:47px;font-size:.94rem}
+  .trip-planner-card .trip-when .seg {display:flex;flex-wrap:wrap}
+  .trip-planner-card .trip-when .seg button {padding:8px 10px}
+}
+@media (max-width:590px) {
+  .trip-page-intro {margin:4px 0 9px;font-size:.85rem}
+  .trip-planner-card {padding:12px;gap:10px;margin:8px 0 13px}
+  .trip-planner-card .trip-stations {
+    grid-template-columns:minmax(0,1fr) 44px;
+    gap:3px 9px;
+  }
+  .trip-planner-card .trip-station-field {grid-column:1 / -1}
+  .trip-planner-card .swap {
+    grid-column:2;
+    grid-row:2;
+    margin:0 0 3px;
+    justify-self:end;
+  }
+  .trip-planner-card .trip-station-field:last-child {grid-row:3}
+  .trip-form-title h2 {font-size:1.08rem}
+  .trip-form-title p {font-size:.8rem}
+  .trip-planner-card .trip-stations .field {gap:4px}
+  .trip-planner-card .trip-stations .field>span:first-child {font-size:.83rem}
+  .trip-planner-card .trip-when .seg {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    width:100%;
+    gap:3px;
+  }
+  .trip-planner-card .trip-when .seg button {
+    min-width:0;
+    font-size:.78rem;
+    white-space:normal;
+    line-height:1.2;
+    padding:7px 3px;
+  }
+  .trip-planner-card .trip-time-input {width:100%;min-width:0}
+  .trip-form-footnote {font-size:.75rem}
+  .trip-feedback {padding:11px;font-size:.84rem}
+  .trip-results-host .trip-summary {padding:10px;font-size:.84rem}
+  .trip-results-host .trip-cta {padding:11px}
+  .trip-results-host .trip-cta .button {width:100%;font-size:.88rem}
+  .trip-results-host .trip-cta p {font-size:.76rem}
+  .trip-results-host .trip-results>h3 {font-size:1rem}
+}
+
+/* Final Trip stage: accessible timed journeys and resilient result wrapping. */
+.trip-planner-card .trip-time-input .field-hint {
+  display:block;
+  color:var(--critical);
+  font-size:.81rem;
+  line-height:1.35;
+  min-height:1em;
+}
+.trip-planner-card input[type="datetime-local"][aria-invalid="true"] {
+  border-color:var(--critical);
+}
+.trip-outcome,.trip-results-host,.trip-results-host .trip-summary,
+.trip-results-host .trip-cta,.trip-results-host .trip-lines {
+  min-width:0;
+  overflow-wrap:break-word;
+}
+.trip-results-host .trip-cta .button {
+  overflow-wrap:anywhere;
+}
+@media (prefers-reduced-motion:reduce) {
+  .trip-outcome,.trip-planner-card {scroll-behavior:auto}
+}
