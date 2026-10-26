@@ -2610,84 +2610,151 @@ async function viewTrip(main) {
     when: ['now', 'dep', 'arr'].includes(q.get('when')) ? q.get('when') : 'now',
     t: q.get('t') || '',
   };
+  // An existing departure/arrival deep link without a time must still send
+  // an explicit Sydney-local time to the official TfNSW journey planner.
+  if (state.when !== 'now' && !state.t) state.t = sydNowInput();
 
-  const list = h('datalist', { id: 'station-list' }, STATIONS.map(st => h('option', { value: st.s, label: st.l.join(', ') })));
-  const fromIn = h('input', { type: 'text', list: 'station-list', autocomplete: 'off', placeholder: 'Station or stop', value: state.from?.s || '', id: 'trip-from' });
-  const toIn = h('input', { type: 'text', list: 'station-list', autocomplete: 'off', placeholder: 'Station or stop', value: state.to?.s || '', id: 'trip-to' });
-  const fromHint = h('span', { class: 'field-hint', 'aria-live': 'polite' });
-  const toHint = h('span', { class: 'field-hint', 'aria-live': 'polite' });
-  const timeIn = h('input', { type: 'datetime-local', value: state.t || sydNowInput(), 'aria-label': 'Date and time (Sydney time)' });
+  const list = h('datalist', { id: 'station-list' },
+    STATIONS.map(st => h('option', { value: st.s, label: st.l.join(', ') })));
+  const fromIn = h('input', {
+    type: 'text', list: 'station-list', autocomplete: 'off', spellcheck: 'false',
+    placeholder: 'e.g. Central', value: state.from?.s || '',
+    id: 'trip-from', 'aria-describedby': 'trip-from-hint',
+  });
+  const toIn = h('input', {
+    type: 'text', list: 'station-list', autocomplete: 'off', spellcheck: 'false',
+    placeholder: 'e.g. Parramatta', value: state.to?.s || '',
+    id: 'trip-to', 'aria-describedby': 'trip-to-hint',
+  });
+  const fromHint = h('span', { id: 'trip-from-hint', class: 'field-hint', 'aria-live': 'polite' });
+  const toHint = h('span', { id: 'trip-to-hint', class: 'field-hint', 'aria-live': 'polite' });
+  const timeIn = h('input', {
+    type: 'datetime-local', value: state.t || sydNowInput(),
+    'aria-label': 'Sydney local departure or arrival date and time',
+  });
   const whenHolder = h('div', { class: 'trip-when' });
-  const results = h('div');
+  const feedback = h('p', { class: 'trip-feedback', role: 'status', 'aria-live': 'polite' });
+  const results = h('div', { class: 'trip-results-host' });
 
+  const renderResults = () => {
+    if (!state.from || !state.to) {
+      feedback.textContent = 'Select a departure and arrival station to see relevant line notices.';
+      results.replaceChildren();
+      return;
+    }
+    if (state.from.id === state.to.id) {
+      feedback.textContent = 'Choose two different stations.';
+      results.replaceChildren();
+      return;
+    }
+    feedback.textContent = '';
+    results.replaceChildren(tripResults(state.from, state.to, state.when, state.t));
+  };
   const update = () => {
     const p = new URLSearchParams();
     if (state.from) p.set('from', state.from.id);
     if (state.to) p.set('to', state.to.id);
-    if (state.when !== 'now') { p.set('when', state.when); p.set('t', state.t); }
+    if (state.when !== 'now') {
+      p.set('when', state.when);
+      p.set('t', state.t);
+    }
     history.replaceState(null, '', `#/trip${p.toString() ? `?${p}` : ''}`);
     if (state.from && state.to) prefs.set('trip', { from: state.from.id, to: state.to.id });
     renderResults();
   };
-  const renderResults = () => {
-    if (!state.from || !state.to) {
-      results.replaceChildren(h('p', { class: 'muted trip-empty' }, 'Choose where you are leaving from and going to.'));
-      return;
-    }
-    if (state.from.id === state.to.id) {
-      results.replaceChildren(h('p', { class: 'trip-empty' }, 'Choose two different stations.'));
-      return;
-    }
-    results.replaceChildren(tripResults(state.from, state.to, state.when, state.t));
-  };
   const resolve = (input, hint, key) => {
     const st = findStation(input.value);
     state[key] = st;
-    hint.textContent = input.value.trim() && !st ? 'Choose a station from the list.' : '';
-    if (st && input.value !== st.s && document.activeElement !== input) input.value = st.s;
+    const invalid = Boolean(input.value.trim() && !st);
+    if (invalid) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+    hint.textContent = invalid ? 'Select a matching station from the suggestions.' : '';
+    if (st && document.activeElement !== input) input.value = st.s;
     update();
   };
   for (const [input, hint, key] of [[fromIn, fromHint, 'from'], [toIn, toHint, 'to']]) {
     input.addEventListener('change', () => resolve(input, hint, key));
-    input.addEventListener('input', () => { if (findStation(input.value)?.s === input.value) resolve(input, hint, key); });
+    input.addEventListener('input', () => {
+      // Never retain a previous route when the user types a replacement.
+      input.removeAttribute('aria-invalid');
+      hint.textContent = '';
+      const exact = STATIONS.find(st => st.s.toLowerCase() === input.value.trim().toLowerCase());
+      if (exact) { resolve(input, hint, key); return; }
+      if (state[key]) { state[key] = null; update(); }
+    });
   }
-  const swap = h('button', { type: 'button', class: 'swap', 'aria-label': 'Swap From and To', title: 'Swap From and To',
+  const swap = h('button', {
+    type: 'button', class: 'swap', 'aria-label': 'Swap departure and arrival stations',
+    title: 'Swap departure and arrival stations',
     onclick: () => {
       [state.from, state.to] = [state.to, state.from];
       [fromIn.value, toIn.value] = [toIn.value, fromIn.value];
       fromHint.textContent = toHint.textContent = '';
+      fromIn.removeAttribute('aria-invalid');
+      toIn.removeAttribute('aria-invalid');
       update();
-    } });
+    },
+  });
   swap.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3v13M6 16l-3-3M6 16l3-3M14 17V4M14 4l-3 3M14 4l3 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   timeIn.addEventListener('change', () => { state.t = timeIn.value; update(); });
   const drawWhen = () => {
     whenHolder.replaceChildren(
-      segmented([['now', 'Leave now'], ['dep', 'Depart at'], ['arr', 'Arrive by']], state.when, v => {
-        state.when = v;
-        if (v !== 'now' && !state.t) state.t = timeIn.value || sydNowInput();
-        drawWhen();
-        update();
-      }, 'When'),
-      ...(state.when === 'now' ? [] : [timeIn]));
+      segmented([['now', 'Leave now'], ['dep', 'Depart at'], ['arr', 'Arrive by']],
+        state.when, v => {
+          state.when = v;
+          if (v !== 'now' && !state.t) state.t = timeIn.value || sydNowInput();
+          drawWhen();
+          update();
+        }, 'Journey time'),
+      ...(state.when === 'now' ? [] : [
+        h('label', { class: 'field trip-time-input' },
+          'Sydney date and time', timeIn),
+      ]));
   };
   drawWhen();
 
+  const form = h('form', {
+    class: 'trip-form trip-planner-card',
+    onsubmit: ev => {
+      ev.preventDefault();
+      resolve(fromIn, fromHint, 'from');
+      resolve(toIn, toHint, 'to');
+    },
+  },
+    h('div', { class: 'trip-form-title' },
+      h('h2', {}, 'Choose your journey'),
+      h('p', {}, 'Enter two NSW stations or stops to check associated lines and alerts.')),
+    h('div', { class: 'trip-stations' },
+      h('label', { class: 'field trip-station-field', for: 'trip-from' },
+        h('span', {}, 'Leaving from'), fromIn, fromHint),
+      swap,
+      h('label', { class: 'field trip-station-field', for: 'trip-to' },
+        h('span', {}, 'Going to'), toIn, toHint)),
+    h('div', { class: 'trip-time-row' },
+      h('p', { class: 'trip-time-heading' }, 'When would you like to travel?'),
+      whenHolder),
+    h('p', { class: 'trip-form-footnote' },
+      'Station suggestions are from TfNSW. Journey routes and departure times are provided by the official TfNSW Trip Planner.'));
+
   main.replaceChildren(
-    h('div', { class: 'line-head' }, h('h1', {}, 'Plan a trip')),
-    h('p', { class: 'section-intro' }, 'Check what is happening on the lines between two stations, then see journeys and times on transportnsw.info.'),
-    list,
-    h('form', { class: 'trip-form', onsubmit: ev => ev.preventDefault() },
-      h('div', { class: 'trip-stations' },
-        h('label', { class: 'field', for: 'trip-from' }, 'From', fromIn, fromHint),
-        swap,
-        h('label', { class: 'field', for: 'trip-to' }, 'To', toIn, toHint)),
-      h('div', { class: 'field' }, h('span', {}, 'When'), whenHolder)),
-    results);
+    h('div', { class: 'line-head trip-page-heading' },
+      h('div', {},
+        h('p', { class: 'page-eyebrow' }, 'Your journey · NSW rail'),
+        h('h1', {}, 'Plan a trip'))),
+    h('p', { class: 'section-intro trip-page-intro' },
+      'Check disruptions on lines near your journey, then open the official planner for complete routes, changes and departure times.'),
+    list, form,
+    h('section', { class: 'trip-outcome', 'aria-label': 'Journey and disruption information' },
+      feedback, results));
   renderResults();
 
   pageRefresh = () => {
-    if (userIsInteracting() && results.contains(document.activeElement)) { redrawPending = true; return; }
-    if (!document.getElementById('tooltip').hidden) { redrawPending = true; return; }
+    if (userIsInteracting() && results.contains(document.activeElement)) {
+      redrawPending = true; return;
+    }
+    if (!document.getElementById('tooltip').hidden) {
+      redrawPending = true; return;
+    }
     redrawPending = false;
     renderResults();
   };
