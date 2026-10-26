@@ -1034,7 +1034,7 @@ function serviceTotals(dayIdx) {
 const SVC_PERIODS = [['today', 'Today'], ['yesterday', 'Yesterday'], ['7d', 'Last 7 days'], ['30d', 'Last 30 days']];
 
 async function viewService(main) {
-  document.title = 'Service delivered | NSW Rail Disruptions';
+  document.title = 'Reliability | NSW Rail Disruptions';
   await loadService();
   const ride = D.clock?.assumptions?.rideMinutes ?? 30;
   const levelNames = ['empty', 'many seats free', 'few seats free', 'standing room only', 'crowded', 'full'];
@@ -1074,7 +1074,7 @@ async function viewService(main) {
       h('div', { class: 'chart-block' }, hClockTime, nClockTime, cClockTime)));
 
   mount(main,
-    h('div', { class: 'line-head' }, h('h1', {}, 'Service delivered')),
+    h('div', { class: 'line-head' }, h('h1', {}, 'Service reliability')),
     intro, filters, headline, kpis,
     h('div', { class: 'chart-grid' },
       h('div', { class: 'chart-block' }, h('h3', {}, 'Trips lost, by line'), nLines, cLines, h('div', { class: 'key' },
@@ -2718,17 +2718,44 @@ const INSIGHT_SECTIONS=Object.freeze([
   ['stations','Stations','#/stations'],
   ['log','History','#/log'],
 ]);
+// The data boundaries are important: rail service completions, carriage
+// occupancy, station Opal taps and archived alerts are not interchangeable.
+const INSIGHT_DESCRIPTIONS=Object.freeze({
+  service:['Observed trips and delay estimates',
+    'Timetabled trips compared with TfNSW live observations. Passenger-hours lost are modelled estimates, not an official punctuality measure.'],
+  crowding:['Reported carriage occupancy',
+    'A relative 0–5 carriage occupancy scale by line and Sydney-local hour. Some observations are predicted, not measured passenger totals.'],
+  stations:['Published Opal entries and exits',
+    'Station tap counts by month, year and corridor. Entries + exits are tap events, not unique journeys or onboard passenger counts.'],
+  log:['Recorded alerts and disruption history',
+    'TfNSW alert records and derived disruption comparisons. Dates refer to recorded alerts; historical charts do not describe current service.'],
+});
 function addInsightsNavigation(main,hash) {
   const active=hash.startsWith('#/crowding')?'crowding'
     :hash.startsWith('#/stations')?'stations'
     :hash.startsWith('#/log')?'log':'service';
+  const [label,description]=INSIGHT_DESCRIPTIONS[active];
+  const kicker=h('p',{class:'insights-eyebrow'},'Insights · '+active.replace('service','reliability').replace('log','history'));
   const tabs=h('nav', { class:'insights-tabs',
     'aria-label':'Insights sections' },
-    ...INSIGHT_SECTIONS.map(([key,label,url])=>
+    ...INSIGHT_SECTIONS.map(([key,text,url])=>
       h('a', { href:url,
         ...(key===active?{'aria-current':'page'}:{}),
-      }, label)));
-  main.prepend(tabs);
+      }, text)));
+  const guide=h('div',{class:'insights-measure-guide'},
+    h('div',{class:'insights-measure-main'},
+      h('strong',{},label),
+      h('p',{},description)),
+    h('details',{class:'insights-compare'},
+      h('summary',{},'Compare these measures'),
+      h('dl',{},INSIGHT_SECTIONS.map(([key,name,url])=>
+        h('div',{class:'insights-compare-item'},
+          h('dt',{},h('a',{href:url},name)),
+          h('dd',{},INSIGHT_DESCRIPTIONS[key][0]))))));
+  // The child view still owns the only page H1, detailed controls and data.
+  // Shared navigation is inserted only after the renderer has completed,
+  // including async station and crowding loaders.
+  main.prepend(kicker,tabs,guide);
 }
 async function route() {
   resetView();
@@ -2739,6 +2766,7 @@ async function route() {
   const navKey = insightRoute?'insights':hash.startsWith('#/about')?''
     :hash.startsWith('#/trip')?'trip':hash.startsWith('#/trackwork')?'trackwork'
     :hash.startsWith('#/map')?'map':hash.startsWith('#/line')?'':'overview';
+  main.classList.toggle('insights-page', insightRoute);
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === navKey) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let m;
