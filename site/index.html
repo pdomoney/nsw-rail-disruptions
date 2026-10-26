@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NSW Rail Disruptions</title>
-  <meta name="description" content="An open record of delays, outages and trackwork on Sydney Trains, Intercity, Metro and light rail lines, built from Transport for NSW open data.">
+  <meta name="description" content="Independent NSW rail information: live disruption summaries, a detailed network map, trackwork, service reliability and station patronage.">
+  <meta name="theme-color" content="#15364d">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,26 +15,23 @@
   <link rel="stylesheet" href="station-patronage.css">
   <link rel="stylesheet" href="map-enhancements.css">
   <link rel="stylesheet" href="official-map.css">
+  <link rel="stylesheet" href="ux-refresh.css">
   <script type="module" src="app.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="wrap header-row">
-      <a class="brand" href="#/" aria-label="NSW Rail Disruptions home">
-        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="7" fill="currentColor"/><path d="M8 20.5h16M8 11.5h7l3 9h6" fill="none" stroke="var(--page)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>NSW Rail Disruptions</span>
+      <a class="brand" href="#/" aria-label="NSW Rail Disruptions — Today">
+        <img class="brand-mark" src="rail-mark.svg" width="42" height="42" alt="">
+        <span class="brand-name"><strong>NSW Rail</strong><span>Disruptions</span><small>Independent network information</small></span>
       </a>
-      <nav class="nav" aria-label="Main">
-        <a href="#/" data-nav="overview">Overview</a>
-        <a href="#/service" data-nav="service">Service delivered</a>
-        <a href="#/crowding" data-nav="crowding">Crowding hotspots</a>
-        <a href="#/stations" data-nav="stations">Station patronage</a>
-        <a href="#/map" data-nav="map">Live map</a>
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="#/" data-nav="overview">Today</a>
+        <a href="#/map" data-nav="map">Network map</a>
         <a href="#/trackwork" data-nav="trackwork">Trackwork</a>
+        <a href="#/service" data-nav="insights">Insights</a>
         <a href="#/trip" data-nav="trip">Plan a trip</a>
-        <a href="#/log" data-nav="log">Alert log</a>
-        <a href="#/about" data-nav="about">About the data</a>
       </nav>
     </div>
   </header>
@@ -43,7 +41,7 @@
   <footer class="site-footer">
     <div class="wrap footer-row">
       <p>Built from <a href="https://opendata.transport.nsw.gov.au/">Transport for NSW Open Data</a> and the community <a href="https://github.com/jxeeno/nsw-service-alerts-historical">service alerts archive</a>, both licensed CC&nbsp;BY&nbsp;4.0. Not affiliated with Transport for NSW. For live travel information use <a href="https://transportnsw.info/alerts">transportnsw.info</a>.</p>
-      <p><a href="https://github.com/pdomoney/nsw-rail-disruptions">Source code and raw data on GitHub</a></p>
+      <p class="footer-links"><a href="#/about">About the data</a> · <a href="https://github.com/pdomoney/nsw-rail-disruptions">Source code and raw data on GitHub</a></p>
     </div>
   </footer>
   <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
