@@ -240,3 +240,102 @@ select,input[type="search"],input[type="text"],input[type="datetime-local"] {
   .filters {gap:8px 11px}
   .map-frame {border-radius:9px}
 }
+
+/* Phase 2: make Today task-led rather than a duplicate historical dashboard.
+   These are ordinary links to existing routes; no fake live status is added. */
+.today-shortcuts {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:11px;
+  margin:12px 0 15px;
+}
+.today-shortcut {
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:4px;
+  min-height:88px;
+  padding:13px 16px;
+  color:var(--ink);
+  text-decoration:none;
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:var(--ux-radius);
+  box-shadow:0 1px 3px #132e450a;
+}
+.today-shortcut strong {font-size:1rem;font-weight:650;line-height:1.25}
+.today-shortcut span {font-size:.84rem;line-height:1.3;color:var(--ink-2)}
+.today-shortcut::after {
+  content:"›";
+  position:absolute;
+  right:12px;
+  top:10px;
+  font-size:1.35rem;
+  color:var(--muted);
+}
+.today-shortcut:hover {border-color:var(--focus);background:var(--surface-2)}
+.today-shortcut:focus-visible {outline:3px solid var(--focus);outline-offset:2px}
+.today-history-link {
+  margin:19px 0 12px;
+  padding:13px 17px;
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-left:3px solid var(--focus);
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px 24px;
+}
+.today-history-link strong {font-size:.94rem}
+.today-history-link p {margin:3px 0 0;color:var(--ink-2);font-size:.85rem}
+.today-history-link a {flex:none;color:var(--link);font-size:.9rem;font-weight:650}
+/* The historical comparison has been relocated intact to Insights → History.
+   Keep the archive immediately useful, render the chart group on first open. */
+.history-trends {
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:var(--ux-radius);
+  padding:0 15px;
+  margin:13px 0 18px;
+}
+.history-trends summary {
+  cursor:pointer;
+  min-height:50px;
+  display:list-item;
+  align-content:center;
+  padding:12px 2px;
+  font-size:1rem;
+  font-weight:650;
+  color:var(--ink);
+}
+.history-trends summary:focus-visible {outline:3px solid var(--focus);outline-offset:3px}
+.history-trends[open] summary {border-bottom:1px solid var(--rule)}
+.history-trends-intro {
+  font-size:.9rem;
+  line-height:1.48;
+  color:var(--ink-2);
+  margin:11px 0 2px;
+}
+.history-trends-content .section:first-child {border-top:0;padding-top:15px;margin-top:0}
+.history-trends-content .section {margin-top:15px;padding-top:18px}
+.history-trends-content .chart-block {border-color:var(--rule)}
+.history-log-heading {font-size:1.2rem;margin:11px 0 3px}
+@media (max-width:900px) {
+  .today-shortcuts {gap:8px}
+  .today-shortcut {padding:12px;min-height:80px}
+  .today-history-link {flex-wrap:wrap}
+}
+@media (max-width:640px) {
+  .today-shortcuts {grid-template-columns:minmax(0,1fr);gap:7px;margin:9px 0 12px}
+  .today-shortcut {min-height:58px;padding:9px 30px 9px 12px;gap:2px}
+  .today-shortcut strong {font-size:.93rem}
+  .today-shortcut span {font-size:.78rem}
+  .today-shortcut::after {top:15px}
+  .today-history-link {padding:10px 12px;margin:14px 0 10px;gap:6px}
+  .today-history-link p {font-size:.79rem}
+  .history-trends {padding:0 10px;margin:9px 0 15px}
+  .history-trends summary {font-size:.93rem}
+  .history-trends-intro {font-size:.83rem}
+}
