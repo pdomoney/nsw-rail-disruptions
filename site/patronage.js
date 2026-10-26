@@ -89,6 +89,7 @@ export function busiestWindows(rows, { metric = 'index', lineId = null, limit = 
 }
 
 export async function viewPatronage(main, meta) {
+  const requestRoute = main.dataset.routeId;
   document.title = 'Crowding hotspots · NSW Rail Disruptions';
   main.replaceChildren(el('p', { class: 'loading', role: 'status' }, 'Loading crowding observations…'));
   let data;
@@ -97,12 +98,14 @@ export async function viewPatronage(main, meta) {
     if (!response.ok) throw new Error('Crowding data is not published yet');
     data = await response.json();
   } catch {
+    if (main.dataset.routeId !== requestRoute) return;
     main.replaceChildren(el('section', { class: 'pat-empty' }, el('h1', {}, 'Crowding hotspots'),
       el('p', {}, 'No occupancy summary is published yet. It will appear after the next successful collection and build.'),
       el('a', { href: '#/' }, 'Return to overview')));
     return;
   }
 
+  if (main.dataset.routeId !== requestRoute) return;
   const modes = new Set(['train', 'metro', 'intercity']);
   const rail = meta.lines.filter(l => modes.has(l.mode));
   const byId = new Map(rail.map(l => [l.id, l]));

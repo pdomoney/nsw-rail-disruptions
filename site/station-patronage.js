@@ -596,6 +596,7 @@ function cardValue(label, value, desc) {
 }
 
 export async function viewStationPatronage(main, meta, { refresh = false } = {}) {
+  const requestRoute = main.dataset.routeId;
   document.title = 'Station patronage · NSW Rail Disruptions';
   main.replaceChildren(node('p', { class: 'loading', role: 'status' }, 'Loading station catalogue and Opal data…'));
   let data, stations, routes;
@@ -616,11 +617,13 @@ export async function viewStationPatronage(main, meta, { refresh = false } = {})
     // metadata. Show existing patronage ranking rather than break the page.
     routes = c?.ok ? await c.json() : {lines:{},corridors:[]};
   } catch (e) {
+    if (main.dataset.routeId !== requestRoute) return;
     main.replaceChildren(node('section', { class: 'sp-no-data' },
       node('h1', {}, 'Station patronage'), node('p', {}, 'The station view could not load. ' + e.message),
       node('a', { href: '#/' }, 'Return to overview')));
     return;
   }
+  if (main.dataset.routeId !== requestRoute) return;
   const lineItems = meta.lines.filter(l => railMode.has(l.mode));
   const allowed = new Set(lineItems.map(l => l.id));
   stations = stations.filter(st => st[2]?.some(id => allowed.has(id)))
