@@ -1881,7 +1881,7 @@ async function viewMap(main) {
         h('p', { class:'page-eyebrow' }, 'Network · Live positions'),
         h('h1', {}, 'Network map'),
         h('p', { class:'map-page-subtitle' },
-          'Choose a map and tap a station or service for details.')),
+          'Choose a map and tap a station or service for details.'))),
     head,filters,mapWorkspace,legend,
     h('section', { class: 'section map-current-notes',
       'aria-labelledby': 'map-notes-h' },
