@@ -179,7 +179,7 @@ test('editing only the UX stylesheet or rail identity updates the shipped asset 
       fs.cpSync(source, modified, { recursive: true });
       fs.cpSync(source, output, { recursive: true });
       const before = publishSiteRelease(source, baseline, { generatedAt: 10_000 });
-      fs.appendFileSync(path.join(modified, changed), '\n<!-- update -->\n');
+      fs.appendFileSync(path.join(modified, changed), changed.endsWith('.css') ? '\n/* update */\n' : '\n<!-- update -->\n');
       const after = publishSiteRelease(modified, output, { generatedAt: 10_000 });
       const html = fs.readFileSync(path.join(output, 'index.html'), 'utf8');
       assert.notEqual(before.release, after.release, 'Release must change for ' + changed);
