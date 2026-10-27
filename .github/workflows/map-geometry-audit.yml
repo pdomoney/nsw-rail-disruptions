@@ -55,6 +55,7 @@ jobs:
           node scripts/audit-network-geometry.mjs \
             --network dist/data/network.json \
             --live dist/data/live.json \
+            --station-dir data/stations \
             --output test-artifacts/geometry/geometry-audit.json
           node scripts/render-geometry-audit.mjs \
             --input test-artifacts/geometry/geometry-audit.json \
