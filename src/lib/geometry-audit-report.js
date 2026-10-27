@@ -25,8 +25,10 @@ export function formatGeometryAudit(report, { dataCommit = null } = {}) {
   for (const [line,v] of lines) lineRows.push([line,v.segmentCount,v.routeLengthKm,v.stationLinePairs,
     v.withinTolerance,v.reviewOffsets,v.missingGeometry,v.p95StationOffsetM,v.maxStationOffsetM,
     v.snapshotVehicleRows,v.rowsWithGeographicCoordinates,v.rowsWithTrustedDiagramPlacement]);
-  const exceptionRows = [['Line','Station','Reason','Distance metres'],
-    ...exceptions.map(e => [e.line,e.station,e.classification,e.distanceM])];
+  const exceptionRows = [['Line','Station','Reason','Distance metres','GTFS stop-time rows (sample)','Maximum stop-time rows on line','% of line maximum'],
+    ...exceptions.map(e => [e.line,e.station,e.classification,e.distanceM,
+      e.serviceEvidence?.gtfsStopTimeRows, e.serviceEvidence?.highestStationStopTimeRowsOnLine,
+      e.serviceEvidence?.relativeToHighestStationPercent])];
   const markdown = [
     '# NSW Rail: geographic accuracy evidence',
     '',
@@ -51,12 +53,19 @@ export function formatGeometryAudit(report, { dataCommit = null } = {}) {
     '',
     '## Highest-priority exceptions (first 30)',
     '',
-    '| Line | Station | Reason | Offset (m) |',
-    '|---|---|---|---:|',
-    ...exceptions.slice(0,30).map(e=>'| '+show(e.line)+' | '+show(e.station)+' | '+
-      show(e.classification)+' | '+show(e.distanceM)+' |'),
+    '**GTFS stop-time support:** ' + (report.stationServiceEvidence ?
+      show(report.stationServiceEvidence.matchedExceptionCount)+' of '+show(exceptions.length)+' exceptions matched a source station count. '
+      +'These counts measure GTFS stop_time rows, not trips currently running.' :
+      'Not provided: no raw GTFS station feed records were used.'),
     '',
-    '**Interpretation:** This is diagnostic, **not an accuracy certification**. Offsets may reflect real platform/interchange positions. Summed segments are not unique track kilometres. Vehicle counts are reported coordinate fields in one snapshot, not evidence of GPS precision. The 2024 TfNSW diagram has a separate image coordinate system. No station or train is automatically repositioned.',
+    '| Line | Station | Reason | Offset (m) | GTFS stop-time rows | % of line maximum |',
+    '|---|---|---|---:|---:|---:|',
+    ...exceptions.slice(0,30).map(e=>'| '+show(e.line)+' | '+show(e.station)+' | '+
+      show(e.classification)+' | '+show(e.distanceM)+' | '+
+      show(e.serviceEvidence?.gtfsStopTimeRows)+' | '+
+      show(e.serviceEvidence?.relativeToHighestStationPercent)+' |'),
+    '',
+    '**Interpretation:** This is diagnostic, **not an accuracy certification**. Offsets may reflect real platform/interchange positions. Summed segments are not unique track kilometres. Vehicle counts are reported coordinate fields in one snapshot, not evidence of GPS precision. The 2024 TfNSW diagram has a separate image coordinate system. GTFS stop_time rows are not proof of routine daily stopping patterns. No station or train is automatically repositioned.',
     '',
     'Download the complete station-exceptions.csv and line-indicators.csv from this workflow run for detailed review.',
     ''
