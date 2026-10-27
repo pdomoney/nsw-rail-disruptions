@@ -1,27 +1,25 @@
-# NSW rail geography — accuracy audit (Phase 2A)
+# NSW rail geography audit: Phases 2A and 2B
 
-This introduces a **read-only** audit for a current published network build. It does not move stations or trains, rewrite routes, or alter the independently calibrated 2024 official TfNSW diagram.
+The audit is read-only. It does not move rail lines, stations, trains, or alter the verified 2024 official network PDF.
 
-## Run after the collector/build
+## Daily production-data evidence
 
-    node scripts/audit-network-geometry.mjs --network site/data/network.json --live site/data/live.json --output artifacts/map-geometry-audit.json
+Open Actions > Map geometry accuracy audit. A daily scheduled run and manual Run workflow are available after merge. The independent audit job checks out the latest collected data branch, records its exact SHA, rebuilds the site data without a TfNSW API key, and produces a GitHub Actions summary plus a downloadable rail-map-geometry-audit artifact.
 
-Optionally compare an authorised TfNSW GeoJSON download:
+The artifact holds geometry-audit.json, review-summary.md, line-indicators.csv, station-exceptions.csv and data-branch-sha.txt. This does not deploy the site or alter five-minute collection.
 
-    node scripts/audit-network-geometry.mjs --network site/data/network.json --live site/data/live.json --reference /path/to/sydney-train-routes.geojson --source-url https://opendata.transport.nsw.gov.au/data/dataset/sydney-train-routes --downloaded-on YYYY-MM-DD --output artifacts/map-reference-audit.json
+## Manual run
 
-Use the **actual acquisition date**. The report includes a SHA-256 hash of the local reference file, the source URL and date entered by the operator, and comparison counts. The TfNSW portal may require account login to download routes; its catalogue update time is not evidence that a particular file was fetched or verified. Never embed credentials in GitHub Pages.
+    DATA_DIR=data OUT_DIR=dist node src/build.js
+    node scripts/audit-network-geometry.mjs --network dist/data/network.json --live dist/data/live.json --output audit-artifacts/geometry-audit.json
+    node scripts/render-geometry-audit.mjs --input audit-artifacts/geometry-audit.json --out-dir audit-artifacts
 
-## Output and interpretation
+For operator-provided *authorised* GeoJSON, add the --reference /path/to/file.geojson --source-url URL --downloaded-on YYYY-MM-DD options to the second command. The SHA-256 of the actual reference file is recorded automatically. The TfNSW portal login must not be placed in Pages or repository code.
 
-- For each public line: polyline segment count, approximate sum of segment lengths, station–line pairs within 150 m of **that line's route**, stations without available geometry and offsets requiring manual review. Distances are measured to line **segments**, not only vertices.
-- Per-line live **snapshot** counts distinguish reported geographic coordinates from successfully matched official-diagram placement. These are not proof of true GPS accuracy or position freshness.
-- Optional external GeoJSON features match by public route short name. Sampled route points within 100 m of the installed same-line geometry are counted; unsupported or unknown lines are explicitly reported. Feature shape IDs are retained for review where supplied.
-- Geometry is sampled every 500 m, capped per feature. Branches, duplicate trips and shared tracks mean summed segment lengths are **not unique route kilometres**. Sample agreement is not timetable/service identity.
-- A flagged station offset may represent a legitimate interchange/platform displacement, a static feed mismatch or missing routes, **not necessarily an error**.
+## Interpretation and remaining work
 
-## Phase 2 follow-up
+The 150 m station-to-same-line offset threshold requests manual review, not automatic correction. Interchange/platform positions, missing feed geometry and service route variants require different treatment. Summed segment distance is not unique route kilometres. Snapshot vehicle coordinate fields and 2024 PDF matches are separate indicators, neither proof of exact live GPS position.
 
-Acquire the authorised TfNSW 2026 GeoJSON with a verifiable checksum and date, run the report using current data, review line/shape mismatches, and cross-check station offsets against official station/platform information. Compare service identity using GTFS route, shape, trip and feed-date metadata before changing a line. Sydney Train Routes is not necessarily complete coverage for Metro, light rail and Intercity feeds. Any newer official TfNSW network-map edition needs separate vector symbol calibration; longitude/latitude **must never** be mapped directly into the 2024 PDF's image coordinates.
+Complete Issue #45 by acquiring authenticated current TfNSW GeoJSON, recording provenance, reviewing the station exceptions and comparing route/shape/trip identifiers and feed versions. Metro, light rail and Intercity should be audited against their own feeds. A genuinely newer official TfNSW network map must be vector-calibrated separately before replacing the 2024 image.
 
-This phase provides measurement tooling, not a claim of an already verified accuracy improvement.
+This phase creates repeatable diagnostic evidence, not a claim that the geometry is already corrected.
