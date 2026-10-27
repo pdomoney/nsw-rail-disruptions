@@ -1,0 +1,72 @@
+name: Map geometry accuracy audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    # One evidence report a day, independent of the five-minute publish loop.
+    - cron: '17 22 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rail-map-geometry-audit
+  cancel-in-progress: false
+
+jobs:
+  geometry-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out application code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check out collected TfNSW data
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: data
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Record exact data revision
+        id: source
+        run: echo "sha=$(git -C data rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Rebuild the same data used by the site
+        env:
+          DATA_DIR: data
+          OUT_DIR: dist
+        run: |
+          set -euo pipefail
+          node src/build.js
+          test -s dist/data/network.json
+          test -s dist/data/live.json
+
+      - name: Produce read-only geometry audit and review summaries
+        run: |
+          set -euo pipefail
+          mkdir -p test-artifacts/geometry
+          node scripts/audit-network-geometry.mjs \
+            --network dist/data/network.json \
+            --live dist/data/live.json \
+            --output test-artifacts/geometry/geometry-audit.json
+          node scripts/render-geometry-audit.mjs \
+            --input test-artifacts/geometry/geometry-audit.json \
+            --out-dir test-artifacts/geometry \
+            --data-commit '${{ steps.source.outputs.sha }}'
+          printf '%s\n' '${{ steps.source.outputs.sha }}' > test-artifacts/geometry/data-branch-sha.txt
+          cat test-artifacts/geometry/review-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish review artifact only (not to GitHub Pages)
+        if: always() && hashFiles('test-artifacts/geometry/geometry-audit.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: rail-map-geometry-audit
+          path: test-artifacts/geometry/
+          retention-days: 28
