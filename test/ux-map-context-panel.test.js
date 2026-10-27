@@ -10,12 +10,12 @@ const controls=map.slice(map.indexOf('const mapKindControl='),
   map.indexOf('    drawMapOnly();',map.indexOf('const mapKindControl=')));
 const draw=map.slice(map.indexOf('  const drawMapOnly = () => {'));
 
-test('protected map modes and source artwork remain connected to their original renderers',()=>{
+test('only official and geographic map modes remain connected to verified renderers',()=>{
   assert.match(map,/OFFICIAL_MAP\.image/);
   assert.match(map,/loadOfficialMapImage\(officialImageUrl\)/);
   assert.match(map,/drawOfficialOverlay\(holder, \{ network:D\.network, live:D\.live/);
   assert.match(map,/createGeographicMap\(holder, \{/);
-  assert.match(map,/schematicMap\(holder, \{ sch:\s*D\.schematic/);
+  assert.doesNotMatch(map,/schematicMap\(holder, \{ sch:\s*D\.schematic/);
   assert.match(map,/networkMap\(holder, \{ net:\s*D\.network/);
   assert.match(map,/onTrainHover:showTip,onHoverEnd:hideTip/);
   assert.match(map,/onTrainSelect:showSelectedTrain,onStationSelect:showSelectedStation/);
@@ -41,10 +41,11 @@ test('map selections go into a separate accessible panel rather than covering th
   assert.match(css,/\.map-workspace\.has-selection \{/);
 });
 
-test('toolbar offers all original modes with line filter and retains advanced settings',()=>{
+test('toolbar offers only the two supported map modes with line filter and retained settings',()=>{
   assert.match(controls,/\['official','Network diagram · TfNSW'\]/);
-  assert.match(controls,/\['track','Geographic map'\]/);
-  assert.match(controls,/\['diagram','Legacy hand-drawn'\]/);
+  assert.match(controls,/\['track','Geographic map · GTFS'\]/);
+  assert.doesNotMatch(controls,/\['diagram','Legacy hand-drawn'\]/);
+  assert.match(controls,/\['track','Geographic map · GTFS'\]/);
   assert.match(controls,/const areaControl=segmented/);
   assert.match(controls,/const lineControl=h\('label', \{ class:'field map-line-filter' \}/);
   assert.match(controls,/const extraDisplay=h\('details',\{class:'map-display-options'/);
@@ -52,7 +53,9 @@ test('toolbar offers all original modes with line filter and retains advanced se
   assert.match(controls,/displayOptionsOpen=extraDisplay\.open/);
   assert.match(controls,/prefs\.set\('mapKind',kind\)/);
   assert.match(controls,/prefs\.set\('mapView',v\)/);
-  assert.match(controls,/prefs\.set\('mapDiagramStyle',v\)/);
+  assert.match(controls,/prefs\.set\('mapRailFocus',v\)/);
+  assert.match(controls,/\['rail','Rail focus'\]/);
+  assert.match(controls,/\['streets','Street detail'\]/);
   assert.match(controls,/prefs\.set\('officialMapContrast',v\)/);
   assert.match(controls,/lineFilter=ev\.target\.value/);
   assert.match(controls,/clearSelectedMapItem\(\);setState\(\);draw\(\)/);

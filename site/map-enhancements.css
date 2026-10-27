@@ -222,3 +222,34 @@
   }
   .map-frame.map-frame-diagram .map-holder { border-radius: 5px; }
 }
+
+/* Rail-first geographic presentation. Retain OpenStreetMap's own attributed
+   interactive tiles; visual CSS never changes reported GTFS coordinates. */
+.geo-map {
+  border-radius:12px;
+  overflow:hidden;
+  border:1px solid var(--rule-strong);
+  box-shadow:0 6px 24px #16314812;
+}
+.geo-map .leaflet-tile-pane {
+  transition:filter .16s ease-out;
+}
+.geo-map-rail-focus .leaflet-tile-pane {
+  filter:grayscale(.6) saturate(.6) contrast(.91) brightness(1.055);
+}
+.geo-map .leaflet-control-container .leaflet-control-attribution {
+  background:rgba(255,255,255,.93);
+  color:#223847;
+  padding:3px 6px;
+  border-radius:6px 0 0 0;
+  line-height:1.25;
+}
+.geo-map .leaflet-control-attribution a {color:#145580}
+.geo-map .leaflet-popup-content-wrapper {
+  border-radius:10px;
+  box-shadow:0 7px 25px #192f4233;
+}
+.map-geographic-focus .map-holder {background:#eaf0f3}
+@media (prefers-reduced-motion:reduce) {
+  .geo-map .leaflet-tile-pane {transition:none}
+}

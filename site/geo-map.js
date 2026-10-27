@@ -78,12 +78,21 @@ function popup(title, details) {
   return wrap;
 }
 
-export function createGeographicMap(container, { net, live, view, lineFilter, colors, onTrainSelect }) {
+export function createGeographicMap(container, {
+  net, live, view, lineFilter, colors, onTrainSelect, onStationSelect, railFocus = 'rail',
+}) {
   const L = window.L;
   if (!L?.map) throw new Error('Leaflet is not loaded');
   const root = document.createElement('div');
-  root.className = 'geo-map';
-  root.setAttribute('aria-label', 'Geographic map showing accurately located stations and live trains');
+  // Use the existing attributed OSM basemap without another provider's key.
+  // "Rail focus" is a visual-only tile treatment. It never changes the
+  // GTFS coordinates or reroutes a live vehicle.
+  const setRailFocus = value => {
+    railFocus = value === 'streets' ? 'streets' : 'rail';
+    root.className = 'geo-map' + (railFocus === 'rail' ? ' geo-map-rail-focus' : '');
+  };
+  setRailFocus(railFocus);
+  root.setAttribute('aria-label', 'Geographic rail map using TfNSW GTFS route shapes and reported positions');
   container.replaceChildren(root);
   const map = L.map(root, { zoomControl: false, scrollWheelZoom: false, preferCanvas: true, minZoom: 5, maxZoom: 18, worldCopyJump: false });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -127,8 +136,8 @@ export function createGeographicMap(container, { net, live, view, lineFilter, co
       for (const coords of pieces) {
         L.polyline(coords, {
           color: selected ? colors[id] : faded ? '#8d9ca6' : colors[id],
-          weight: selected ? 5 : faded ? 1.2 : 2.6,
-          opacity: selected ? 1 : faded ? .18 : .68,
+          weight: selected ? 6.5 : faded ? 1.5 : 3.7,
+          opacity: selected ? 1 : faded ? .16 : .92,
           renderer: canvas, interactive: false,
         }).addTo(rails);
       }
@@ -138,14 +147,16 @@ export function createGeographicMap(container, { net, live, view, lineFilter, co
       if (!served.length || (filter && !served.includes(filter))) continue;
       const p = geographicCoordinates(x, y);
       if (!p) continue;
-      const st = L.circleMarker(p, { radius: priority >= 2 ? 5.4 : 3.6,
-        color: '#354552', fillColor: '#fff', fillOpacity: 1, weight: 1.4, renderer: canvas });
+      const st = L.circleMarker(p, { radius: priority >= 2 ? 6.3 : priority ? 4.9 : 3.8,
+        color: '#203b4d', fillColor: '#fff', fillOpacity: 1, weight: 1.8, renderer: canvas });
       st.bindPopup(popup(name + ' station', ['Served by: ' + served.join(', '), 'Location from TfNSW GTFS stops.']));
       // Hover shows a small preview without requiring a click. The existing
       // click popup remains available for touch screens.
       st.bindTooltip(popup(name + ' station', ['Lines: ' + served.join(', ')]), {
         direction: 'top', opacity: 0.97, sticky: true, className: 'rail-map-hover',
       });
+      // Same persistent details panel as the verified PDF network diagram.
+      st.on('click', () => onStationSelect?.(name, served));
       st.addTo(stations);
     }
     }
@@ -191,6 +202,7 @@ export function createGeographicMap(container, { net, live, view, lineFilter, co
   update({ live, view, lineFilter });
   return {
     update,
+    setRailFocus,
     zoomBy: factor => factor > 1 ? map.zoomIn(1) : map.zoomOut(1),
     reset: () => map.fitBounds(boundsFor(lastView || view).pad(.03), { animate: false }),
     resize: () => map.invalidateSize({ animate: false }),

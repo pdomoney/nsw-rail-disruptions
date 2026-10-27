@@ -1731,7 +1731,9 @@ function trackworkChart(container, { items, lines, days, selected, onLine }) {
 // ---------- live map ----------
 // Every train where it is now, on the network's real track: warmer dots are later, bigger dots fuller.
 async function loadMap(force = false, kind = 'track') {
-  if ((kind === 'diagram' || kind === 'official') && !D.schematic)
+  // The internal schematic provides verified official-PDF route matching and
+  // station patronage sequences; it is not a selectable hand-drawn map.
+  if (kind === 'official' && !D.schematic)
     D.schematic = await getJson('data/schematic.json');
   if ((kind === 'track' || kind === 'official') && !D.network)
     D.network = await getJson('data/network.json');
@@ -1754,15 +1756,14 @@ async function viewMap(main) {
   document.title = 'Live map | NSW Rail Disruptions';
   main.replaceChildren(h('p', { class:'loading', role:'status' }, 'Loading the rail network map…'));
   const q = new URLSearchParams(location.hash.split('?')[1] || '');
-  // Three presentations: actual TfNSW PDF overlay, geographical map, custom diagram.
-  // Network diagram links from earlier releases now open the authentic PDF
-  // artwork rather than the old hand-drawn layout. Keep legacy explicitly opt-in.
+  // Only two public presentations remain: the published TfNSW schematic and
+  // the TfNSW GTFS-derived geographic view. Historical ?map=legacy/diagram
+  // links safely redirect to the verified official artwork.
   const requested=q.get('map');
   const saved=prefs.get('mapKind','official');
-  let kind=requested==='legacy'?'diagram':requested==='diagram'?'official'
-    : ['official','track'].includes(requested)?requested
-    : saved==='diagram'?'official':saved;
-  if (!['official','track','diagram'].includes(kind)) kind='official';
+  let kind=['official','track'].includes(requested)?requested:
+    requested==='legacy'||requested==='diagram'?'official':
+    saved==='track'?'track':'official';
   let officialAvailable = null;
   let officialImageUrl = OFFICIAL_MAP.image;
   await loadMap(true, kind);
@@ -1788,9 +1789,13 @@ async function viewMap(main) {
   if (main.dataset.routeId !== requestRoute) return;
   let view = ['city', 'sydney', 'all'].includes(q.get('view')) ? q.get('view') : prefs.get('mapView', 'sydney');
   if (!['city', 'sydney', 'all'].includes(view)) view = 'sydney';
-  let diagramStyle = prefs.get('mapDiagramStyle', 'light') === 'dark' ? 'dark' : 'light';
+  // The historical whole-network option belongs to the geographic renderer.
+  if (kind === 'official' && view === 'all') view = 'sydney';
+  let railFocus = prefs.get('mapRailFocus','rail') === 'streets'?'streets':'rail';
   let officialContrast = prefs.get('officialMapContrast','enhanced') === 'original'?'original':'enhanced';
   let lineFilter = q.get('line') || '';
+  if (kind === 'official' && lineFilter && !/^T[1-9]$|^M1$/.test(lineFilter))
+    lineFilter = '';
   const head = h('div', { class: 'map-head' });
   const filters = h('div', { class: 'filters map-controls',
     'aria-label':'Map view and line filters' });
@@ -1912,22 +1917,17 @@ async function viewMap(main) {
   const drawMapOnly = () => {
     const liveTrains = D.live?.trains || [];
     const cols = D.live?.cols || [];
-    const projectedIndex = cols.indexOf('sx');
-    const plotCount = kind === 'diagram' && projectedIndex !== -1
-      ? liveTrains.filter(t => t[projectedIndex] != null && (!lineFilter || t[0] === lineFilter)).length
-      : liveTrains.filter(t => !lineFilter || t[0] === lineFilter).length;
-    frame.classList.toggle('map-frame-diagram', kind !== 'track');
-    frame.classList.toggle('map-frame-city', kind !== 'track' && view === 'city');
+    const plotCount = liveTrains.filter(t => !lineFilter || t[0] === lineFilter).length;
+    frame.classList.toggle('map-frame-diagram', kind === 'official');
+    frame.classList.toggle('map-frame-city', kind === 'official' && view === 'city');
+    frame.classList.toggle('map-geographic-focus', kind === 'track' && railFocus === 'rail');
     mapLabel.replaceChildren(
-      h('strong', {}, kind === 'official' ? 'OFFICIAL TfNSW RAIL MAP' :
-        kind === 'diagram' ? 'CUSTOM RAIL DIAGRAM · V' + (D.schematic?.layoutVersion || 1) : 'GEOGRAPHIC RAIL MAP'),
-      h('span', {}, kind === 'official' ? '2024 PUBLISHED MAP · LIVE OVERLAY APPROXIMATE'
-        : kind === 'diagram'
-          ? (view === 'city' ? 'CITY CENTRE · NETWORK SCHEMATIC' : view === 'all' ? 'WHOLE NETWORK · NOT TO SCALE' : 'SYDNEY NETWORK · NOT TO SCALE')
-          : 'TfNSW STATIONS + REPORTED LIVE VEHICLES'),
+      h('strong', {}, kind === 'official' ? 'PUBLISHED TfNSW NETWORK DIAGRAM' : 'GEOGRAPHIC RAIL NETWORK'),
+      h('span', {}, kind === 'official' ? '2024 SOURCE ARTWORK · MATCHED LIVE OVERLAYS'
+        : 'GTFS ROUTE SHAPES + REPORTED VEHICLE POSITIONS'),
       h('small', {}, plotCount
-        ? `${plotCount.toLocaleString('en-AU')} reported vehicles ${kind === 'diagram' ? 'placed on the diagram' : 'with mapped coordinates'}`
-        : kind === 'diagram' ? 'No mapped vehicle positions reported' : 'No live vehicle positions reported'));
+        ? `${plotCount.toLocaleString('en-AU')} reported vehicles ${kind === 'official' ? 'assessed for placement' : 'with mapped coordinates'}`
+        : 'No live vehicle positions reported'));
     if (kind === 'official') {
       if (geographic) { geographic.destroy(); geographic=null; }
       if (!officialAvailable) {
@@ -1974,21 +1974,23 @@ async function viewMap(main) {
     if (kind === 'track' && geographicReady && window.L?.map) {
       const colors = Object.fromEntries(D.meta.lines.map(l => [l.id, l.color]));
       if (!geographic) geographic = createGeographicMap(holder, {
-        net: D.network, live: D.live, view, lineFilter, colors, onTrainSelect: showSelectedTrain,
+        net: D.network, live: D.live, view, lineFilter, colors,
+        onTrainSelect: showSelectedTrain, onStationSelect: showSelectedStation,
+        railFocus,
       });
       else geographic.update({ live: D.live, view, lineFilter });
       geo = null;
       return;
     }
     if (geographic) { geographic.destroy(); geographic = null; }
-    geo = kind === 'diagram'
-      ? schematicMap(holder, { sch: D.schematic, live: D.live, view, lineFilter, vb, theme: diagramStyle,
-        onTrainSelect: showSelectedTrain, onStationSelect: showSelectedStation })
-      : networkMap(holder, { net: D.network, live: D.live, view, lineFilter, vb, onTrainSelect: showSelectedTrain, onStationSelect: showSelectedStation });
+    // Offline fallback stays geographic: no locally invented route geometry.
+    geo = networkMap(holder, { net: D.network, live: D.live, view, lineFilter, vb,
+      onTrainSelect: showSelectedTrain, onStationSelect: showSelectedStation });
     attach(geo.svg);
   };
   const legend = h('div', { class: 'map-legend' });
   const notes = h('div');
+  const sourceCredit = h('p', { class:'map-source-credit' });
   const mapMethodDetails=h('div', { class:'map-methodology-body' });
   const mapMethod=h('details', { class:'map-methodology' },
     h('summary', {}, 'Map sources, accuracy and symbols'),mapMethodDetails);
@@ -2003,17 +2005,12 @@ async function viewMap(main) {
     h('section', { class: 'section map-current-notes',
       'aria-labelledby': 'map-notes-h' },
       h('h2', { id: 'map-notes-h' }, 'Current incidents and closures'), notes),
-    h('p', { class:'map-source-credit' },
-      'Network diagram: © 2024 Transport for NSW (CC BY 4.0). ',
-      h('a', { href:'https://transportnsw.info/sydney-trains-network-map',
-        target:'_blank',rel:'noopener noreferrer' },'Original map and attribution'),
-      '. Live service markers are independent approximate overlays.'),
+    sourceCredit,
     mapMethod);
 
   const setState = () => {
     const p = new URLSearchParams();
-    if (kind === 'diagram') p.set('map','legacy');
-    else if(kind==='official') p.set('map','official');
+    p.set('map',kind);
     if (view !== 'sydney') p.set('view', view);
     if (lineFilter) p.set('line', lineFilter);
     history.replaceState(null, '', `#/map${p.toString() ? `?${p}` : ''}`);
@@ -2032,11 +2029,13 @@ async function viewMap(main) {
       .sort((a, b) => orderOf(a) - orderOf(b));
     const mapKindControl=segmented([
       ['official','Network diagram · TfNSW'],
-      ['track','Geographic map'],
-      ['diagram','Legacy hand-drawn']
+      ['track','Geographic map · GTFS']
     ],kind,async v=>{
       if(kind===v)return;
       kind=v;vb=null;clearSelectedMapItem();
+      if (kind === 'official' && view === 'all') view = 'sydney';
+      if (kind === 'official' && lineFilter && !/^T[1-9]$|^M1$/.test(lineFilter))
+        lineFilter = '';
       if(kind==='official')await checkOfficialMap();
       if(kind==='track'&&!geographicReady){
         try{await loadLeaflet();geographicReady=true;}
@@ -2071,10 +2070,12 @@ async function viewMap(main) {
       h('summary', {}, 'Display options'),
       h('div', { class:'map-display-option-content' },
         areaControl,
-        ...(kind==='diagram'
-          ? [segmented([['light','Classic map'],['dark','Night map']],diagramStyle,v=>{
-              diagramStyle=v;prefs.set('mapDiagramStyle',v);drawMapOnly();
-            },'Diagram background')]
+        ...(kind==='track'
+          ? [segmented([['rail','Rail focus'],['streets','Street detail']],railFocus,v=>{
+              railFocus=v;prefs.set('mapRailFocus',v);
+              geographic?.setRailFocus(v);
+              frame.classList.toggle('map-geographic-focus',v==='rail');
+            },'Geographic basemap emphasis')]
           : []),
         ...(kind==='official'
           ? [segmented([['enhanced','Enhanced contrast'],['original','Original colours']],
@@ -2105,16 +2106,23 @@ async function viewMap(main) {
         h('span', {}, h('i', { class:'map-sec incident' }), 'Incident'),
         h('span', {}, h('i', { class:'map-sec closed' }), 'Closed for trackwork now')));
     const modeSource=kind==='official'
-      ? 'The 2024 TfNSW published network map supplies all background line geometry and labels. '+
-        'Interactive stations are verified against vector stop symbols. Trains are approximately positioned '+
-        'only along matched routes; unmatched services are omitted.'
-      :kind==='diagram'
-        ? 'This legacy hand-drawn schematic uses separate station symbols and official line colours. '+
-          'It is not geographically to scale. Light rail is only shown on the geographic map.'
-        :geographic
-          ? 'TfNSW GTFS geographic stop positions and route shapes are drawn over OpenStreetMap tiles. '+
-            'A train marker indicates a reported position, not an exact live location.'
-          : 'Offline fallback displays TfNSW geographic stop and route positions without the street basemap.';
+      ? 'The 2024 TfNSW published network diagram is schematic, not geographically to scale. '+
+        'The map labels and background reflect that edition, while stations are individually '+
+        'verified against source vector stop symbols. Only matched services are positioned; '+
+        'unmatched trains are omitted rather than placed speculatively.'
+      :geographic
+        ? 'TfNSW GTFS shapes.txt supplies service route paths and GTFS stops supply geographic station positions. '+
+          'Live markers use coordinates reported by TfNSW, which may not represent an exact position.'
+        : 'Offline geographic fallback draws TfNSW GTFS stop and route geometry without street tiles.';
+    sourceCredit.replaceChildren(kind==='official'
+      ? 'Published 2024 network artwork: © Transport for NSW (CC BY 4.0). '
+      : 'Geographic rail shapes and station positions: Transport for NSW GTFS. ',
+      h('a', { href: kind==='official'
+        ? 'https://transportnsw.info/sydney-trains-network-map'
+        : 'https://opendata.transport.nsw.gov.au/data/dataset/sydney-train-routes',
+        target:'_blank',rel:'noopener noreferrer' },
+        kind==='official' ? 'Original map and attribution' : 'TfNSW Sydney Train Routes dataset'),
+      '. Reported live vehicle positions are approximate.');
     mapMethodDetails.replaceChildren(
       h('p', {}, modeSource),
       h('p', {}, 'An open circle represents a station; a solid vehicle symbol represents a service. '+
@@ -2128,10 +2136,13 @@ async function viewMap(main) {
     notes.replaceChildren(ov.length
       ? h('ul', { class: 'map-notes' }, ov.map(o => h('li', { class: o.kind },
         h('span', { class: `map-sec ${o.kind}` }), h('span', {}, o.lines.filter(trackedLine).map(id => badge(id)), ' ', o.title,
-          !(kind === 'diagram' ? o.sp?.length || o.spins?.length : o.paths.length || o.pins.length) ? h('span', { class: 'muted' }, ' (no place named, so not marked)') : null))))
+          !(o.paths.length || o.pins.length) ? h('span', { class: 'muted' }, ' (no place named, so not marked)') : null))))
       : h('p', { class: 'empty-chart' }, 'No incidents or trackwork closures right now.'));
   };
   draw();
+  // A saved/bookmarked legacy URL is served by the verified official diagram.
+  // Canonicalise it without a second navigation or losing valid line filters.
+  if (requested === 'legacy' || requested === 'diagram') setState();
   // Tear down Leaflet's global handlers on navigation, including repeated Home Screen visits.
   mapViewCleanup = () => {
     clearTimeout(redrawTimer);
@@ -2139,7 +2150,7 @@ async function viewMap(main) {
   };
   onResize(() => { if (geographic) geographic.resize(); else draw(); });
   pageRefresh = async () => {
-    await loadMap(true,kind==='official'?'diagram':kind);
+    await loadMap(true,kind);
     if (main.dataset.routeId === requestRoute) draw();
   };
 }
@@ -2284,223 +2295,9 @@ function networkMap(container, { net, live, view, lineFilter, vb: zoom, onTrainS
   return { svg, base, W, H };
 }
 
-// The network diagram: this site's own schematic of the lines (lib/schematic.js), with each train placed
-// between the two stations it is between, and the same incidents and closures.
-const SCH_LINE_W = 0.23;   // bolder line strands, separated by a larger schematic gap
-function schematicMap(container, { sch, live, view, lineFilter, vb: zoom, theme = 'light', onTrainSelect, onStationSelect }) {
-  const NS = 'http://www.w3.org/2000/svg';
-  const S = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, v); return n; };
-  const [vx0, vy0, vx1, vy1] = sch.views[view];
-  const W = Math.max(300, container.clientWidth);
-  let base = [vx0, vy0, vx1 - vx0, vy1 - vy0];
-  // The Sydney network map is a portrait document, unlike the geographic map.
-  // Do not force it into a viewport-height landscape letterbox: that was the
-  // primary reason the prior diagram looked like compressed spaghetti.
-  const naturalHeight = Math.round((W * base[3]) / base[2]);
-  const H = view === 'city'
-    ? Math.min(1200, Math.max(580, naturalHeight))
-    : Math.min(1600, Math.max(W < 640 ? 570 : 900, naturalHeight));
-  if (base[2] / base[3] < W / H) {
-    const w = (base[3] * W) / H;
-    base = [base[0] - (w - base[2]) / 2, base[1], w, base[3]];
-  } else {
-    const hh = (base[2] * H) / W;
-    base = [base[0], base[1] - (hh - base[3]) / 2, base[2], hh];
-  }
-  const vb = zoom || base;
-  const scale = W / vb[2]; // px per diagram unit
-  const u = px => px / scale;
-  const svg = S('svg', { viewBox: vb.join(' '), width: W, height: H, class: `map-svg sch-svg sch-theme-${theme === 'dark' ? 'dark' : 'light'}${zoom ? ' zoomed' : ''}`, role: 'img', 'aria-label': 'Network diagram with each running train' });
-  const pathOf = flats => flats.map(f => { let d = `M${f[0]} ${f[1]}`; for (let i = 2; i < f.length; i += 2) d += `L${f[i]} ${f[i + 1]}`; return d; }).join('');
-  // Lines, each in its colour; a chosen line stays bright and the rest fade.
-  const lines = S('g', { class: 'sch-lines' });
-  for (const [id, pieces] of Object.entries(sch.lines)) {
-    if (!trackedLine(id)) continue;
-    lines.append(S('path', { d: pathOf(pieces), stroke: lineInfo(id).color, 'stroke-width': Math.max(SCH_LINE_W, u(1.5)), class: lineFilter && id !== lineFilter ? 'dim' : null }));
-  }
-  svg.append(lines);
-  // Incidents and trackwork closures, on the strands of the lines they affect.
-  for (const o of live.overlays || []) {
-    if (lineFilter && !o.lines.includes(lineFilter)) continue;
-    const d = pathOf(o.sp || []);
-    if (!d) continue;
-    const w = o.kind === 'incident' ? 0.5 : 0.3;
-    svg.append(S('path', { d, class: 'map-ov-case', 'stroke-width': Math.max(w + 0.14, u(o.kind === 'incident' ? 12 : 9)) }));
-    svg.append(S('path', { d, class: `map-ov sch-ov ${o.kind}`, 'stroke-width': Math.max(w, u(o.kind === 'incident' ? 9 : 6)),
-      'stroke-dasharray': o.kind === 'closed' ? `${Math.max(0.45, u(8))} ${Math.max(0.28, u(5))}` : null }));
-  }
-  // Stations: a rounded bar across the lines running through, or a ring where three or more stretches meet.
-  const st = S('g', { class: 'sch-stations' });
-  const lbl = S('g', { class: 'map-labels sch-labels' });
-  const fs = W < 600 ? 12.5 : 13.5; // legible station names, even at default overview zoom
-  // City centre mode deliberately surfaces suburban/CBD station names at phone
-  // scale; the label-collision engine will suppress overlaps rather than hiding
-  // virtually the entire city behind an arbitrary zoom threshold.
-  const showAll = scale >= 25;
-  const minLabel = view === 'city' ? (scale >= 17 ? 0 : 1) : showAll ? 0 : scale >= 10 ? 1 : 2;
-  const gap = sch.gap || 0.2;
-  const lineHalf = Math.max(SCH_LINE_W / 2, u(1.5));
-  // Labels are placed so they do not cover a line, a station or another label: each tries its usual
-  // side first, then the others; one that fits nowhere is left out (shown again when zoomed in).
-  const cell = Math.max(0.5, u(24));
-  const grid = () => {
-    const m = new Map();
-    const each = (b, f) => { for (let i = Math.floor(b[0] / cell); i <= Math.floor(b[2] / cell); i++) for (let j = Math.floor(b[1] / cell); j <= Math.floor(b[3] / cell); j++) f(`${i},${j}`); };
-    return {
-      add(b) { each(b, k => { let a = m.get(k); if (!a) m.set(k, (a = [])); a.push(b); }); },
-      hits(b) { let hit = false; each(b, k => { if (!hit) for (const o of m.get(k) || []) if (o[0] < b[2] && o[2] > b[0] && o[1] < b[3] && o[3] > b[1]) { hit = true; break; } }); return hit; },
-    };
-  };
-  const solid = grid(), words = grid();
-  solid.add([vb[0] + vb[2] - u(66), vb[1] - 1, vb[0] + vb[2] + 1, vb[1] + u(134)]); // the zoom buttons
-  const inView = b => b[0] >= vb[0] + u(3) && b[2] <= vb[0] + vb[2] - u(3) && b[1] >= vb[1] + u(3) && b[3] <= vb[1] + vb[3] - u(3);
-  for (const [id, pieces] of Object.entries(sch.lines)) {
-    if (!trackedLine(id) || (lineFilter && id !== lineFilter)) continue;
-    const step = Math.max(0.12, u(4));
-    for (const f of pieces) for (let i = 2; i < f.length; i += 2) {
-      const [x0, y0, x1, y1] = [f[i - 2], f[i - 1], f[i], f[i + 1]], n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / step));
-      for (let k = 0; k <= n; k++) { const x = x0 + ((x1 - x0) * k) / n, y = y0 + ((y1 - y0) * k) / n; solid.add([x - lineHalf, y - lineHalf, x + lineHalf, y + lineHalf]); }
-    }
-  }
-  const ctx2d = document.createElement('canvas').getContext('2d');
-  ctx2d.font = `650 ${fs}px ${getComputedStyle(document.body).fontFamily}`;
-  const textW = text => u(ctx2d.measureText(text).width + 1);
-  const F = u(fs);
-  // Where a label goes on one side of a marker reaching ex across and ey up and down, with the boxes it covers.
-  const spot = (side, name, x, y, ex, ey, ring, more = 0) => {
-    const w = textW(name), pad = u(4) + more;
-    if (side === 'ur' || side === 'dl') {
-      const k = ring ? 0.72 : 1, sgn = side === 'ur' ? 1 : -1;
-      const tx = x + sgn * (ex * k + pad * 0.7), ty = y - sgn * (ey * k + pad * 0.7);
-      const boxes = [], h = F * 0.32;
-      for (let d = F * 0.45; d <= w - h + 1e-9 || boxes.length === 0; d += F * 0.45) {
-        const cx = tx + sgn * d * 0.7071, cy = ty - sgn * d * 0.7071;
-        boxes.push([cx - h, cy - h, cx + h, cy + h]);
-      }
-      return { attrs: { transform: `translate(${tx} ${ty}) rotate(-45)`, dy: F * 0.35, 'text-anchor': side === 'dl' ? 'end' : null }, boxes };
-    }
-    const corner = side.length === 2, cx = corner ? ex * 0.75 : ex, cy = corner ? ey * 0.75 : ey;
-    const right = side === 'r' || side === 'ar' || side === 'br', left = side === 'l' || side === 'al' || side === 'bl';
-    const lx = right ? x + cx + pad : left ? x - cx - pad : x;
-    const anchor = right ? 'start' : left ? 'end' : 'middle';
-    const base = side === 'r' || side === 'l' ? y + F * 0.35 : side[0] === 'a' ? y - cy - pad * 0.6 - F * 0.2 : y + cy + pad * 0.6 + F * 0.75;
-    const x0 = anchor === 'start' ? lx : anchor === 'end' ? lx - w : lx - w / 2;
-    const boxes = [], n = Math.max(1, Math.round(w / F)); // in pieces, so a crossing can be measured
-    for (let i = 0; i < n; i++) boxes.push([x0 + (w * i) / n, base - F * 0.75, x0 + (w * (i + 1)) / n, base + F * 0.22]);
-    return { attrs: { x: lx, y: base, 'text-anchor': anchor }, boxes };
-  };
-  const toLabel = [];
-  for (const [name, x, y, width, ls, level, side, angle = 0, ring = 0] of sch.stations) {
-    const on = ls.split(' ').filter(trackedLine);
-    if (!on.length) continue;
-    const dim = lineFilter && !on.includes(lineFilter);
-    const half = ((width - 1) * gap + SCH_LINE_W) / 2 + 0.06;
-    const r = Math.min(0.42, half + 0.04);
-    const sw = Math.max(0.04, u(1)), cls = `${ring ? 'ix' : ''}${dim ? ' dim' : ''}`.trim() || null;
-    const c = ring
-      ? S('circle', { cx: x, cy: y, r, 'data-name': name, class: cls, 'stroke-width': sw })
-      : S('rect', { x: -0.12, y: -half, width: 0.24, height: 2 * half, rx: 0.12, transform: `translate(${x} ${y}) rotate(${angle})`, 'data-name': name, class: cls, 'stroke-width': sw });
-    c.setAttribute('role', 'button');
-    c.setAttribute('tabindex', level >= 1 || !!lineFilter ? '0' : '-1');
-    c.setAttribute('aria-label', 'Fixed station: ' + name + '. Lines ' + on.join(', '));
-    c.classList.add('map-station-select');
-    c.addEventListener('click', () => onStationSelect?.(name, on));
-    c.addEventListener('keydown', event => {
-      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onStationSelect?.(name, on); }
-    });
-    const tip = [{ value: name.replace(/\s+\(.*\)$/, '') }, { label: on.join(' · '), muted: true }];
-    bindSvgMapHover(c, tip);
-    c.addEventListener('click', hideTip);
-    st.append(c);
-    const a = (angle * Math.PI) / 180;
-    const ex = ring ? r : Math.abs(0.12 * Math.cos(a)) + Math.abs(half * Math.sin(a));
-    const ey = ring ? r : Math.abs(0.12 * Math.sin(a)) + Math.abs(half * Math.cos(a));
-    const mx = Math.max(ex, u(2)) + u(1), my = Math.max(ey, u(2)) + u(1);
-    solid.add([x - mx, y - my, x + mx, y + my]);
-    const chosen = lineFilter && on.includes(lineFilter) && scale >= 6;
-    if (dim || (level < minLabel && !chosen)) continue;
-    const flat = Math.abs(Math.cos(a)) > 0.92, upright = Math.abs(Math.sin(a)) > 0.92; // on a level or an upright line
-    const order = flat ? ['ur', 'dl', 'a', 'b', 'ar', 'br', 'al', 'bl'] : upright ? ['r', 'l', 'ar', 'br', 'al', 'bl', 'ur', 'dl'] : ['r', 'l', 'ar', 'br', 'al', 'bl', 'a', 'b', 'ur', 'dl'];
-    // Where the lines spread wider than the ring, a label may also stand clear of them.
-    const spread = ring ? Math.max(0, half - r) : 0;
-    toLabel.push({ name, x, y, ex, ey, ring, spread, rank: level * 10 + width + (ring ? 3 : 0) + (chosen ? 100 : 0), sides: [...new Set([side, ...order])] });
-  }
-  svg.append(st);
-  // Places named in incidents (drawn over the stations, named before any station), then the bigger stations.
-  for (const o of live.overlays || []) {
-    if (lineFilter && !o.lines.includes(lineFilter)) continue;
-    for (const [x, y, name] of o.spins || []) {
-      const rr = Math.max(0.55, u(12)), tx = x + Math.max(0.6, u(12)), ty = y - Math.max(0.4, u(8));
-      svg.append(S('circle', { cx: x, cy: y, r: rr, class: `map-pin ${o.kind}`, 'stroke-width': Math.max(0.12, u(3)) }));
-      const t = S('text', { x: tx, y: ty, 'font-size': u(12), class: 'map-pin-label' });
-      t.textContent = name;
-      lbl.append(t);
-      words.add([tx, ty - F * 0.8, tx + textW(name) * 1.1, ty + F * 0.25]);
-      solid.add([x - rr, y - rr, x + rr, y + rr]);
-    }
-  }
-  toLabel.sort((a, b) => b.rank - a.rank);
-  for (const L of toLabel) {
-    let pick = null, fallback = null, least = Infinity;
-    const mores = [0, L.spread + u(3), L.spread + u(3) + gap * 1.5];
-    search: for (const more of mores) for (const side of L.sides) {
-      const sp = spot(side, L.name, L.x, L.y, L.ex, L.ey, L.ring, more);
-      if (!sp.boxes.every(inView) || sp.boxes.some(b => words.hits(b))) continue;
-      const crossings = sp.boxes.filter(b => solid.hits(b)).length;
-      if (!crossings) { pick = sp; break search; }
-      if (crossings < least) { least = crossings; fallback = sp; }
-    }
-    // A main station keeps its name even where it has to cross a line briefly (the halo keeps it readable).
-    pick ??= L.rank >= 20 && least <= 2 ? fallback : null;
-    if (!pick) continue;
-    for (const b of pick.boxes) words.add(b);
-    const t = S('text', { 'font-size': F, ...pick.attrs });
-    t.textContent = L.name;
-    lbl.append(t);
-  }
-  // Coloured line-end chips bring the diagram closer to the familiar TfNSW network-map
-  // language without copying artwork. Suppressed at overview zoom to avoid crowding
-  // on small iPhone screens, except for an explicitly selected line.
-  const ends = S('g', { class: 'sch-termini' });
-  // Line codes are visible at overview zoom, not only after zooming manually.
-  if (scale >= 5 || lineFilter) for (const [line, name, x, y] of sch.terminals || []) {
-    if (lineFilter && line !== lineFilter) continue;
-    if (view === 'city' && !['T4', 'M1', 'T1', 'T2', 'T8'].includes(line)) continue;
-    const right = x >= 0;
-    const xOffset = u(right ? 18 : -18);
-    const yOffset = u(line === 'T5' && (name === 'Richmond' || name === 'Leppington') ? 19 : -17);
-    const bx = x + xOffset, by = y + yOffset;
-    if (bx < vb[0] + u(15) || bx > vb[0] + vb[2] - u(15) ||
-        by < vb[1] + u(12) || by > vb[1] + vb[3] - u(12)) continue;
-    const g = S('g', { transform: 'translate(' + bx + ' ' + by + ')', class: 'sch-terminal-label' });
-    const ww = u(line.length > 2 ? 33 : 27), hh = u(18);
-    g.append(S('rect', { x: -ww / 2, y: -hh / 2, width: ww, height: hh,
-      rx: u(4), fill: lineInfo(line).color }));
-    const label = S('text', { x: 0, y: u(3.3), 'text-anchor': 'middle', 'font-size': u(10) });
-    label.textContent = line;
-    g.append(label);
-    const title = S('title'); title.textContent = line + ' ' + name + ' terminus'; g.append(title);
-    ends.append(g);
-  }
-  svg.append(ends);
-
-  // Trains on the diagram: on time first, latest on top. Dots shrink with the diagram when zoomed out.
-  const cols = live.cols || [];
-  const ix = cols.indexOf('sx'), iy = cols.indexOf('sy');
-  const trains = (live.trains || []).filter(t => trackedLine(t[0]) && t[ix] != null).slice().sort((a, b) => (a[3] ?? -1) - (b[3] ?? -1));
-  const tg = S('g', { class: 'map-trains' });
-  for (const t of trains) {
-    const [line, , , delay, pax, fullest, , headsign] = t;
-    const dim = lineFilter && line !== lineFilter;
-    const c = svgTrainMarker(S, { x: t[ix], y: t[iy], line, delay, pax, headsign, fullest,
-      units: u, compact: scale < 23, dim, select: onTrainSelect });
-    tg.append(c);
-  }
-  svg.append(lbl);
-  svg.append(tg);
-  container.replaceChildren(svg);
-  return { svg, base, W, H };
-}
+// The original hand-drawn schematic renderer was retired. Internal GTFS-to-
+// schematic data remains available to the verified TfNSW PDF overlay and the
+// independent station-patronage corridor views.
 
 // ---------- trip page ----------
 // Pick two stations, see what is happening on the lines between them, then open the official
