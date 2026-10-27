@@ -1,6 +1,6 @@
 import { heatmap, hbars, columns, line as lineChart, onColor, showTip, hideTip, compact } from './charts.js';
 import { viewPatronage } from './patronage.js';
-import { loadLeaflet, createGeographicMap, trainDescription } from './geo-map.js';
+import { loadLeaflet, createGeographicMap, geographicStationLines, trainDescription } from './geo-map.js';
 import { drawOfficialOverlay, OFFICIAL_MAP, loadOfficialMapImage, mapTrainHoverRows } from './official-map.js';
 import { viewStationPatronage } from './station-patronage.js';
 
@@ -1843,8 +1843,11 @@ async function viewMap(main) {
     if(geographic)requestAnimationFrame(()=>geographic?.resize());
   };
   const showSelectedTrain = label => showSelectedMapItem('Moving train / metro', label);
-  const showSelectedStation = (name, lines) => showSelectedMapItem(name,
-    'Station / stop · Served by '+lines.join(', '));
+  const showSelectedStation = (name, lines, distant = []) => showSelectedMapItem(name,
+    distant.length
+      ? 'Station / stop · Close to displayed GTFS routes: ' + (lines.join(', ') || 'none confirmed')
+        + '. Other GTFS stop-time associations, outside mapped line paths: ' + distant.join(', ')
+      : 'Station / stop · Served by '+lines.join(', '));
   const svgPoint = (clientX, clientY) => {
     const r = geo.svg.getBoundingClientRect();
     const cur = vb || geo.base;
@@ -2247,22 +2250,25 @@ function networkMap(container, { net, live, view, lineFilter, vb: zoom, onTrainS
   // More station names as you zoom in; fewer on small screens.
   const minLabel = zoomed >= 3 ? 0 : zoomed >= 1.6 ? 1 : view === 'all' || W < 640 ? 2 : 1;
   for (const [name, x, y, ls, label] of net.stations) {
-    if (lineFilter && !ls.split(' ').includes(lineFilter)) continue;
+    const { near, distant } = geographicStationLines(net, name, ls);
+    if (lineFilter && !near.includes(lineFilter)) continue;
     const station = S('circle', { cx: x, cy: y, r: u(label ? 2.4 : 1.5),
       class: 'map-station-select', role: 'button', tabindex: label >= 1 || !!lineFilter ? '0' : '-1',
-      'aria-label': 'Fixed station: ' + name + '. Lines ' + ls.split(' ').join(', ') });
-    station.addEventListener('click', () => onStationSelect?.(name, ls.split(' ')));
+      'aria-label': 'Fixed station: ' + name + '. Nearby mapped lines ' + (near.join(', ') || 'not confirmed') +
+        (distant.length ? '. Other recorded GTFS associations ' + distant.join(', ') : '') });
+    station.addEventListener('click', () => onStationSelect?.(name, near, distant));
     station.addEventListener('keydown', event => {
-      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onStationSelect?.(name, ls.split(' ')); }
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onStationSelect?.(name, near, distant); }
     });
     bindSvgMapHover(station, [
       { value: name + ' station' },
-      { label: 'Lines: ' + ls.split(' ').join(' · '), muted: true },
+      { label: 'Mapped lines nearby: ' + (near.join(' · ') || 'not confirmed'), muted: true },
+      ...(distant.length ? [{ label: 'Other GTFS associations: ' + distant.join(' · '), muted: true }] : []),
     ]);
     station.addEventListener('click', hideTip);
     st.append(station);
     // Light rail stops are close together: name them only when zoomed well in.
-    const tramOnly = ls.split(' ').every(l => lineInfo(l).mode === 'lightrail');
+    const tramOnly = near.length && near.every(l => lineInfo(l).mode === 'lightrail');
     if (label >= minLabel && (label || !tramOnly || zoomed >= 6)) {
       const t = S('text', { x: x + u(5), y: y + u(4), 'font-size': u(11) });
       t.textContent = name;
