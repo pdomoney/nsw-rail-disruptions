@@ -41,9 +41,9 @@ test('map selections go into a separate accessible panel rather than covering th
   assert.match(css,/\.map-workspace\.has-selection \{/);
 });
 
-test('toolbar offers all original modes with line filter and retains advanced settings',()=>{
+test('toolbar offers only the two supported map modes with line filter and retained settings',()=>{
   assert.match(controls,/\['official','Network diagram · TfNSW'\]/);
-  assert.match(controls,/\['track','Geographic map'\]/);
+  assert.match(controls,/\['track','Geographic map · GTFS'\]/);
   assert.doesNotMatch(controls,/\['diagram','Legacy hand-drawn'\]/);
   assert.match(controls,/\['track','Geographic map · GTFS'\]/);
   assert.match(controls,/const areaControl=segmented/);
