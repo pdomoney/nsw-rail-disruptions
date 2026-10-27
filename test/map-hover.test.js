@@ -68,18 +68,25 @@ test('geographic map supports hover previews and click details for fixed stops a
       view: 'sydney',
       lineFilter: null,
       onTrainSelect: msg => selected.push(msg),
+      onStationSelect: (name, lines) => selected.push(name + ': ' + lines.join(',')),
     });
     const station = markers.find(x => x.type === 'station');
     const train = markers.find(x => x.type === 'train');
     assert.ok(station?.tooltip, 'station hover preview should be attached');
     assert.equal(station.tooltipOptions.className, 'rail-map-hover');
     assert.ok(station.popup, 'station click popup remains available');
+    station.handlers.click();
+    assert.match(selected[0], /Central: T1/, 'geographic station tap shares detail-panel selection');
     assert.ok(train?.tooltip, 'train hover preview should be attached');
     assert.equal(train.tooltipOptions.className, 'rail-map-hover');
     assert.ok(train.popup, 'train click popup remains available');
     assert.ok(train.tooltip.children.some(x => x.textContent.includes('Moving T1')));
     train.handlers.click();
-    assert.match(selected[0], /T1 service towards Parramatta/);
+    assert.match(selected[1], /T1 service towards Parramatta/);
+    view.setRailFocus('streets');
+    assert.equal(container.children[0].className,'geo-map');
+    view.setRailFocus('rail');
+    assert.equal(container.children[0].className,'geo-map geo-map-rail-focus');
     view.destroy();
     assert.equal(map.removed, true);
   } finally {
@@ -88,14 +95,14 @@ test('geographic map supports hover previews and click details for fixed stops a
   }
 });
 
-test('legacy and offline geographic SVGs share pointer-enter, movement and keyboard-focus tooltip handlers', () => {
+test('offline geographic SVG retains pointer-enter, movement and keyboard-focus tooltip handlers', () => {
   const source = fs.readFileSync(new URL('../site/app.js', import.meta.url), 'utf8');
   assert.match(source, /function bindSvgMapHover\(/);
   for (const handler of ['pointerenter', 'pointermove', 'pointerleave', 'focus', 'blur']) {
     assert.ok(source.includes("node.addEventListener('" + handler + "'"), handler + ' missing');
   }
-  assert.match(source, /bindSvgMapHover\(group, tip\)/, 'both SVG maps must bind train hover');
+  assert.match(source, /bindSvgMapHover\(group, tip\)/, 'geographic SVG trains retain hover');
   assert.match(source, /bindSvgMapHover\(station, \[/, 'offline geographic station hover');
-  assert.match(source, /bindSvgMapHover\(c, tip\)/, 'schematic station hover');
+  assert.doesNotMatch(source, /function schematicMap\(/, 'retired hand-drawn renderer must not remain');
   assert.match(source, /event\.pointerType === 'touch'/, 'tap selection should not be replaced by a hovering bubble');
 });
