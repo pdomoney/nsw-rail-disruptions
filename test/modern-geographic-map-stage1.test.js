@@ -45,7 +45,9 @@ test('modern rail-focus display and station selection do not replace or repositi
   assert.match(geo,/railFocus = 'rail'/);
   assert.match(geo,/const setRailFocus = value =>/);
   assert.match(geo,/geo-map-rail-focus/);
-  assert.match(geo,/st\.on\('click', \(\) => onStationSelect\?\.\(name, served\)\)/);
+  assert.match(geo,/st\.on\('click', \(\) => onStationSelect\?\.\(name, near, distant\)\)/);
+  assert.match(geo,/geographicStationLines\(net, name, served\)/);
+  assert.match(geo,/filter && !near\.includes\(filter\)/);
   assert.match(geo,/const p = geographicCoordinates\(x, y\)/);
   assert.match(geo,/const \[line, x, y, delay, pax, fullest, , headsign\] = train/);
   assert.match(geo,/setRailFocus,\s*zoomBy:/);

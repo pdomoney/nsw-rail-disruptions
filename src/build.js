@@ -19,6 +19,7 @@ import { summariseDay, pairStats, trackedPairs, COUNTERS, RIDE_MINUTES } from '.
 import { delayClock, CAR_LOAD } from './lib/clock.js';
 import { trackworkItems } from './lib/trackwork.js';
 import { project, projectChains, encodeChain, TrackGraph, affectedPlaces, stationKey } from './lib/netmap.js';
+import { buildGeographicStationProximity } from './lib/map-station-proximity.js';
 import { buildSchematic, diagramSections, labelSide, trainPlacer, terminalCallouts, SCHEMATIC_VIEWS, DIAGRAM_LAYOUT_VERSION } from './lib/schematic.js';
 import { addDays, daysBetween, iso, splitByDay, sydDate, sydMidnight, sydHour, toMs, HOUR, DAY, MIN } from './lib/time.js';
 
@@ -565,13 +566,17 @@ function buildMap(lines, status, trackwork, ongoing) {
   for (const cs of Object.values(chains)) for (const c of cs) for (const [x, y] of c) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   const [sa, sb] = [project(...SYDNEY_VIEW[0]), project(...SYDNEY_VIEW[1])];
   const [ca, cb] = [project(...CITY_VIEW[0]), project(...CITY_VIEW[1])];
-  writeJson(out('data', 'network.json'), {
+  const geographicNetwork = {
     generatedAt: iso(now),
     unit: 10,
     views: { city: [ca[0], ca[1], cb[0], cb[1]], sydney: [sa[0], sa[1], sb[0], sb[1]], all: [x0, y0, x1, y1] },
     lines: Object.fromEntries(Object.entries(chains).map(([l, cs]) => [l, cs.map(encodeChain)])),
     stations: [...stations.entries()].map(([k, s]) => [s.name, s.xy[0], s.xy[1], [...s.lines].join(' '), labels.get(k) || 0]),
-  });
+  };
+  // Extra display-only metadata. Keep all original GTFS station-line associations
+  // for timetable, source review, and unusual operating services.
+  geographicNetwork.stationProximity = buildGeographicStationProximity(geographicNetwork);
+  writeJson(out('data', 'network.json'), geographicNetwork);
 
   // The network diagram (lib/schematic.js): its layout, and helpers to put trains and sections on it.
   const SCH = buildSchematic();

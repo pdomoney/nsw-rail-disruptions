@@ -78,6 +78,18 @@ function popup(title, details) {
   return wrap;
 }
 
+// Display-only distinction. Every GTFS station-line association remains in net.stations.
+// If provenance is unavailable (old/cached data), preserve the original line set.
+export function geographicStationLines(net, name, lines) {
+  const source = Array.isArray(lines) ? lines : String(lines || '').split(/\s+/).filter(Boolean);
+  const flagged = net?.stationProximity?.version === 1
+    ? net.stationProximity.distant?.[name] : null;
+  if (!Array.isArray(flagged)) return { near: source, distant: [] };
+  const distant = source.filter(line => flagged.includes(line));
+  const near = source.filter(line => !flagged.includes(line));
+  return { near, distant };
+}
+
 export function createGeographicMap(container, {
   net, live, view, lineFilter, colors, onTrainSelect, onStationSelect, railFocus = 'rail',
 }) {
@@ -144,19 +156,29 @@ export function createGeographicMap(container, {
     }
     for (const [name, x, y, ids, priority] of net.stations || []) {
       const served = ids.split(' ').filter(id => colors[id]);
-      if (!served.length || (filter && !served.includes(filter))) continue;
+      const { near, distant } = geographicStationLines(net, name, served);
+      // A line-specific geographic map must not mark a stop kilometres away
+      // from all the line geometry currently available in the GTFS feed.
+      if (!served.length || (filter && !near.includes(filter))) continue;
       const p = geographicCoordinates(x, y);
       if (!p) continue;
       const st = L.circleMarker(p, { radius: priority >= 2 ? 6.3 : priority ? 4.9 : 3.8,
         color: '#203b4d', fillColor: '#fff', fillOpacity: 1, weight: 1.8, renderer: canvas });
-      st.bindPopup(popup(name + ' station', ['Served by: ' + served.join(', '), 'Location from TfNSW GTFS stops.']));
-      // Hover shows a small preview without requiring a click. The existing
-      // click popup remains available for touch screens.
-      st.bindTooltip(popup(name + ' station', ['Lines: ' + served.join(', ')]), {
+      const routeNote = near.length
+        ? 'Close to plotted GTFS lines: ' + near.join(', ')
+        : 'No plotted GTFS line is close to this station.';
+      const exceptionNote = distant.length
+        ? 'Other GTFS stop-time associations (outside mapped line paths): ' + distant.join(', ')
+        : '';
+      st.bindPopup(popup(name + ' station', [
+        routeNote, exceptionNote, 'Position from TfNSW GTFS stops; associations can include unusual services.',
+      ]));
+      st.bindTooltip(popup(name + ' station', [routeNote, exceptionNote]), {
         direction: 'top', opacity: 0.97, sticky: true, className: 'rail-map-hover',
       });
-      // Same persistent details panel as the verified PDF network diagram.
-      st.on('click', () => onStationSelect?.(name, served));
+      // Shared persistent station panel receives route-near and additional
+      // recorded associations separately, without rewriting timetable data.
+      st.on('click', () => onStationSelect?.(name, near, distant));
       st.addTo(stations);
     }
     }
