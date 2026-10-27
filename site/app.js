@@ -1789,9 +1789,13 @@ async function viewMap(main) {
   if (main.dataset.routeId !== requestRoute) return;
   let view = ['city', 'sydney', 'all'].includes(q.get('view')) ? q.get('view') : prefs.get('mapView', 'sydney');
   if (!['city', 'sydney', 'all'].includes(view)) view = 'sydney';
+  // The historical whole-network option belongs to the geographic renderer.
+  if (kind === 'official' && view === 'all') view = 'sydney';
   let railFocus = prefs.get('mapRailFocus','rail') === 'streets'?'streets':'rail';
   let officialContrast = prefs.get('officialMapContrast','enhanced') === 'original'?'original':'enhanced';
   let lineFilter = q.get('line') || '';
+  if (kind === 'official' && lineFilter && !/^T[1-9]$|^M1$/.test(lineFilter))
+    lineFilter = '';
   const head = h('div', { class: 'map-head' });
   const filters = h('div', { class: 'filters map-controls',
     'aria-label':'Map view and line filters' });
@@ -2029,6 +2033,9 @@ async function viewMap(main) {
     ],kind,async v=>{
       if(kind===v)return;
       kind=v;vb=null;clearSelectedMapItem();
+      if (kind === 'official' && view === 'all') view = 'sydney';
+      if (kind === 'official' && lineFilter && !/^T[1-9]$|^M1$/.test(lineFilter))
+        lineFilter = '';
       if(kind==='official')await checkOfficialMap();
       if(kind==='track'&&!geographicReady){
         try{await loadLeaflet();geographicReady=true;}
@@ -2133,6 +2140,9 @@ async function viewMap(main) {
       : h('p', { class: 'empty-chart' }, 'No incidents or trackwork closures right now.'));
   };
   draw();
+  // A saved/bookmarked legacy URL is served by the verified official diagram.
+  // Canonicalise it without a second navigation or losing valid line filters.
+  if (requested === 'legacy' || requested === 'diagram') setState();
   // Tear down Leaflet's global handlers on navigation, including repeated Home Screen visits.
   mapViewCleanup = () => {
     clearTimeout(redrawTimer);
