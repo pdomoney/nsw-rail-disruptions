@@ -4,7 +4,10 @@ import {fetchPublicRailRouteReference,PUBLIC_ROUTES_LAYER} from '../src/lib/publ
 
 const metadata={
   name:'Routes',geometryType:'esriGeometryPolyline',supportedQueryFormats:'JSON, geoJSON, PBF',
-  serviceItemId:'abc',fields:['objectid','route_short_name','route_id','shape_id',
+  serviceItemId:'abc',objectIdField:'objectid',
+  extent:{xmin:15424651.928,ymin:-4553704.216,xmax:17100802.715,ymax:-3181590.873,
+    spatialReference:{wkid:102100,latestWkid:3857}},
+  fields:['objectid','route_short_name','route_id','shape_id',
     'portal_last_updated','route_long_name'].map(name=>({name}))
 };
 const feature=(objectid,route_short_name='T1')=>({
@@ -33,6 +36,7 @@ test('downloads complete paginated reference with captured source metadata, not 
   assert.equal(geojson.features.length,3);
   assert.equal(provenance.namedTrainFeatures,3);
   assert.equal(provenance.layerUrl,PUBLIC_ROUTES_LAYER);
+  assert.equal(provenance.layerAdvertisedExtent.spatialReference.latestWkid,3857);
   assert.deepEqual(provenance.portalLastUpdatedValues,['2026-10-23']);
   assert.match(provenance.status,/not_verified_portal_download/);
   assert.equal(input.requested[2].searchParams.get('objectIds'),'1,2');
@@ -57,6 +61,33 @@ test('refuses incomplete or malformed responses, changed layer schemas and non-N
     fetchImpl:source([metadata,{objectIds:[1]},{type:'FeatureCollection',features:[feature(1,'ZZ')]}]).fetchImpl,
   }),/recognisable/);
   await assert.rejects(()=>fetchPublicRailRouteReference({batchSize:1001}),/Batch size/);
+});
+test('accepts regional public route vertices west of 140E but still rejects projected coordinates',async()=>{
+  const western=feature(17,'BMT');
+  western.geometry.coordinates=[[138.57,-37.8],[139.10,-37.75]];
+  const input=source([metadata,{objectIds:[17]},
+    {type:'FeatureCollection',features:[western]}]);
+  const result=await fetchPublicRailRouteReference({fetchImpl:input.fetchImpl});
+  assert.equal(result.geojson.features.length,1);
+  assert.deepEqual(result.geojson.features[0].geometry.coordinates,western.geometry.coordinates);
+});
+test('OID property casing is normalised, and missing/duplicate/invalid source records remain rejected',async()=>{
+  const upper=feature(1);
+  upper.properties.OBJECTID=upper.properties.objectid;
+  delete upper.properties.objectid;
+  const a=await fetchPublicRailRouteReference({fetchImpl:source([metadata,{objectIds:[1]},
+    {type:'FeatureCollection',features:[upper]}]).fetchImpl});
+  assert.equal(a.geojson.features.length,1);
+  const absent=feature(2);
+  delete absent.properties.objectid;
+  delete absent.id;
+  await assert.rejects(()=>fetchPublicRailRouteReference({fetchImpl:source([
+    metadata,{objectIds:[2]},{type:'FeatureCollection',features:[absent]}
+  ]).fetchImpl}),/Unrecognised public route feature ID/);
+  const duplicate=feature(1);
+  await assert.rejects(()=>fetchPublicRailRouteReference({fetchImpl:source([
+    metadata,{objectIds:[1,2]},{type:'FeatureCollection',features:[duplicate,duplicate]}
+  ]).fetchImpl}),/Duplicated public route feature ID/);
 });
 test('requests cannot escape the pinned NSW public ArcGIS layer',async()=>{
   const input=source([metadata,{objectIds:[1]},{type:'FeatureCollection',features:[feature(1)]}]);

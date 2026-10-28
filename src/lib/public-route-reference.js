@@ -6,14 +6,20 @@ export const PUBLIC_ROUTES_LAYER =
 const neededFields = ['objectid','route_short_name','route_id','shape_id','portal_last_updated','route_long_name'];
 const isObject = v => v != null && typeof v === 'object' && !Array.isArray(v);
 const finite = v => typeof v === 'number' && Number.isFinite(v);
-const inNSW = ([longitude,latitude]) => finite(longitude) && finite(latitude)
-  && longitude >= 140 && longitude <= 155 && latitude >= -39 && latitude <= -27;
+// TfNSW's public hosted rail route view extends west of the NSW border:
+// the 2026-10-28 layer metadata advertises about 138.56 E to 153.62 E.
+// Validate a conservative eastern-Australian geographic envelope instead of
+// mistaking legitimate regional/interstate routes for projected coordinates.
+// Bounding-box validation is still NOT a route accuracy certification.
+const inAustralianRailBounds = point => Array.isArray(point) && point.length >= 2 &&
+  finite(point[0]) && finite(point[1]) &&
+  point[0] >= 133 && point[0] <= 155 && point[1] >= -44 && point[1] <= -9;
 function validGeometry(geometry) {
   const chains = geometry?.type === 'LineString' ? [geometry.coordinates]
     : geometry?.type === 'MultiLineString' ? geometry.coordinates : null;
   return Array.isArray(chains) && chains.length > 0 && chains.every(chain =>
     Array.isArray(chain) && chain.length >= 2 &&
-    chain.every(point => Array.isArray(point) && point.length >= 2 && inNSW(point)));
+    chain.every(inAustralianRailBounds));
 }
 function parameters(path, params) {
   const url = new URL(PUBLIC_ROUTES_LAYER + path);
@@ -52,6 +58,15 @@ export async function fetchPublicRailRouteReference({
     throw new Error('Unexpected route object ID list; abort incomplete comparison');
   ids.sort((a,b)=>a-b);
   const features=[], seen=new Set(), sourceRevisions=new Set();
+  // FeatureServer can vary OID property casing in GeoJSON output. Always
+  // require an ID that matches the requested batch: do not infer one by order.
+  const objectId = feature => {
+    const p = feature?.properties;
+    const named = isObject(p) ? Object.entries(p).find(([name]) =>
+      name.toLowerCase() === String(metadata.objectIdField || 'objectid').toLowerCase()) : null;
+    const raw = named ? named[1] : feature?.id;
+    return raw == null || raw === '' ? null : Number(raw);
+  };
   for(let start=0;start<ids.length;start+=batchSize) {
     const batch=ids.slice(start,start+batchSize);
     const result=await getJson(fetchImpl,parameters('/query',{
@@ -64,10 +79,20 @@ export async function fetchPublicRailRouteReference({
     const expected=new Set(batch);
     for(const feature of result.features) {
       const properties=feature?.properties;
-      const oid=Number(properties?.objectid ?? properties?.OBJECTID ?? feature?.id);
-      if(!expected.has(oid) || seen.has(oid) || feature?.type!=='Feature'
-         || !isObject(properties) || !validGeometry(feature.geometry))
-        throw new Error('Unrecognised, duplicated or invalid projected route geometry');
+      const oid=objectId(feature);
+      // Detailed non-sensitive diagnostics: the object ID and failure reason
+      // let operators review a specific public-source feature without dumping
+      // potentially large route coordinates into GitHub Actions logs.
+      if(!Number.isSafeInteger(oid) || !expected.has(oid))
+        throw new Error('Unrecognised public route feature ID: '+
+          String(oid)+' (batch '+batch[0]+'–'+batch.at(-1)+')');
+      if(seen.has(oid))
+        throw new Error('Duplicated public route feature ID: '+oid);
+      if(feature?.type!=='Feature' || !isObject(properties))
+        throw new Error('Unexpected ArcGIS GeoJSON feature structure for object ID '+oid);
+      if(!validGeometry(feature.geometry))
+        throw new Error('Invalid projected route geometry or out-of-envelope coordinates for public object ID '+
+          oid+' (GeoJSON type '+String(feature.geometry?.type||'none')+')');
       seen.add(oid);
       if(properties.portal_last_updated != null)
         sourceRevisions.add(String(properties.portal_last_updated));
@@ -85,6 +110,7 @@ export async function fetchPublicRailRouteReference({
       layerUrl:PUBLIC_ROUTES_LAYER,
       layerServiceItemId:metadata.serviceItemId||null,
       layerName:metadata.name,
+      layerAdvertisedExtent:metadata.extent || null,
       acquiredAt,
       spatialReference:'EPSG:4326 requested from ArcGIS; validated NSW longitude/latitude',
       featureCount:features.length,

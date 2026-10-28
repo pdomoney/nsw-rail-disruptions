@@ -44,3 +44,10 @@ node scripts/render-reference-comparison.mjs \
   --input audit-artifacts/reference/geometry-audit.json \
   --out-dir audit-artifacts/reference
 ```
+
+
+## 28 October 2026 corrective: source extent and diagnostic ID
+
+The initial real public-source comparison failed on GitHub Actions run #40609889203 at route acquisition. The old loader rejected every longitude west of 140°E, but the authoritative public ArcGIS layer's published Web Mercator extent reaches approximately 138.56°E. This was a **validator-envelope mismatch**, not a demonstration that route points were physically inaccurate. The specific offending feature could not be identified from the original undifferentiated log message.
+
+The correction accepts a conservative eastern-Australian long/lat envelope (133–155°E, −44 to −9° latitude), still rejecting Web Mercator/metre coordinates, malformed geometry, missing IDs, duplicate IDs and incomplete batches. The source layer extent is preserved as provenance and validation errors now identify the offending public object ID and failure reason, without logging large geometries. A successful source download is not a guarantee that TfNSW portal and hosted ArcGIS data represent the same snapshot.
