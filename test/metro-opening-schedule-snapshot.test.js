@@ -40,6 +40,6 @@ test('no synthetic evidence outside the opening window or without calendars',()=
 });
 test('collector writes a separate source snapshot rather than overwriting frozen trips',()=>{
   const src=fs.readFileSync(new URL('../src/collect.js',import.meta.url),'utf8');
-  assert.match(src,/metroOpeningScheduleSnapshot\(map, now\)/);
+  assert.match(src,/metroOpeningScheduleSnapshot\(map,\s*now\)/);
   assert.match(src,/metro-opening-static-snapshot\.json/);
 });
