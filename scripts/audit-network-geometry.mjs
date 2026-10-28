@@ -25,6 +25,8 @@ try {
     sourceObjectIdCount:provenance?.sourceObjectIdCount ?? null,
     excludedGeometryCount:provenance?.excludedGeometryCount ?? null,
     comparisonCoverage:provenance?.comparisonCoverage ?? 'not_verified',
+    portalLastUpdatedValues: Array.isArray(provenance?.portalLastUpdatedValues) ?
+      provenance.portalLastUpdatedValues : [],
   } : null;
   if (provenance && (!source || source.sha256 !== provenance.sha256))
     throw new Error('Reference source checksum does not match its provenance manifest');
