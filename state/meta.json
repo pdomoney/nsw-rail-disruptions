@@ -1,5 +1,5 @@
 {
- "alertsLastOkAt": "2026-10-28T02:26:52Z",
+ "alertsLastOkAt": "2026-10-28T02:36:37Z",
  "archiveImport": {
   "at": "2026-10-12T11:37:13Z",
   "since": "2023-07-01",
@@ -122,21 +122,21 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-28T02:26:52Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v2/gtfs/realtime/sydneytrains",
-    "bytes": 223490,
-    "entities": 431,
-    "trips": 431,
-    "matched": 325,
-    "feedAgeS": 7,
+    "bytes": 231022,
+    "entities": 442,
+    "trips": 442,
+    "matched": 331,
+    "feedAgeS": -53,
     "unmatched": [
      [
       "RTTA_REV",
-      72
+      76
      ],
      [
       "RTTA_DEF",
-      24
+      25
      ],
      [
       "CTY_NC1a",
@@ -164,58 +164,58 @@
      ]
     ],
     "shape": {
-     "withTimes": 58,
-     "delayOnly": 224,
+     "withTimes": 60,
+     "delayOnly": 228,
      "noStops": 37,
      "tripDelay": 0,
      "active": 200,
-     "notStarted": 43,
+     "notStarted": 44,
      "finished": 3,
-     "noDelay": 73
+     "noDelay": 78
     },
     "occupancy": {
-     "stops": 3759,
-     "stopLevel": 1516,
-     "stopCars": 1516,
-     "trips": 319,
-     "tripsWithLevel": 127,
-     "tripsWithCars": 127,
+     "stops": 3839,
+     "stopLevel": 1594,
+     "stopCars": 1594,
+     "trips": 325,
+     "tripsWithLevel": 130,
+     "tripsWithCars": 130,
      "fromVehicles": 16,
-     "runningWithLevel": 112,
+     "runningWithLevel": 107,
      "levels": [
       0,
-      1489,
-      23,
+      1564,
+      26,
       4,
       0,
       0
      ],
      "cars": {
       "4": 11,
-      "8": 116
+      "8": 119
      },
      "models": {
-      "D": 49,
-      "T": 50,
-      "A": 97,
+      "D": 54,
+      "T": 48,
+      "A": 99,
       "B": 69,
       "N": 9,
-      "H": 21,
+      "H": 22,
       "M": 24
      }
     },
     "ids": {
-     "trips": 325,
+     "trips": 331,
      "noId": 0,
      "dated": 0,
      "other": 0,
-     "inTimetable": 323,
+     "inTimetable": 329,
      "notInTimetable": 2,
      "notInStatic": 0,
      "bySr": {
-      "0": 262,
+      "0": 266,
       "3": 6,
-      "5": 57
+      "5": 59
      },
      "missing": [
       [
@@ -286,31 +286,31 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-28T02:31:43Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v2/gtfs/vehiclepos/sydneytrains",
-    "bytes": 46293,
-    "vehicles": 208,
-    "withTrip": 208,
+    "bytes": 47229,
+    "vehicles": 213,
+    "withTrip": 213,
     "occupancy": {
      "1": 87,
      "2": 1,
      "3": 1
     },
     "withPercent": 0,
-    "withConsist": 187,
+    "withConsist": 190,
     "consistLevels": {
-     "1": 681,
-     "2": 15
+     "1": 676,
+     "2": 20
     },
     "models": {
      "A": 59,
      "M": 15,
-     "T": 26,
-     "B": 35,
+     "T": 27,
+     "B": 34,
      "H": 8,
-     "D": 36,
+     "D": 38,
      "N": 3,
-     "J": 1,
+     "J": 2,
      "Z": 2,
      "I": 1,
      "W": 9,
@@ -339,8 +339,7 @@
      "entity.vp.veh.1007:2": 196,
      "entity.vp.veh.2:2": 180,
      "entity.vp.veh.x7.3:2": 196
-    },
-    "error": "HTTP 502 for /v1/gtfs/vehiclepos/sydneytrains (<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n</body>\r\n</html>\r\n)"
+    }
    },
    "lastError": {
     "at": "2026-10-28T02:31:43Z",
@@ -414,29 +413,29 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-28T02:26:52Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v2/gtfs/realtime/metro",
-    "bytes": 57905,
-    "entities": 60,
-    "trips": 60,
-    "matched": 60,
-    "feedAgeS": 1,
+    "bytes": 58043,
+    "entities": 61,
+    "trips": 61,
+    "matched": 61,
+    "feedAgeS": -64,
     "unmatched": [],
     "shape": {
-     "withTimes": 60,
+     "withTimes": 61,
      "delayOnly": 0,
      "noStops": 0,
      "tripDelay": 0,
      "active": 33,
-     "notStarted": 19,
+     "notStarted": 20,
      "finished": 8,
      "noDelay": 0
     },
     "occupancy": {
-     "stops": 1260,
+     "stops": 1261,
      "stopLevel": 0,
      "stopCars": 0,
-     "trips": 60,
+     "trips": 61,
      "tripsWithLevel": 0,
      "tripsWithCars": 0,
      "fromVehicles": 25,
@@ -453,15 +452,15 @@
      "models": {}
     },
     "ids": {
-     "trips": 60,
+     "trips": 61,
      "noId": 0,
-     "dated": 60,
+     "dated": 61,
      "other": 0,
-     "inTimetable": 60,
+     "inTimetable": 61,
      "notInTimetable": 0,
      "notInStatic": 0,
      "bySr": {
-      "0": 42,
+      "0": 43,
       "5": 18
      },
      "missing": [],
@@ -500,22 +499,22 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-28T02:31:43Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v2/gtfs/vehiclepos/metro",
-    "bytes": 8203,
+    "bytes": 8186,
     "vehicles": 27,
     "withTrip": 27,
     "occupancy": {
-     "1": 12,
-     "2": 12,
+     "1": 13,
+     "2": 11,
      "3": 3
     },
     "withPercent": 0,
     "withConsist": 27,
     "consistLevels": {
-     "1": 44,
-     "2": 89,
-     "3": 29
+     "1": 51,
+     "2": 84,
+     "3": 27
     },
     "models": {
      "Alstom Metropolis": 27
@@ -555,8 +554,7 @@
      "entity.vp.veh.x7.2:0": 27,
      "entity.vp.veh.x7.3:2": 27,
      "entity.vp.veh.x7.5:0": 27
-    },
-    "error": "HTTP 504 for /v1/gtfs/vehiclepos/metro (<html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n</body>\r\n</html>\r\n)"
+    }
    },
    "lastError": {
     "at": "2026-10-28T02:31:43Z",
@@ -630,29 +628,29 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-28T02:26:52Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v2/gtfs/realtime/lightrail/innerwest",
-    "bytes": 23535,
-    "entities": 23,
-    "trips": 23,
-    "matched": 23,
-    "feedAgeS": 3,
+    "bytes": 22734,
+    "entities": 22,
+    "trips": 22,
+    "matched": 22,
+    "feedAgeS": -72,
     "unmatched": [],
     "shape": {
-     "withTimes": 22,
+     "withTimes": 21,
      "delayOnly": 0,
      "noStops": 0,
      "tripDelay": 18,
      "active": 12,
-     "notStarted": 9,
+     "notStarted": 8,
      "finished": 1,
      "noDelay": 0
     },
     "occupancy": {
-     "stops": 497,
+     "stops": 474,
      "stopLevel": 0,
      "stopCars": 0,
-     "trips": 22,
+     "trips": 21,
      "tripsWithLevel": 0,
      "tripsWithCars": 0,
      "fromVehicles": 0,
@@ -669,15 +667,15 @@
      "models": {}
     },
     "ids": {
-     "trips": 23,
+     "trips": 22,
      "noId": 0,
-     "dated": 23,
+     "dated": 22,
      "other": 0,
-     "inTimetable": 22,
+     "inTimetable": 21,
      "notInTimetable": 1,
      "notInStatic": 1,
      "bySr": {
-      "0": 21,
+      "0": 20,
       "1": 1,
       "3": 1
      },
@@ -718,9 +716,9 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-28T02:31:43Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v2/gtfs/vehiclepos/lightrail/innerwest",
-    "bytes": 1678,
+    "bytes": 1679,
     "vehicles": 9,
     "withTrip": 9,
     "occupancy": {},
@@ -761,8 +759,7 @@
      "entity.vp.veh.x7.1:0": 9,
      "entity.vp.veh.x7.2:0": 9,
      "entity.vp.veh.x7.3:2": 9
-    },
-    "error": "HTTP 502 for /v1/gtfs/vehiclepos/lightrail/innerwest (<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n</body>\r\n</html>\r\n)"
+    }
    },
    "lastError": {
     "at": "2026-10-28T02:31:43Z",
@@ -838,29 +835,29 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-28T02:31:43Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/cbdandsoutheast",
-    "bytes": 61055,
-    "entities": 98,
-    "trips": 98,
-    "matched": 98,
-    "feedAgeS": -202,
+    "bytes": 59126,
+    "entities": 96,
+    "trips": 96,
+    "matched": 96,
+    "feedAgeS": -82,
     "unmatched": [],
     "shape": {
-     "withTimes": 79,
+     "withTimes": 77,
      "delayOnly": 0,
      "noStops": 0,
      "tripDelay": 0,
-     "active": 29,
-     "notStarted": 39,
-     "finished": 11,
+     "active": 30,
+     "notStarted": 38,
+     "finished": 9,
      "noDelay": 0
     },
     "occupancy": {
-     "stops": 1129,
+     "stops": 1081,
      "stopLevel": 0,
      "stopCars": 0,
-     "trips": 79,
+     "trips": 77,
      "tripsWithLevel": 0,
      "tripsWithCars": 0,
      "fromVehicles": 0,
@@ -877,15 +874,15 @@
      "models": {}
     },
     "ids": {
-     "trips": 98,
+     "trips": 96,
      "noId": 0,
-     "dated": 98,
+     "dated": 96,
      "other": 0,
-     "inTimetable": 79,
+     "inTimetable": 77,
      "notInTimetable": 19,
      "notInStatic": 19,
      "bySr": {
-      "0": 59,
+      "0": 57,
       "1": 19,
       "3": 19,
       "5": 1
@@ -926,17 +923,17 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-28T02:31:43Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/cbdandsoutheast",
-    "bytes": 2993,
-    "vehicles": 17,
-    "withTrip": 17,
+    "bytes": 2818,
+    "vehicles": 16,
+    "withTrip": 16,
     "occupancy": {},
     "withPercent": 0,
     "withConsist": 0,
     "consistLevels": {},
     "models": {
-     "CitadisX05": 17
+     "CitadisX05": 16
     },
     "fields": {
      "1:2": 1,
@@ -964,8 +961,7 @@
      "entity.vp.veh.x7.2:0": 18,
      "entity.vp.veh.x7.3:2": 18,
      "entity.vp.veh.x7.5:0": 18
-    },
-    "error": "HTTP 502 for /v1/gtfs/vehiclepos/lightrail/cbdandsoutheast (<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n</body>\r\n</html>\r\n)"
+    }
    },
    "lastError": {
     "at": "2026-10-26T08:48:13Z",
@@ -1039,33 +1035,33 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-28T02:31:43Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/parramatta",
-    "bytes": 21659,
-    "entities": 32,
-    "trips": 32,
-    "matched": 32,
-    "feedAgeS": -229,
+    "bytes": 22398,
+    "entities": 33,
+    "trips": 33,
+    "matched": 33,
+    "feedAgeS": -91,
     "unmatched": [],
     "shape": {
-     "withTimes": 32,
+     "withTimes": 33,
      "delayOnly": 0,
      "noStops": 0,
      "tripDelay": 0,
-     "active": 15,
-     "notStarted": 12,
-     "finished": 5,
+     "active": 14,
+     "notStarted": 13,
+     "finished": 6,
      "noDelay": 0
     },
     "occupancy": {
-     "stops": 508,
+     "stops": 528,
      "stopLevel": 0,
      "stopCars": 0,
-     "trips": 32,
+     "trips": 33,
      "tripsWithLevel": 0,
      "tripsWithCars": 0,
-     "fromVehicles": 0,
-     "runningWithLevel": 0,
+     "fromVehicles": 9,
+     "runningWithLevel": 9,
      "levels": [
       0,
       0,
@@ -1078,15 +1074,15 @@
      "models": {}
     },
     "ids": {
-     "trips": 32,
+     "trips": 33,
      "noId": 0,
-     "dated": 32,
+     "dated": 33,
      "other": 0,
-     "inTimetable": 32,
+     "inTimetable": 33,
      "notInTimetable": 0,
      "notInStatic": 0,
      "bySr": {
-      "0": 31,
+      "0": 32,
       "5": 1
      },
      "missing": [],
@@ -1124,19 +1120,19 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-28T02:31:43Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/parramatta",
-    "bytes": 1420,
-    "vehicles": 8,
-    "withTrip": 8,
+    "bytes": 1597,
+    "vehicles": 9,
+    "withTrip": 9,
     "occupancy": {
-     "1": 8
+     "1": 9
     },
     "withPercent": 0,
     "withConsist": 0,
     "consistLevels": {},
     "models": {
-     "USet-Urbos3": 8
+     "USet-Urbos3": 9
     },
     "fields": {
      "1:2": 1,
@@ -1165,8 +1161,7 @@
      "entity.vp.veh.x7.2:0": 9,
      "entity.vp.veh.x7.3:2": 9,
      "entity.vp.veh.x7.5:0": 9
-    },
-    "error": "HTTP 504 for /v1/gtfs/vehiclepos/lightrail/parramatta (<html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n</body>\r\n</html>\r\n)"
+    }
    },
    "lastError": {
     "at": "2026-10-26T08:48:13Z",
@@ -1244,17 +1239,17 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-10-28T02:31:43Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/newcastle",
-    "bytes": 9435,
+    "bytes": 9492,
     "entities": 32,
     "trips": 32,
     "matched": 32,
-    "feedAgeS": -246,
+    "feedAgeS": -102,
     "unmatched": [],
     "shape": {
-     "withTimes": 15,
-     "delayOnly": 17,
+     "withTimes": 16,
+     "delayOnly": 16,
      "noStops": 0,
      "tripDelay": 0,
      "active": 6,
@@ -1269,8 +1264,8 @@
      "trips": 32,
      "tripsWithLevel": 0,
      "tripsWithCars": 0,
-     "fromVehicles": 3,
-     "runningWithLevel": 3,
+     "fromVehicles": 4,
+     "runningWithLevel": 4,
      "levels": [
       0,
       0,
@@ -1328,21 +1323,21 @@
     }
    },
    "vehicles": {
-    "at": "2026-10-28T02:31:43Z",
+    "at": "2026-10-28T02:36:37Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/newcastle",
-    "bytes": 675,
-    "vehicles": 3,
-    "withTrip": 3,
+    "bytes": 895,
+    "vehicles": 4,
+    "withTrip": 4,
     "occupancy": {
-     "1": 3
+     "1": 4
     },
     "withPercent": 0,
-    "withConsist": 3,
+    "withConsist": 4,
     "consistLevels": {
-     "1": 3
+     "1": 4
     },
     "models": {
-     "CAF Urbos 100": 3
+     "CAF Urbos 100": 4
     },
     "fields": {
      "1:2": 1,
@@ -1387,16 +1382,11 @@
    }
   }
  },
- "lastRunAt": "2026-10-28T02:31:43Z",
- "lastRunErrors": [
-  "alerts: HTTP 504 for /v1/tp/add_info (<html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n</body>\r\n</html>\r\n)",
-  "sydneytrains: HTTP 504 for /v2/gtfs/realtime/sydneytrains (<html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n</body>\r\n</html>\r\n)",
-  "metro: HTTP 502 for /v2/gtfs/realtime/metro (<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n</body>\r\n</html>\r\n)",
-  "lr-innerwest: HTTP 502 for /v1/gtfs/realtime/lightrail/innerwest (<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n</body>\r\n</html>\r\n)"
- ],
+ "lastRunAt": "2026-10-28T02:36:37Z",
+ "lastRunErrors": [],
  "alertsLastError": {
   "at": "2026-10-28T02:31:43Z",
   "message": "HTTP 504 for /v1/tp/add_info (<html>\r\n<head><title>504 Gateway Time-out</title></head>\r\n<body>\r\n<center><h1>504 Gateway Time-out</h1></center>\r\n</body>\r\n</html>\r\n)"
  },
- "alertsLastTotal": 412
+ "alertsLastTotal": 413
 }
