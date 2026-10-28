@@ -30,6 +30,7 @@ export function auditSouthwestServiceEvidence({
   openingDay = null,
   positions = null,
   metroStations = null,
+  refreshedSchedule = null,
   at = new Date().toISOString(),
 } = {}) {
   const asOf = dateMs(at);
@@ -48,6 +49,17 @@ export function auditSouthwestServiceEvidence({
     afterOpening(row[cols.start],row[cols.end]));
   const terminalHeads = scheduled.filter(row => isBankstown(row[cols.headsign])).length;
   const originBankstown = scheduled.filter(row => originIds.has(String(row[cols.origin]||''))).length;
+  // Separate current static GTFS snapshot can supersede a midnight-frozen
+  // timetable without rewriting historical service-day trip observations.
+  const latest=refreshedSchedule?.schema==='nsw-rail-metro-opening-static-snapshot/v1' &&
+    refreshedSchedule.openingServiceDay===OPENING_SERVICE_DAY &&
+    dateMs(refreshedSchedule.capturedAt)!=null &&
+    dateMs(refreshedSchedule.timetableBuiltAt)!=null &&
+    dateMs(refreshedSchedule.capturedAt)>=opening &&
+    dateMs(refreshedSchedule.capturedAt)<=asOf &&
+    dateMs(refreshedSchedule.timetableBuiltAt)<=asOf?refreshedSchedule:null;
+  const rawCandidates=latest?.bankstownCandidateTrips;
+  const currentCandidates=Number.isSafeInteger(rawCandidates)&&rawCandidates>=0?rawCandidates:null;
   const observedRunning = scheduled.filter(row => {
     const flags=row[cols.flags]||0;
     return (flags & FLAG.RAN)!==0 && number(row[cols.first_seen]) &&
@@ -73,6 +85,8 @@ export function auditSouthwestServiceEvidence({
   let status='before-announced-opening';
   if(asOf>=opening) {
     if(!dayRecord||!feed)status='awaiting-opening-day-service-record';
+    else if(!scheduled.length && currentCandidates>0)
+      status='refreshed-static-candidates-not-in-frozen-service-day';
     else if(!scheduled.length)status='no-bankstown-terminal-trips-in-frozen-schedule';
     else if(observedRunning && southwesternPositions.length && coveredAfter)
       status='multiple-feed-operational-indicators-uncertified';
@@ -86,6 +100,11 @@ export function auditSouthwestServiceEvidence({
     serviceRecordFinalised:!!openingDay?.final,
     serviceCoverageAfterOpening:coveredAfter,
     timetableBuiltAt:feed?.timetable||null,
+    postOpeningStaticSnapshotAvailable:!!latest,
+    currentStaticTimetableBuiltAt:latest?.timetableBuiltAt||null,
+    currentStaticTimetableFetchedAfterOpening:!!latest?.fetchedAfterOpening,
+    currentStaticCalendarQualifiedM1Trips:latest?.calendarQualifiedM1Trips??null,
+    currentStaticBankstownCandidateTrips:currentCandidates,
     timetableTripCount:rows.filter(row=>row[cols.line]==='M1' &&
       !(row[cols.flags]&FLAG.UNSCHEDULED)).length,
     bankstownCandidateTrips:scheduled.length,
@@ -105,6 +124,7 @@ export function auditSouthwestServiceEvidence({
       'RAN is an aggregate realtime-trip observation flag. It does not independently certify passage over Southwest track or every station served.',
       'A position west of Sydenham is an unchanged feed-reported observation within a review envelope, not proof of passenger service, a measured GPS position, or a route correction.',
       'A frozen opening-day timetable may predate the last TfNSW revision. Zero Bankstown candidates is a data-evidence gap, not proof that Metro is closed.',
+      'A newer Metro static source can contain Bankstown trips absent from the frozen calendar, but these are not matched to realtime running observations and never certify passenger service.',
     ],
   };
 }
@@ -122,6 +142,11 @@ export function formatSouthwestServiceEvidence(result,{dataCommit=null}={}) {
     ['Evidence status',result.status],['Opening-day service record available',result.serviceRecordAvailable],
     ['Service record finalised',result.serviceRecordFinalised],
     ['Frozen Metro GTFS timetable timestamp',result.timetableBuiltAt],
+    ['Separate Metro static source snapshot available',result.postOpeningStaticSnapshotAvailable],
+    ['Current static timetable fetched timestamp',result.currentStaticTimetableBuiltAt],
+    ['Current static timetable fetched after opening',result.currentStaticTimetableFetchedAfterOpening],
+    ['Current static calendar-qualified M1 trips',result.currentStaticCalendarQualifiedM1Trips],
+    ['Current static Bankstown candidate trips',result.currentStaticBankstownCandidateTrips],
     ['All scheduled M1 trips',result.timetableTripCount],
     ['Bankstown-terminal candidate scheduled trips',result.bankstownCandidateTrips],
     ['Bankstown headsign scheduled trips',result.bankstownHeadsignTrips],

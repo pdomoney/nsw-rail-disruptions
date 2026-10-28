@@ -16,6 +16,7 @@ import { toCsvLine } from './lib/csv.js';
 import { ServiceRecorder } from './lib/service.js';
 import { iso, sydDate } from './lib/time.js';
 import { shouldRefreshMetroOpeningMap, METRO_OPENING_UTC_MS } from './lib/metro-opening-refresh.js';
+import { metroOpeningScheduleSnapshot } from './lib/metro-opening-schedule-snapshot.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
 const CACHE_DIR = process.env.CACHE_DIR || '.cache';
@@ -86,6 +87,16 @@ async function collectRealtime(now, meta, run) {
         error: map.error||map.refreshError||null,
       };
       d.map = { builtAt: map.builtAt, source: map.source, stats: map.stats, error: map.error || map.refreshError, unmatchedRoutes: map.unmatched?.slice(0, 15) };
+      // Source-specific post-opening snapshot, separate from frozen day records.
+      if (feed.key === 'metro') {
+        const snapshot=metroOpeningScheduleSnapshot(map,now);
+        if (snapshot) {
+          const file=p('audit','metro-opening-static-snapshot.json');
+          const previous=readJson(file);
+          if (!previous || previous.timetableBuiltAt!==snapshot.timetableBuiltAt)
+            writeJson(file,snapshot);
+        }
+      }
       d.rebuildMap = false;
       service.freeze(feed, map);
       // Station list for the trip page (rewritten only when the timetable changes).
