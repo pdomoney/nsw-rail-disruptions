@@ -49,7 +49,7 @@ test('refuses incomplete or malformed responses, changed layer schemas and non-N
   const bad=feature(1);bad.geometry.coordinates[0]=[15100000,-33.87];
   await assert.rejects(()=>fetchPublicRailRouteReference({
     fetchImpl:source([metadata,{objectIds:[1]},{type:'FeatureCollection',features:[bad]}]).fetchImpl,
-  }),/invalid projected/);
+  }),/invalid NSW WGS84/);
   await assert.rejects(()=>fetchPublicRailRouteReference({
     fetchImpl:source([metadata,{objectIds:[1,1]}]).fetchImpl,
   }),/object ID list/);
@@ -62,4 +62,24 @@ test('requests cannot escape the pinned NSW public ArcGIS layer',async()=>{
   const input=source([metadata,{objectIds:[1]},{type:'FeatureCollection',features:[feature(1)]}]);
   await fetchPublicRailRouteReference({fetchImpl:input.fetchImpl});
   assert.ok(input.requested.every(url=>url.href.startsWith(PUBLIC_ROUTES_LAYER)));
+});
+
+test('identifies exactly which feature violates GIS geometry bounds without dumping data',async()=>{
+  const bad=feature(42);
+  bad.geometry.coordinates[1]=[0,0];
+  await assert.rejects(
+    ()=>fetchPublicRailRouteReference({fetchImpl:source([
+      metadata,{objectIds:[42]},{type:'FeatureCollection',features:[bad]}
+    ]).fetchImpl}),
+    /invalid NSW WGS84 polyline geometry; batch offset=0; objectId=42; geometryType=LineString; coordinatePairs=2/
+  );
+});
+test('recognises GeoJSON feature OBJECTID fields irrespective of casing',async()=>{
+  const f=feature(7);
+  delete f.properties.objectid;
+  f.properties.ObjectId=7;
+  const result=await fetchPublicRailRouteReference({fetchImpl:source([
+    metadata,{objectIds:[7]},{type:'FeatureCollection',features:[f]}
+  ]).fetchImpl});
+  assert.equal(result.geojson.features.length,1);
 });
