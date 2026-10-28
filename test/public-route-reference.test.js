@@ -47,9 +47,15 @@ test('refuses incomplete or malformed responses, changed layer schemas and non-N
     fetchImpl:source([metadata,{objectIds:[1,2]},{type:'FeatureCollection',features:[feature(1)]}]).fetchImpl,
   }),/partial/);
   const bad=feature(1);bad.geometry.coordinates[0]=[15100000,-33.87];
-  await assert.rejects(()=>fetchPublicRailRouteReference({
-    fetchImpl:source([metadata,{objectIds:[1]},{type:'FeatureCollection',features:[bad]}]).fetchImpl,
-  }),/invalid NSW WGS84/);
+  const excluded=await fetchPublicRailRouteReference({
+    fetchImpl:source([metadata,{objectIds:[1,2]},{
+      type:'FeatureCollection',features:[bad,feature(2)]
+    }]).fetchImpl,
+  });
+  assert.equal(excluded.geojson.features.length,1);
+  assert.equal(excluded.provenance.excludedGeometryCount,1);
+  assert.equal(excluded.provenance.comparisonCoverage,'partial_with_explicit_exclusions');
+  assert.equal(excluded.rejectedFeatures[0].objectId,1);
   await assert.rejects(()=>fetchPublicRailRouteReference({
     fetchImpl:source([metadata,{objectIds:[1,1]}]).fetchImpl,
   }),/object ID list/);
@@ -71,7 +77,7 @@ test('identifies exactly which feature violates GIS geometry bounds without dump
     ()=>fetchPublicRailRouteReference({fetchImpl:source([
       metadata,{objectIds:[42]},{type:'FeatureCollection',features:[bad]}
     ]).fetchImpl}),
-    /invalid NSW WGS84 polyline geometry; batch offset=0; objectId=42; geometryType=LineString; coordinatePairs=2/
+    /No recognisable train route names/
   );
 });
 test('recognises GeoJSON feature OBJECTID fields irrespective of casing',async()=>{
@@ -82,4 +88,33 @@ test('recognises GeoJSON feature OBJECTID fields irrespective of casing',async()
     metadata,{objectIds:[7]},{type:'FeatureCollection',features:[f]}
   ]).fetchImpl});
   assert.equal(result.geojson.features.length,1);
+});
+
+test('NSW public layer extent includes interstate route links, and bad multi-part segments are quarantined',async()=>{
+  const west=feature(1);
+  west.geometry={type:'MultiLineString',coordinates:[
+    [[138.56,-34.2],[139.1,-34.5]],
+    [[151,-33.87],[151.001,-33.87]],
+  ]};
+  const degenerate=feature(2,'T8');
+  degenerate.geometry={type:'MultiLineString',coordinates:[
+    [[151,-33.87]],[[151,-33.88],[151.01,-33.88]]
+  ]};
+  const response=await fetchPublicRailRouteReference({fetchImpl:source([
+    metadata,{objectIds:[1,2,3]},
+    {type:'FeatureCollection',features:[west,degenerate,feature(3)]}
+  ]).fetchImpl});
+  assert.equal(response.geojson.features.length,2);
+  assert.equal(response.provenance.sourceObjectIdCount,3);
+  assert.equal(response.rejectedFeatures[0].objectId,2);
+  assert.equal(response.rejectedFeatures[0].reason,'empty-or-one-vertex-part');
+  assert.equal(response.rejectedFeatures[0].part,0);
+  assert.equal(response.provenance.comparisonCoverage,'partial_with_explicit_exclusions');
+});
+test('too many quarantined features stop the comparison instead of implying complete results',async()=>{
+  const invalid=n=>{const f=feature(n);f.geometry.coordinates[0]=[0,0];return f;};
+  await assert.rejects(()=>fetchPublicRailRouteReference({fetchImpl:source([
+    metadata,{objectIds:[1,2,3,4]},
+    {type:'FeatureCollection',features:[invalid(1),invalid(2),invalid(3),feature(4)]}
+  ]).fetchImpl}),/Too many invalid ArcGIS reference features/);
 });

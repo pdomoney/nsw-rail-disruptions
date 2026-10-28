@@ -23,6 +23,9 @@ export function formatReferenceComparison(report) {
     '**ArcGIS source:** '+safe(src.url),
     '**Acquisition date:** '+safe(src.downloadedOn),
     '**Reference file SHA-256:** '+safe(src.sha256),
+    '**Complete ArcGIS object IDs retrieved:** '+safe(src.sourceObjectIdCount),
+    '**Excluded geometry features:** '+safe(src.excludedGeometryCount),
+    '**Reference comparison coverage:** '+safe(src.comparisonCoverage),
     '**Built GTFS network:** '+safe(report.input.networkGeneratedAt),
     '',
     '## Reference geometry near installed GTFS shapes',
@@ -43,7 +46,7 @@ export function formatReferenceComparison(report) {
     '|---|---|---:|',
     ...exceptions.slice(0,25).map(e=>'| '+safe(e.line)+' | '+safe(e.shapeId)+' | '+safe(e.matchedSamples)+' / '+safe(e.sampledPoints)+' |'),
     '',
-    '**Interpretation:** This is a one-directional source-to-site comparison, not proof of route completeness or track surveying accuracy. Both sources may be built from similar TfNSW GTFS data. Routes may differ because of timetable validity, special patterns, route variants, geometry simplification and update dates. Metro and light rail require separately verified reference sources. No station, route or train is repositioned by this workflow.',
+    '**Source exclusions:** See reference-rejections.json. Invalid source features are excluded from the sampled comparison and are not silently corrected. If any exclusions exist, coverage is partial. This is a one-directional source-to-site comparison, not proof of route completeness or track surveying accuracy. Both sources may be built from similar TfNSW GTFS data. Routes may differ because of timetable validity, special patterns, route variants, geometry simplification and update dates. Metro and light rail require separately verified reference sources. No station, route or train is repositioned by this workflow.',
     ''
   ].join('\n');
   return {markdown,csv,summary:{referenceFeatures:ref.totalFeatures,matchedLines:lines.length,matchedSamples:matched,sampledPoints:samples}};

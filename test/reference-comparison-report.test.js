@@ -5,7 +5,8 @@ const audit={
   schema:'nsw-rail-geometry-audit/v1',
   input:{networkGeneratedAt:'2026-10-28T00:00Z',source:{
     url:'https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/TfNSW_GTFS_Routes_Public/FeatureServer/0',
-    downloadedOn:'2026-10-28',sha256:'a'.repeat(64)
+    downloadedOn:'2026-10-28',sha256:'a'.repeat(64),sourceObjectIdCount:4,
+    excludedGeometryCount:1,comparisonCoverage:'partial_with_explicit_exclusions'
   }},
   reference:{
     totalFeatures:4,unknownLineFeatures:1,invalidGeometryFeatures:0,
@@ -21,6 +22,8 @@ test('comparison records source and diagnostic coverage, without claiming accura
   assert.deepEqual(result.summary,{referenceFeatures:4,matchedLines:2,matchedSamples:13,sampledPoints:15});
   assert.match(result.markdown,/one-directional source-to-site/);
   assert.match(result.markdown,/NOT verified equivalent/);
+  assert.match(result.markdown,/Excluded geometry features:\*\* 1/);
+  assert.match(result.markdown,/partial_with_explicit_exclusions/);
   assert.ok(result.csv.indexOf('"T1"')<result.csv.indexOf('"T2"'));
 });
 test('rejects unsupported input or missing source identity',()=>{
