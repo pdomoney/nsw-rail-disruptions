@@ -18,6 +18,7 @@ try {
     openingDay:day,
     positions:readJson(path.join(directory,'live','positions.json')),
     metroStations:readJson(path.join(directory,'stations','metro.json')),
+    refreshedSchedule:readJson(path.join(directory,'audit','metro-opening-static-snapshot.json')),
   });
   const formatted=formatSouthwestServiceEvidence(result,{dataCommit:option('--data-commit')});
   fs.mkdirSync(out,{recursive:true});

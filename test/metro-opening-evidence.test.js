@@ -79,3 +79,41 @@ test('opening bounds and input validation are deterministic',()=>{
   assert.throws(()=>auditSouthwestServiceEvidence({at:'invalid date'}),/valid ISO/);
   assert.throws(()=>formatSouthwestServiceEvidence({}),/Unsupported/);
 });
+
+test('current Metro schedule candidates do not rewrite or certify frozen service-day trips',()=>{
+  const frozen=day([trip('old','Sydenham',18000,21000)]);
+  const original=JSON.stringify(frozen);
+  const refreshed={
+    schema:'nsw-rail-metro-opening-static-snapshot/v1',
+    openingServiceDay:'2026-10-30',
+    capturedAt:'2026-10-29T20:00:00Z',
+    timetableBuiltAt:'2026-10-29T19:45:00Z',
+    fetchedAfterOpening:true,
+    calendarQualifiedM1Trips:520,
+    bankstownCandidateTrips:146
+  };
+  const result=auditSouthwestServiceEvidence({
+    at:'2026-10-30T08:00:00+11:00',
+    openingDay:frozen,metroStations:station,refreshedSchedule:refreshed
+  });
+  assert.equal(result.bankstownCandidateTrips,0);
+  assert.equal(result.currentStaticBankstownCandidateTrips,146);
+  assert.equal(result.status,'refreshed-static-candidates-not-in-frozen-service-day');
+  assert.equal(result.operationIndependentlyConfirmed,false);
+  assert.equal(JSON.stringify(frozen),original);
+  assert.match(formatSouthwestServiceEvidence(result).markdown,/Current static Bankstown candidate trips/);
+});
+test('future-dated static source snapshots cannot create an opening-day status',()=>{
+  const r=auditSouthwestServiceEvidence({
+    at:'2026-10-30T08:00:00+11:00',
+    openingDay:day([]),refreshedSchedule:{
+      schema:'nsw-rail-metro-opening-static-snapshot/v1',
+      openingServiceDay:'2026-10-30',
+      capturedAt:'2026-10-31T00:00:00Z',
+      timetableBuiltAt:'2026-10-30T00:00:00Z',
+      bankstownCandidateTrips:200,
+    }
+  });
+  assert.equal(r.postOpeningStaticSnapshotAvailable,false);
+  assert.equal(r.currentStaticBankstownCandidateTrips,null);
+});
