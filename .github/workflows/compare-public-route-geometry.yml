@@ -1,0 +1,75 @@
+name: Compare public NSW route geometry
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nsw-geography-public-source-compare
+  cancel-in-progress: false
+
+jobs:
+  reference-compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out application
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check out collected GTFS data
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: data
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Record exact data revision
+        id: source
+        run: echo "sha=$(git -C data rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Build actual GTFS network
+        env:
+          DATA_DIR: data
+          OUT_DIR: dist
+        run: |
+          set -euo pipefail
+          node src/build.js
+          test -s dist/data/network.json
+          test -s dist/data/live.json
+      - name: Acquire complete and validated public NSW route snapshot
+        run: |
+          set -euo pipefail
+          node scripts/fetch-public-route-reference.mjs --out-dir test-artifacts/reference
+          test -s test-artifacts/reference/reference-routes.geojson
+          test -s test-artifacts/reference/reference-provenance.json
+      - name: Audit reference against installed GTFS routes
+        run: |
+          set -euo pipefail
+          node scripts/audit-network-geometry.mjs \
+            --network dist/data/network.json \
+            --live dist/data/live.json \
+            --station-dir data/stations \
+            --reference test-artifacts/reference/reference-routes.geojson \
+            --source-url https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/TfNSW_GTFS_Routes_Public/FeatureServer/0 \
+            --downloaded-on "$(date -u +%F)" \
+            --output test-artifacts/reference/geometry-audit.json
+          node scripts/render-geometry-audit.mjs \
+            --input test-artifacts/reference/geometry-audit.json \
+            --out-dir test-artifacts/reference \
+            --data-commit '${{ steps.source.outputs.sha }}'
+          node scripts/render-reference-comparison.mjs \
+            --input test-artifacts/reference/geometry-audit.json \
+            --out-dir test-artifacts/reference
+          printf '%s\n' '${{ steps.source.outputs.sha }}' > test-artifacts/reference/data-branch-sha.txt
+          cat test-artifacts/reference/reference-review.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Attach audit only (never publish a changed map)
+        if: always() && hashFiles('test-artifacts/reference/reference-provenance.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: nsw-rail-public-route-comparison
+          path: test-artifacts/reference/
+          retention-days: 28
