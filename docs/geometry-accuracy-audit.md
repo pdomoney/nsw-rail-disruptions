@@ -51,3 +51,19 @@ The daily and manually dispatched **Map geometry accuracy audit** now includes `
 Snapshot examination of data branch on 29 October showed M1 geo feed built 28 October 09:17 UTC, with all 11 Southwest Metro stops on source geometry within 1 km; 10 were within 10 m and Bankstown was about 161 m away (potential interchange/platform alignment). T6 and L4 have their own source feed geometry. A snapshot *before* 04:31 AEDT is labelled `pre-opening-static-feed-present`. After the announced opening, static feed timestamps alone are labelled **service-unverified**, even if geometry refreshed. Actual opening-day GTFS scheduled trips, calendar exceptions, and realtime positions need separate confirmation. Do not use a copied T3 Bankstown 2024 corridor to fabricate operating Metro services.
 
 The historical public ArcGIS audit from run 40779094439 (hosted layer metadata dated February 2024) identified shape review points in T1 `2-T1-W-sj2-1.1.R`, SCO `76-SCO-sj2-1.1.R` and `2-SCO-sj2-1.1.R`, and SHL `76-SHL-sj2-1.1.R`. Subsequent public-route comparisons additionally export `reference-exception-locations.csv`: approximate sampled latitude/longitude and distance to the installed GTFS route for each matched-shape exception (up to eight sample points per shape), **not** coordinate corrections. Reconcile shape IDs, service-date calendars and the provenance of the 2024 reference before modifying actual 2026 routes.
+
+
+## Phase 4D: opening-day M1 service records, separate from map geometry
+
+The daily/manual **Map geometry accuracy audit** now also emits:
+- \`metro-opening-service-evidence.json\` — machine-readable opening-day timetable, observation and snapshot indicators
+- \`metro-opening-service-evidence.md\` — explanation in the GitHub Actions job summary
+- \`metro-opening-service-evidence.csv\` — concise per-indicator evidence values
+
+Data is from the **same pinned TfNSW data-branch revision** as the geometry report: the recorded service-day 30 October timetable and actual running flags (\`service/...\` and \`service/open.json\`) plus the latest \`live/positions.json\` and Metro stop IDs. It uses the existing service recorder's frozen calendar-qualified timetable; the audit has **no new API credentials and does not change the collector**.
+
+The report separately records whether a frozen M1 service-day schedule contains Bankstown-bound or Bankstown-origin trips, whether such trips were first observed running **after 04:31 AEDT**, whether the Metro feed was successfully observed after opening, and whether a fresh opening-day vehicle-position snapshot includes *feed-reported* Metro positions **west of Sydenham** (not just on the already-open city section). It is a bounded coordinate-review area, not inferred GPS or the geometric track path, and never creates positions. The 15-minute snapshot-age guard prevents stale feeds being taken as opening-day evidence.
+
+**No fully automated observation certifies passenger opening or passenger boarding.** Even when multiple feed indicators are present, the status is explicitly *uncertified*: the trip record is aggregate, directions and timetables can change, and the app cannot infer passengers from coordinate points. A frozen timetable with zero Bankstown trips may be a stale snapshot and must not be reported as a closure. The opening date alone cannot change the publicly displayed map or service status.
+
+The first scheduled daily audit after opening is **Friday 30 October 2026 around 09:17 AEDT** (GitHub schedules are best effort). The workflow can also be run manually on 30 October after 04:31 AEDT. On 29 October, the collected Metro opening-day record does not yet exist; the separate 29 October service record contains 434 M1 trips and no Bankstown-headsigned trips. This is a **pre-opening reference observation**, not a guarantee about future service schedules.
