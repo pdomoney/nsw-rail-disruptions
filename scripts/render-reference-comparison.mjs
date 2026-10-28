@@ -11,6 +11,7 @@ try{
   fs.mkdirSync(directory,{recursive:true});
   fs.writeFileSync(path.join(directory,'reference-review.md'),result.markdown+'\n');
   fs.writeFileSync(path.join(directory,'reference-coverage.csv'),result.csv);
+  fs.writeFileSync(path.join(directory,'reference-exception-locations.csv'),result.exceptionLocationCsv);
   console.log('Source comparison review files ready');
 }catch(error){
   console.error(error.message);

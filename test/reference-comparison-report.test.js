@@ -16,7 +16,8 @@ const audit={
       T2:{features:1,samples:3,nearRouteSamples:1,sampleCoveragePercent:33.3},
       T1:{features:2,samples:12,nearRouteSamples:12,sampleCoveragePercent:100}
     },
-    featureExceptions:[{line:'T2',shapeId:'=HYPERLINK("malicious")',matchedSamples:1,sampledPoints:3}],
+    featureExceptions:[{line:'T2',shapeId:'=HYPERLINK("malicious")',matchedSamples:1,sampledPoints:3,
+      featureIndex:3,outsideSamples:[{sampleIndex:1,referenceLatitude:-34.1,referenceLongitude:151.3,nearestInstalledRouteM:240}]}],
   }
 };
 test('comparison records source and diagnostic coverage, without claiming accurate track',()=>{
@@ -32,6 +33,9 @@ test('comparison records source and diagnostic coverage, without claiming accura
   assert.match(result.markdown,/Historical source warning/);
   assert.match(result.csv,/"M1","no_matching_reference","0"/);
   assert.match(result.markdown,/NOT network-wide accuracy/);
+  assert.match(result.exceptionLocationCsv,/Reference latitude/);
+  assert.match(result.exceptionLocationCsv,/240/);
+  assert.match(result.markdown,/NOT authoritative vehicle or track coordinates/);
 });
 test('rejects unsupported input or missing source identity',()=>{
   assert.throws(()=>formatReferenceComparison({}),/Expected audited/);
