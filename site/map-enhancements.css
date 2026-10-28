@@ -253,3 +253,105 @@
 @media (prefers-reduced-motion:reduce) {
   .geo-map .leaflet-tile-pane {transition:none}
 }
+
+
+/* Phase 3: GIS-style cartography with controlled vehicle density.
+   Only the geographic map is affected; the official TfNSW image is untouched. */
+.geo-map { background:#e7eef2; border:1px solid #bdccd5; box-shadow:0 14px 32px #203f511b; }
+.geo-map-rail-focus .leaflet-tile-pane {
+  filter:grayscale(.76) saturate(.45) contrast(.86) brightness(1.08);
+}
+.geo-map .leaflet-popup-content-wrapper {
+  border-radius:14px;
+  box-shadow:0 12px 30px #18364938;
+  border:1px solid #e0e9ed;
+}
+.geo-map .leaflet-tooltip.rail-map-hover {
+  border-radius:12px;
+  padding:10px 13px;
+  border-color:#d6e2e8;
+  box-shadow:0 8px 24px #193c5430;
+}
+.geo-map-key {
+  position:absolute; bottom:22px; left:12px; z-index:430;
+  max-width:calc(100% - 34px);
+  border:1px solid #d3e1e7; border-radius:999px;
+  background:rgba(255,255,255,.94); color:#365365;
+  padding:7px 12px;
+  box-shadow:0 5px 14px #203f5120;
+  font:600 .69rem/1.3 var(--font);
+  pointer-events:none;
+}
+.geo-vehicle-symbol {
+  --route-color:#355a70;
+  width:44px; height:27px;
+  display:flex; justify-content:space-between; align-items:center;
+  padding:0 4px 0 5px; gap:4px;
+  border:2px solid white; border-radius:9px;
+  background:var(--route-color);
+  box-shadow:0 3px 12px #17354a45;
+}
+.geo-vehicle-symbol svg {width:18px;height:18px;flex:none;}
+.geo-vehicle-symbol .geo-vehicle-line {
+  position:static; border:0; padding:0;
+  background:transparent;
+  font:800 .69rem/1 var(--font-narrow);
+  color:white;
+}
+.geo-vehicle-status {
+  position:absolute; width:8px;height:8px;
+  right:-2px; top:-3px; background:#279d73;
+  border:2px solid white;border-radius:50%;
+}
+.geo-vehicle-symbol.mt-2,
+.geo-vehicle-symbol.mt-5,
+.geo-vehicle-symbol.mt-10,
+.geo-vehicle-symbol.mt-none {background:var(--route-color);}
+.geo-vehicle-symbol.mt-2 .geo-vehicle-status {background:#e6a348;}
+.geo-vehicle-symbol.mt-5 .geo-vehicle-status {background:#e66d32;}
+.geo-vehicle-symbol.mt-10 .geo-vehicle-status {background:#c73545;}
+.geo-vehicle-symbol.mt-none .geo-vehicle-status {background:#8da2ae;}
+.geo-vehicle-cluster {
+  --route-color:#355a70;
+  width:49px;height:49px;border-radius:50%;
+  border:3px solid #fff; outline:2px solid var(--route-color);
+  background:#fff; box-shadow:0 5px 16px #20354c4d;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  color:#173a50;
+}
+.geo-cluster-count {font:800 1.05rem/1 var(--font);font-variant-numeric:tabular-nums;}
+.geo-cluster-caption {font:800 .56rem/1.4 var(--font-narrow);letter-spacing:.02em;color:#5d7483;}
+.geo-cluster-marker.leaflet-marker-icon:focus-visible,
+.geo-vehicle.leaflet-marker-icon:focus-visible {outline:3px solid #0a6fad;outline-offset:4px;border-radius:10px;}
+.map-frame:has(.geo-map) .map-corner-label {
+  padding:12px 14px;
+  border-radius:12px;
+  max-width:min(74%,360px);
+  background:rgba(255,255,255,.94);
+  border-color:#d1dfe6;
+  box-shadow:0 6px 18px #16364a20;
+}
+.map-frame:has(.geo-map) .map-corner-label strong {
+  font:800 .94rem/1.2 var(--font);
+  letter-spacing:.025em;
+}
+.map-frame:has(.geo-map) .map-corner-label span {
+  font:600 .66rem/1.3 var(--font);
+  letter-spacing:.015em;
+}
+.map-frame:has(.geo-map) .map-corner-label small {
+  font:600 .7rem/1.4 var(--font);
+}
+.map-frame:has(.geo-map) .map-zoom {top:14px;right:14px;gap:6px;}
+.map-frame:has(.geo-map) .map-zoom button {
+  min-width:40px;height:40px;border-radius:10px;
+  background:rgba(255,255,255,.97);
+  border-color:#ccdce5;
+  box-shadow:0 4px 12px #17364a20;
+}
+.map-frame:has(.geo-map) .map-zoom .map-reset {font-size:.73rem;}
+@media(max-width:600px) {
+  .geo-map-key {font-size:.59rem;left:7px;bottom:25px;padding:6px 9px;}
+  .map-frame:has(.geo-map) .map-corner-label {max-width:67%;padding:9px 10px;}
+  .map-frame:has(.geo-map) .map-corner-label strong {font-size:.78rem;}
+}
