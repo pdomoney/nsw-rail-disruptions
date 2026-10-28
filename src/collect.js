@@ -15,6 +15,7 @@ import { appendEvents } from './lib/events.js';
 import { toCsvLine } from './lib/csv.js';
 import { ServiceRecorder } from './lib/service.js';
 import { iso, sydDate } from './lib/time.js';
+import { shouldRefreshMetroOpeningMap, METRO_OPENING_UTC_MS } from './lib/metro-opening-refresh.js';
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
 const CACHE_DIR = process.env.CACHE_DIR || '.cache';
@@ -66,8 +67,24 @@ async function collectRealtime(now, meta, run) {
   for (const feed of FEEDS) {
     const d = (diag[feed.key] ||= {});
     try {
-      const forceMap = d.rebuildMap === true;
+      // One opening-specific static schedule refresh: an M1 map cached before
+      // Southwest passenger opening must not stay frozen for another 24 hours.
+      // A failed fetch uses ensureRouteMap's existing cached fallback, with a
+      // six-hour retry guard to avoid hammering the TfNSW timetable endpoint.
+      const openingRefresh = shouldRefreshMetroOpeningMap({
+        feedKey: feed.key, nowMs: now, builtAt: d.map?.builtAt,
+        lastAttemptAt: d.metroOpeningRefresh?.attemptAt,
+      });
+      if (openingRefresh) d.metroOpeningRefresh = {attemptAt:iso(now),status:'attempted'};
+      const forceMap = d.rebuildMap === true || openingRefresh;
       const map = await ensureRouteMap(feed, CACHE_DIR, { force: forceMap, now });
+      if (openingRefresh) d.metroOpeningRefresh = {
+        attemptAt:iso(now),
+        status: map.builtAt && Date.parse(map.builtAt) >= METRO_OPENING_UTC_MS
+          ? 'post-opening-static-timetable-fetched' : 'still-using-pre-opening-static-cache',
+        actualBuiltAt: map.builtAt||null,
+        error: map.error||map.refreshError||null,
+      };
       d.map = { builtAt: map.builtAt, source: map.source, stats: map.stats, error: map.error || map.refreshError, unmatchedRoutes: map.unmatched?.slice(0, 15) };
       d.rebuildMap = false;
       service.freeze(feed, map);
