@@ -42,6 +42,10 @@ test('optional external GeoJSON matching uses public route names and records unk
   assert.equal(report.reference.comparedByLine.T1.features, 2);
   assert.ok(report.reference.comparedByLine.T1.sampleCoveragePercent < 100);
   assert.ok(report.reference.featureExceptions.some(e => e.shapeId === '2'));
+  const locality=report.reference.featureExceptions.find(e=>e.shapeId==='2').outsideSamples;
+  assert.ok(locality.length>0);
+  assert.ok(locality[0].referenceLatitude < -33.89);
+  assert.ok(locality[0].nearestInstalledRouteM > 100);
   assert.equal(report.input.source.url,'https://example.test/reference');
 });
 test('invalid data does not masquerade as a valid stop or route', () => {

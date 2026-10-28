@@ -64,6 +64,16 @@ jobs:
           printf '%s\n' '${{ steps.source.outputs.sha }}' > test-artifacts/geometry/data-branch-sha.txt
           cat test-artifacts/geometry/review-summary.md >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Inspect mode-specific route sources and 30 October M1 opening evidence
+        run: |
+          set -euo pipefail
+          node scripts/audit-mode-geometry.mjs \
+            --network-dir data/network \
+            --station-dir data/stations \
+            --out-dir test-artifacts/geometry \
+            --data-commit '${{ steps.source.outputs.sha }}'
+          cat test-artifacts/geometry/mode-readiness.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publish review artifact only (not to GitHub Pages)
         if: always() && hashFiles('test-artifacts/geometry/geometry-audit.json') != ''
         uses: actions/upload-artifact@v4

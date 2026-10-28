@@ -42,6 +42,14 @@ export function formatReferenceComparison(report) {
       return [name,value?'matched_reference':'no_matching_reference',value?.features??0,
         value?.samples??0,value?.nearRouteSamples??0,value?.sampleCoveragePercent??null];
     })];
+  const locationRows=[['Line','Shape ID','Reference feature index','Sample index',
+    'Reference latitude (approximate)','Reference longitude (approximate)',
+    'Distance to installed GTFS route metres','Shape matched sample count','Shape sample count']];
+  for(const e of exceptions) for(const spot of e.outsideSamples||[]) {
+    locationRows.push([e.line,e.shapeId,e.featureIndex,spot.sampleIndex,
+      spot.referenceLatitude,spot.referenceLongitude,spot.nearestInstalledRouteM,
+      e.matchedSamples,e.sampledPoints]);
+  }
   const csv=rows.map(row=>row.map(csvValue).join(',')).join('\n')+'\n';
   const markdown=[
     '# Candidate NSW ArcGIS geometry cross-check',
@@ -90,10 +98,20 @@ export function formatReferenceComparison(report) {
     '|---|---|---:|',
     ...exceptions.slice(0,25).map(e=>'| '+safe(e.line)+' | '+safe(e.shapeId)+' | '+safe(e.matchedSamples)+' / '+safe(e.sampledPoints)+' |'),
     '',
+    '## Approximate locations of the first unmatched source samples',
+    '',
+    '| Line | Shape ID | Latitude | Longitude | Nearest installed GTFS line (metres) |',
+    '|---|---|---:|---:|---:|',
+    ...exceptions.flatMap(e=>(e.outsideSamples||[]).slice(0,3).map(spot=>
+      '| '+safe(e.line)+' | '+safe(e.shapeId)+' | '+safe(spot.referenceLatitude)+
+      ' | '+safe(spot.referenceLongitude)+' | '+safe(spot.nearestInstalledRouteM)+' |')).slice(0,24),
+    '',
+    'Review these approximate locations on the source GIS layer before deciding if a difference is a genuine alignment error, an old special-route pattern, or a feed-version change. They are generated samples, NOT authoritative vehicle or track coordinates.',
+    '',
     '**Interpretation:** All ArcGIS feature IDs retrieved does NOT mean that all installed rail lines are covered. Source update fields describe hosted dataset metadata and do not prove shape effective dates. Unmatched ArcGIS features may be buses or other transport services; do not count them as rail geometry failures. See reference-rejections.json for invalid geometries. This is a one-directional source-to-site comparison, not proof of route completeness or track surveying accuracy. A high 100 m sample score can be obtained from an old or partial candidate source. Both sources may share TfNSW GTFS provenance. Metro, new Sydney Trains services, intercity and light rail require current per-mode sources and trip/calendar review. No station, route or train is repositioned by this workflow.',
     ''
   ].join('\n');
-  return {markdown,csv,summary:{referenceFeatures:ref.totalFeatures,matchedLines:lines.length,matchedSamples:matched,sampledPoints:samples,
+  return {markdown,csv,exceptionLocationCsv:locationRows.map(row=>row.map(csvValue).join(',')).join('\n')+'\n',summary:{referenceFeatures:ref.totalFeatures,matchedLines:lines.length,matchedSamples:matched,sampledPoints:samples,
     installedLines:hasExplicitInstalledInventory?installed.length:null,
     missingReferenceLines:hasExplicitInstalledInventory?missing:[],
     hostedSourceMetadataStatus:stamp.status}};

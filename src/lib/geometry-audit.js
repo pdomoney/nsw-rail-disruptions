@@ -153,12 +153,28 @@ export function auditNetworkGeometry(network, { live = null, reference = null,
       if (!samples.length) { invalidGeometryFeatures++; continue; }
       const stat = compared[line] ||= { features: 0, samples: 0, nearRouteSamples: 0 };
       let near = 0;
-      for (const [x, y] of samples)
-        if (nearIndexed(x, y, indices[line], referenceToleranceM / unit)) near++;
+      const outsideSamples = [];
+      for (let sampleIndex=0;sampleIndex<samples.length;sampleIndex++) {
+        const [x,y]=samples[sampleIndex];
+        if (nearIndexed(x,y,indices[line],referenceToleranceM/unit)) { near++; continue; }
+        if (outsideSamples.length >= 8) continue; // bounded shape-review attachment
+        const nearest=closestUnits(x,y,segments[line]);
+        // Inverse of the explicitly documented local map projection. These
+        // approximate points are for locating reference geometry differences,
+        // never replacement positions for a train/station/track.
+        const longitude=151+x/((111320*Math.cos(-33.87*Math.PI/180))/10);
+        const latitude=-33.87-y/(110574/10);
+        outsideSamples.push({
+          sampleIndex,
+          referenceLatitude:round(latitude,5),
+          referenceLongitude:round(longitude,5),
+          nearestInstalledRouteM:round(nearest==null?null:nearest*unit,1),
+        });
+      }
       stat.features++; stat.samples += samples.length; stat.nearRouteSamples += near;
       if (near < samples.length) exceptions.push({
         featureIndex: n, line, shapeId: String(props.shape_id || props.SHAPE_ID || ''),
-        matchedSamples: near, sampledPoints: samples.length
+        matchedSamples: near, sampledPoints: samples.length, outsideSamples
       });
     }
     for (const v of Object.values(compared))
