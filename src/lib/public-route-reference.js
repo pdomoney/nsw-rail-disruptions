@@ -91,7 +91,7 @@ export async function fetchPublicRailRouteReference({
       if(feature?.type!=='Feature' || !isObject(properties))
         throw new Error('Unexpected ArcGIS GeoJSON feature structure for object ID '+oid);
       if(!validGeometry(feature.geometry))
-        throw new Error('Invalid projected route geometry or out-of-envelope coordinates for public object ID '+
+        throw new Error('invalid projected route geometry or out-of-envelope coordinates for public object ID '+
           oid+' (GeoJSON type '+String(feature.geometry?.type||'none')+')');
       seen.add(oid);
       if(properties.portal_last_updated != null)
