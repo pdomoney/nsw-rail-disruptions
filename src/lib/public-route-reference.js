@@ -64,10 +64,22 @@ export async function fetchPublicRailRouteReference({
     const expected=new Set(batch);
     for(const feature of result.features) {
       const properties=feature?.properties;
-      const oid=Number(properties?.objectid ?? properties?.OBJECTID ?? feature?.id);
-      if(!expected.has(oid) || seen.has(oid) || feature?.type!=='Feature'
-         || !isObject(properties) || !validGeometry(feature.geometry))
-        throw new Error('Unrecognised, duplicated or invalid projected route geometry');
+      const key = Object.keys(properties || {}).find(k => k.toLowerCase() === 'objectid');
+      const rawId = key ? properties[key] : feature?.id;
+      const oid = Number(rawId);
+      const fail = reason => {
+        // Log only feature index and geometry shape; never source payloads or tokens.
+        throw new Error('ArcGIS feature validation: '+reason+
+          '; batch offset='+start+'; objectId='+(Number.isSafeInteger(oid)?oid:'missing')+
+          '; geometryType='+String(feature?.geometry?.type || 'missing')+
+          '; coordinatePairs='+(
+            feature?.geometry?.type==='LineString' ? feature.geometry.coordinates?.length :
+            feature?.geometry?.type==='MultiLineString' ? feature.geometry.coordinates?.length : 'unknown'));
+      };
+      if(!isObject(properties) || feature?.type!=='Feature') fail('invalid feature structure');
+      if(!Number.isSafeInteger(oid) || !expected.has(oid)) fail('unexpected object ID');
+      if(seen.has(oid)) fail('duplicate object ID');
+      if(!validGeometry(feature.geometry)) fail('invalid NSW WGS84 polyline geometry');
       seen.add(oid);
       if(properties.portal_last_updated != null)
         sourceRevisions.add(String(properties.portal_last_updated));
