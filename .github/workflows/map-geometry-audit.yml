@@ -74,6 +74,15 @@ jobs:
             --data-commit '${{ steps.source.outputs.sha }}'
           cat test-artifacts/geometry/mode-readiness.md >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Corroborate 30 October Southwest Metro opening with service-day evidence
+        run: |
+          set -euo pipefail
+          node scripts/audit-metro-opening-evidence.mjs \
+            --data-dir data \
+            --out-dir test-artifacts/geometry \
+            --data-commit '${{ steps.source.outputs.sha }}'
+          cat test-artifacts/geometry/metro-opening-service-evidence.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publish review artifact only (not to GitHub Pages)
         if: always() && hashFiles('test-artifacts/geometry/geometry-audit.json') != ''
         uses: actions/upload-artifact@v4
