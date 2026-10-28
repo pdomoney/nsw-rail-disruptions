@@ -44,3 +44,11 @@ node scripts/render-reference-comparison.mjs \
   --input audit-artifacts/reference/geometry-audit.json \
   --out-dir audit-artifacts/reference
 ```
+
+## Corrective source validation after object 54407 (PR #55)
+
+The initial source fetch rejected `objectId=54407` as a four-part `MultiLineString`. The previous assumed longitude floor of 140°E was narrower than the public ArcGIS layer's documented westward extent, approximately 138.56°E. The validity envelope is now buffered to accommodate the layer's NSW-origin interstate route coverage, while still refusing global/projected coordinates and degenerate polylines.
+
+Every source object ID must still be returned exactly once. If a geometry part has fewer than two vertices, an unsupported geometry type, or a coordinate outside the source footprint, the **entire feature** is excluded and its object ID, route/shape fields, part and vertex indexes, and reason are recorded in `reference-rejections.json`. Rejections are never auto-snapped or rewritten. The workflow aborts if the excluded count exceeds the stricter of 100 or 1% of source features (with a minimum allowance of two for tiny test fixtures). Valid reference geometry can be compared with a clearly recorded `partial_with_explicit_exclusions` status. The number excluded appears in both provenance and the review summary; a partial comparison is not complete-source verification.
+
+This is still candidate GTFS feed comparison, not independent evidence of true physical rail locations. No published map geometry is changed.

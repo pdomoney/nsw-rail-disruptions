@@ -46,6 +46,7 @@ jobs:
           node scripts/fetch-public-route-reference.mjs --out-dir test-artifacts/reference
           test -s test-artifacts/reference/reference-routes.geojson
           test -s test-artifacts/reference/reference-provenance.json
+          test -s test-artifacts/reference/reference-rejections.json
       - name: Audit reference against installed GTFS routes
         run: |
           set -euo pipefail
@@ -54,6 +55,7 @@ jobs:
             --live dist/data/live.json \
             --station-dir data/stations \
             --reference test-artifacts/reference/reference-routes.geojson \
+            --reference-provenance test-artifacts/reference/reference-provenance.json \
             --source-url https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/TfNSW_GTFS_Routes_Public/FeatureServer/0 \
             --downloaded-on "$(date -u +%F)" \
             --output test-artifacts/reference/geometry-audit.json

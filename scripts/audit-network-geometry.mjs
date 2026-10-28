@@ -15,12 +15,19 @@ if (args.includes('--help')) {
 const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
 try {
   const referencePath = option('--reference'), outputPath = option('--output');
+  const provenancePath = option('--reference-provenance');
+  const provenance = provenancePath ? read(provenancePath) : null;
   const source = referencePath ? {
     kind: 'operator-provided GeoJSON; authenticity and licence require human review',
     url: option('--source-url'), downloadedOn: option('--downloaded-on'),
     fileName: path.basename(referencePath),
-    sha256: createHash('sha256').update(fs.readFileSync(referencePath)).digest('hex')
+    sha256: createHash('sha256').update(fs.readFileSync(referencePath)).digest('hex'),
+    sourceObjectIdCount:provenance?.sourceObjectIdCount ?? null,
+    excludedGeometryCount:provenance?.excludedGeometryCount ?? null,
+    comparisonCoverage:provenance?.comparisonCoverage ?? 'not_verified',
   } : null;
+  if (provenance && (!source || source.sha256 !== provenance.sha256))
+    throw new Error('Reference source checksum does not match its provenance manifest');
   let report = auditNetworkGeometry(read(option('--network') || 'site/data/network.json'), {
     live: option('--live') ? read(option('--live')) : null,
     reference: referencePath ? read(referencePath) : null, source
