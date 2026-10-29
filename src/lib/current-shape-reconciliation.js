@@ -88,6 +88,8 @@ export function extractCurrentTargetShapes(files,{dates=REVIEW_SERVICE_DATES}={}
     if(list.length>=25000)throw new Error('Target shape has excessive points: '+shapeId);
     list.push([order,lo,la]);
   });
+  if(malformed>0)throw new Error('Source GTFS has '+malformed+
+    ' malformed geometry rows in the target historical shape IDs; refuse a partial shape comparison');
   const shapes={};
   for(const {line,shapeId} of HISTORICAL_SHAPE_TARGETS) {
     const id=key(line,shapeId),trip=shapeTotals.get(id);

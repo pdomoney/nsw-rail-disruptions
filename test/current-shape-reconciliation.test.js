@@ -65,6 +65,14 @@ test('bad GTFS files, dates or malformed historical GeoJSON cannot produce a pas
     'routes.txt':B('route_id\n'),'trips.txt':B('trip_id\n'),'shapes.txt':B('shape_id\n')
   },{dates:['2026-10-30']}),/YYYYMMDD/);
   assert.throws(()=>compareHistoricalShapes(current(),{}),/validated current GTFS/);
+  const invalid={
+    'routes.txt':B('route_id,route_short_name\nr,T1\n'),
+    'trips.txt':B('route_id,service_id,trip_id,shape_id\nr,s,t,2-T1-W-sj2-1.1.R\n'),
+    'shapes.txt':B('shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence\n'+
+      '2-T1-W-sj2-1.1.R,999,151,1\n'+
+      '2-T1-W-sj2-1.1.R,-33.87,151,2\n'),
+  };
+  assert.throws(()=>extractCurrentTargetShapes(invalid),/malformed geometry rows/);
   assert.throws(()=>renderShapeReview({}),/Invalid shape/);
 });
 test('operator-only workflow uses the existing TfNSW API secret and never publishes routes',()=>{
