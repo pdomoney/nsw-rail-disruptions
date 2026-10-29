@@ -217,14 +217,14 @@ export function createGeographicMap(container, {
       const description = trainDescription({
         line, destination:headsign, delay, passengers:pax, fullness:fullest,
       });
-      const item = L.marker(position, {icon, keyboard:true, title:'Moving train: '+description});
-      item.bindPopup(popup('Moving service '+line, [
+      const item = L.marker(position, {icon, keyboard:true, title:(line==='M1'?'Reported metro: ':'Reported train: ')+description});
+      item.bindPopup(popup((line==='M1'?'Reported Metro ':'Reported train ')+line, [
         headsign?'Destination: '+headsign.replace(/\s+Station$/i,''):'Destination not reported',
         delay==null?'Delay not available':delay<60?'On time':Math.round(delay/60)+' minutes late',
         pax==null?'Estimated occupancy unavailable':'Approximately '+(Math.round(pax/10)*10).toLocaleString('en-AU')+' people aboard (estimate)',
         fullest==null?'':'Fullest carriage: '+(levels[fullest]||'unknown'),
       ]));
-      item.bindTooltip(popup('Moving '+line+' service', [
+      item.bindTooltip(popup((line==='M1'?'Reported Metro ':'Reported train ')+line+' service', [
         headsign?'Towards '+headsign.replace(/\s+Station$/i,''):'Destination not reported',
         delay==null?'Delay not reported':delay<60?'On time':Math.round(delay/60)+' min late',
         pax==null?'Occupancy not reported':'Approximately '+
