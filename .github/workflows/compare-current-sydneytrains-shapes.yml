@@ -1,0 +1,64 @@
+name: Compare 2026 TfNSW Sydney Trains shape IDs
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nsw-rail-current-shape-id-review
+  cancel-in-progress: false
+
+jobs:
+  compare-current-shapes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment:
+      name: github-pages
+    steps:
+      - name: Checkout application
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout collected data for revision identity
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: data
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pin collected data revision
+        id: data
+        run: echo "sha=$(git -C data rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Download and validate historical ArcGIS source
+        run: |
+          set -euo pipefail
+          node scripts/fetch-public-route-reference.mjs --out-dir evidence
+          test -s evidence/reference-provenance.json
+      - name: Compare historical IDs with current authorised Sydney Trains GTFS ZIP
+        env:
+          TFNSW_API_KEY: ${{ secrets.TFNSW_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${TFNSW_API_KEY:-}"
+          node scripts/review-current-gtfs-shape-exceptions.mjs \
+            --reference evidence/reference-routes.geojson \
+            --reference-provenance evidence/reference-provenance.json \
+            --out-dir evidence \
+            --data-commit '${{ steps.data.outputs.sha }}'
+          cat evidence/historical-v-current-shapes.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload review artifact only, never change published map
+        if: always() && hashFiles('evidence/historical-v-current-shapes.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: sydney-trains-current-v-historical-shapes
+          path: |
+            evidence/historical-v-current-shapes.json
+            evidence/historical-v-current-shapes.md
+            evidence/historical-v-current-shapes.csv
+            evidence/current-source-provenance.json
+            evidence/reference-provenance.json
+          retention-days: 28
