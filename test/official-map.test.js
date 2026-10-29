@@ -1,5 +1,6 @@
 import test from 'node:test';
 import fsNode from 'node:fs';
+import {project} from '../src/lib/netmap.js';
 import assert from 'node:assert/strict';
 import { OFFICIAL_MAP, OFFICIAL_STOPS, OFFICIAL_CORRIDORS, normaliseStop,
   projectToSegment, buildOfficialAlignment, locateOfficialTrain, OFFICIAL_LINE_STOPS, officialDisruptionPins, PDF_STATION_CROSSWALK, buildVerifiedPdfAlignment, loadOfficialMapImage, officialMapAssetUrl } from '../site/official-map.js';
@@ -64,6 +65,17 @@ test('missing, unreported or non-matching vehicle coordinates never create a map
   assert.equal(locateOfficialTrain(['T1',700,300],{T1:[]}),null);
   const noData=buildOfficialAlignment({stations:[]});
   assert.equal(locateOfficialTrain(['T1',700,300],noData),null);
+});
+
+test('2024 diagram refuses Southwest Metro positions near Sydenham terminus',()=>{
+  const actual=project(-33.91409,151.15403);
+  const fake={M1:[{
+    from:'Waterloo',to:'Sydenham',
+    geoA:project(-33.896,151.19),geoB:project(-33.91434,151.16655),
+    pdfA:[768,708],pdfB:[704,781]
+  }]};
+  assert.equal(locateOfficialTrain(['M1',...actual],fake),null);
+  assert.ok(locateOfficialTrain(['M1',...project(-33.896,151.19)],fake));
 });
 
 test('station identity is stable but line coverage requires explicit membership',()=>{

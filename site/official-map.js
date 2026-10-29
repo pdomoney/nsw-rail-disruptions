@@ -1,4 +1,5 @@
 import {reconcilePdfStations,REFERENCE_2024_ROUTES,OFFICIAL_LINE_PALETTE,nearestPdfSymbol} from './official-vector-stops.js';
+import {reportedSouthwestMetroProjected} from './metro-southwest.js';
 
 // The official TfNSW published network PDF is rendered at deployment time.
 // Calibration is to the 2024 first-page artwork, in image units 1024 x 1447.
@@ -161,6 +162,9 @@ export function buildVerifiedPdfAlignment(network, crosswalk=PDF_STATION_CROSSWA
 export function locateOfficialTrain(train, alignment, maxDistance = 125) {
   const [line,x,y]=train;
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  // The September 2024 PDF does not depict the Sydenham-to-Bankstown M1.
+  // Never snap a Southwest vehicle to the old Sydenham terminus.
+  if(line==='M1'&&reportedSouthwestMetroProjected(x,y))return null;
   let nearest=null;
   for (const edge of alignment[line] || []) {
     const projection=projectToSegment([x,y],edge.geoA,edge.geoB);
