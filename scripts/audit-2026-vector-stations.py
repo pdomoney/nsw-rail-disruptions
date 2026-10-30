@@ -107,9 +107,13 @@ if a.pairs:
               'delta='+str(row['delta']),'closest='+str(row['nearest'][:1]))
 (out/'station-vector-audit.md').write_text('\n'.join(md)+'\n')
 print('SOURCE_VECTOR_COUNTS '+json.dumps(dict(counts),sort_keys=True))
-for line in ('M1','T6','T8'):
+for line in ('M1','T6','T8','T4'):
     pts=sorted([x['point'] for x in candidates if x['line']==line],key=lambda p:(round(p[1]/12),p[0]))
     print('SOURCE_CANDIDATES_'+line+' '+json.dumps(pts))
+    if line == 'T4':
+        print('T4_SOUTH_SOURCE_CIRCLES '+json.dumps([p for p in pts
+              if 650 <= p[0] <= 730 and 890 <= p[1] <= 1110]))
+
 
 for row in review:
     hit=row['near'][0] if row['near'] else None
