@@ -53,6 +53,7 @@ const selectedReason=(r)=>{
   if(r.routeConflict||r.cancelledByTripUpdate||r.serviceCalendarRuns===false)
     return 'source-conflict';
   if(r.shapeDistanceMetres>MAX_SHAPE_DISTANCE_M)return 'off-trip-gtfs-shape';
+  if(!r.tripUpdateMatched)return 'trip-update-evidence-unavailable';
   if(!r.markerVisible)return 'diagram-marker-not-displayed';
   if(r.scheduledPairOnTrip===false)return 'diagram-pair-not-in-trip-stop-sequence';
   if(!r.serviceDay||r.serviceCalendarRuns==null||r.scheduledPairOnTrip==null||
@@ -216,6 +217,7 @@ export function summariseDiagramCrosscheck(reports,{source=[]}={}) {
     '**Vehicle records in reviewed lines:** '+all.length,
     '**Coordinate and timetable corroborated:** '+count('coordinate-and-timetable-corroborated'),
     '**Timetable not corroborated:** '+count('timetable-not-corroborated'),
+    '**Matching trip update unavailable:** '+count('trip-update-evidence-unavailable'),
     '**Source conflicts / off shape / wrong pair:** '+(
       count('source-conflict')+count('off-trip-gtfs-shape')+count('diagram-pair-not-in-trip-stop-sequence')),
     '**Not displayed or source incomplete:** '+(count('diagram-marker-not-displayed')+
