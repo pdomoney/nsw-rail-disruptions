@@ -1,0 +1,55 @@
+name: Cross-check 2026 diagram coordinates and GTFS timetable
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rail-2026-diagram-timetable-crosscheck
+  cancel-in-progress: false
+
+jobs:
+  crosscheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment:
+      name: github-pages
+    steps:
+      - name: Check out application
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin currently collected data revision
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: data
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Record pinned data branch revision
+        id: source
+        run: echo "sha=$(git -C data rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Compare current vehicle trip coordinates and timetable
+        env:
+          TFNSW_API_KEY: ${{ secrets.TFNSW_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${TFNSW_API_KEY:-}"
+          node scripts/audit-2026-diagram-timetable.mjs \
+            --out-dir evidence \
+            --data-commit '${{ steps.source.outputs.sha }}'
+          cat evidence/coordinate-timetable-audit.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain operator evidence, never deploy live map modifications
+        if: always() && hashFiles('evidence/coordinate-timetable-audit.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfnsw-coordinate-timetable-source-crosscheck
+          path: |
+            evidence/coordinate-timetable-audit.json
+            evidence/coordinate-timetable-audit.md
+            evidence/coordinate-timetable-audit.csv
+          retention-days: 14
