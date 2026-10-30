@@ -28,7 +28,7 @@ test('real site HTML refers to fingerprinted CSS and JS, including both imported
       assert.ok(fs.existsSync(path.join(out, stamped[asset])));
       assert.ok(!html.includes('="' + asset + '"'), 'HTML must not use stale ' + asset);
     }
-    for (const asset of ['charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'metro-southwest.js']) {
+    for (const asset of ['charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js']) {
       assert.ok(app.includes("from './" + stamped[asset] + "'"), 'App import must be versioned: ' + asset);
       assert.ok(fs.existsSync(path.join(out, stamped[asset])));
     }
@@ -36,6 +36,11 @@ test('real site HTML refers to fingerprinted CSS and JS, including both imported
     assert.ok(official.includes("from './" + stamped['official-vector-stops.js'] + "'"),
       'TfNSW coordinate registry must be referenced by a hashed module filename');
     assert.ok(fs.existsSync(path.join(out, stamped['official-vector-stops.js'])));
+    assert.ok(official.includes("from './" + stamped['metro-southwest.js'] + "'"),
+      '2026 diagram still needs a hashed Metro position-screening module');
+    assert.ok(fs.existsSync(path.join(out, stamped['metro-southwest.js'])));
+    assert.ok(!app.includes("from './metro-southwest.js'"),
+      'Retired opening banner must not keep an unnecessary app module dependency');
     assert.ok(official.includes("from './" + stamped['official-2026-alignment.js'] + "'"));
     assert.ok(fs.existsSync(path.join(out, stamped['official-2026-alignment.js'])));
     assert.ok(app.includes("const SITE_RELEASE = '" + release + "'"));
