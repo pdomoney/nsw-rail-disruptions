@@ -256,6 +256,24 @@ export const ROUTES_2026 = Object.freeze({
     ['Strathfield','Burwood','Redfern','Central','Town Hall',
     'Wynyard','Milsons Point','North Sydney','Chatswood']],
 });
+// Intercity train services can share an already approved *printed* suburban
+// corridor. The 2026 Sydney rail PDF does not chart the Hunter or all regional
+// extensions, nor any light-rail line. Never infer a new diagram route.
+export const SHARED_PRINTED_CORRIDORS_2026 = Object.freeze({
+  SCO: Object.freeze(['T4']),
+  BMT: Object.freeze(['T1','T2']),
+  CCN: Object.freeze(['T1','T9']),
+  SHL: Object.freeze(['T8','T4']),
+});
+export const DIAGRAM_RENDERED_LINES_2026 = Object.freeze([
+  ...Object.keys(ROUTES_2026), ...Object.keys(SHARED_PRINTED_CORRIDORS_2026),
+]);
+export function officialDiagramCoverage(line) {
+  if(ROUTES_2026[line])return {status:'printed',sources:[line]};
+  if(SHARED_PRINTED_CORRIDORS_2026[line])
+    return {status:'shared',sources:[...SHARED_PRINTED_CORRIDORS_2026[line]]};
+  return {status:'outside-published-diagram',sources:[]};
+}
 const normalise=s=>String(s||'').normalize('NFKC').toLowerCase()
   .replace(/\bstation\b/g,'').replace(/[^\p{L}\p{N}]+/gu,'');
 const pointDistance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
@@ -275,39 +293,60 @@ export function build2026PdfAlignment(network) {
     if(!stationGeo.has(key))stationGeo.set(key,entry);
   }
   const result={};
-  for(const [line,chains] of Object.entries(ROUTES_2026)) {
+  const sourceSegments=(service,printedLine)=>{
     const edges=[];
-    for(const chain of chains)for(let i=1;i<chain.length;i++) {
-      const from=chain[i-1],to=chain[i];
-      const a=stationGeo.get(normalise(from)),b=stationGeo.get(normalise(to));
-      if(!a?.lines.has(line)||!b?.lines.has(line))continue;
-      // For conventional trains the initial PR64 coordinates remain partly
-      // inaccurate. Only use station pairs individually matched to same-line
-      // coloured vector circles in the checksum-pinned 2026 official PDF.
-      if(line!=='M1'&&line!=='T6'&&
-        (!PDF_2026_LINE_STOPS[line]?.[from]||!PDF_2026_LINE_STOPS[line]?.[to]))continue;
-      const pdfA=PDF_2026_LINE_STOPS[line]?.[from]||STOP_PIXELS_2026[from];
-      const pdfB=PDF_2026_LINE_STOPS[line]?.[to]||STOP_PIXELS_2026[to];
-      if(!pdfA||!pdfB||pointDistance(pdfA,pdfB)<2)continue;
-      edges.push({from,to,geoA:a.xy,geoB:b.xy,pdfA,pdfB});
-    }
-    result[line]=edges;
+    for(const chain of ROUTES_2026[printedLine]||[])
+      for(let i=1;i<chain.length;i++) {
+        const from=chain[i-1],to=chain[i];
+        const a=stationGeo.get(normalise(from)),b=stationGeo.get(normalise(to));
+        // A source GTFS service must be assigned to BOTH endpoints. This is
+        // not enough to prove individual stopping calls, only track corridor.
+        if(!a?.lines.has(service)||!b?.lines.has(service))continue;
+        const pdfA=PDF_2026_LINE_STOPS[printedLine]?.[from];
+        const pdfB=PDF_2026_LINE_STOPS[printedLine]?.[to];
+        if(!pdfA||!pdfB||pointDistance(pdfA,pdfB)<2)continue;
+        edges.push({from,to,geoA:a.xy,geoB:b.xy,pdfA,pdfB,printedLine});
+      }
+    return edges;
+  };
+  for(const line of Object.keys(ROUTES_2026)){
+    if(line==='M1'||line==='T6'){
+      const edges=[];
+      for(const chain of ROUTES_2026[line])for(let i=1;i<chain.length;i++){
+        const from=chain[i-1],to=chain[i];
+        const a=stationGeo.get(normalise(from)),b=stationGeo.get(normalise(to));
+        if(!a?.lines.has(line)||!b?.lines.has(line))continue;
+        const pdfA=PDF_2026_LINE_STOPS[line]?.[from]||STOP_PIXELS_2026[from];
+        const pdfB=PDF_2026_LINE_STOPS[line]?.[to]||STOP_PIXELS_2026[to];
+        if(!pdfA||!pdfB||pointDistance(pdfA,pdfB)<2)continue;
+        edges.push({from,to,geoA:a.xy,geoB:b.xy,pdfA,pdfB,printedLine:line});
+      }
+      result[line]=edges;
+    }else result[line]=sourceSegments(line,line);
   }
+  for(const [line,sources] of Object.entries(SHARED_PRINTED_CORRIDORS_2026))
+    result[line]=sources.flatMap(source=>sourceSegments(line,source));
   return result;
 }
 export function locate2026Train(train,alignment,maxDistanceUnits=25) {
   const [line,x,y]=train;
   if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(maxDistanceUnits))return null;
-  let selected=null;
+  const candidates=[];
   for(const edge of alignment?.[line]||[]) {
     const match=closeness([x,y],edge.geoA,edge.geoB);
-    if(!match)continue;
-    if(selected==null||match.distance<selected.distance)
-      selected={...match,edge};
+    if(match)candidates.push({...match,edge});
   }
-  // Source feed positions are projected in 10 m units. 25 => 250 m maximum. This rejects distant parallel line matches.
-  // No 2024 alignment fallback, and no interpolation over missing stations.
+  candidates.sort((a,b)=>a.distance-b.distance);
+  const selected=candidates[0];
+  // Source positions are projected in 10m units: maximum 25 = 250m.
   if(!selected||selected.distance>maxDistanceUnits)return null;
+  // An Intercity train may run on several closely parallel Sydney Trains
+  // strands. Without a trip's static shape in the browser, an ambiguous
+  // printed-line match must be hidden instead of picking a different route.
+  if(SHARED_PRINTED_CORRIDORS_2026[line]&&candidates.some(c=>
+    c.edge.printedLine!==selected.edge.printedLine&&
+    c.distance<=maxDistanceUnits&&c.distance-selected.distance<=12))
+    return null;
   const {pdfA,pdfB,from,to}=selected.edge;
   const px=pdfA[0]+selected.t*(pdfB[0]-pdfA[0]);
   const py=pdfA[1]+selected.t*(pdfB[1]-pdfA[1]);
@@ -315,35 +354,41 @@ export function locate2026Train(train,alignment,maxDistanceUnits=25) {
     distanceMetres:Math.round(selected.distance*10),
     confidence:'approximate-2026-verified-pair'};
 }
-export function source2026StationHits(lineFilter='') {
-  const selected=lineFilter?new Set((ROUTES_2026[lineFilter]||[]).flat()):null;
+export function source2026StationHits(lineFilter='',network=null) {
+  const sources=lineFilter
+    ? (SHARED_PRINTED_CORRIDORS_2026[lineFilter]||[lineFilter])
+    : Object.keys(PDF_2026_LINE_STOPS);
+  const sourceNames=new Set(sources.flatMap(source=>
+    (ROUTES_2026[source]||[]).flat()));
+  const served=lineFilter&&SHARED_PRINTED_CORRIDORS_2026[lineFilter]&&network
+    ? new Set((network.stations||[])
+      .filter(([,x,y,ids])=>String(ids).split(/\s+/).includes(lineFilter))
+      .map(([name])=>normalise(name)))
+    : null;
   const hits=new Map();
-  // The generic PR64 registry covers only some printed stations. After
-  // the 2026 source-vector audit the line-specific registry is the actual
-  // authoritative set for both stop selection and diagram vehicle sections.
-  for(const [line,stations] of Object.entries(PDF_2026_LINE_STOPS)) {
-    if(lineFilter&&line!==lineFilter)continue;
-    for(const [name,point] of Object.entries(stations)) {
-      if(selected&&!selected.has(name))continue;
-      if(!hits.has(name))hits.set(name,point);
-    }
+  for(const source of sources)for(const [name,xy] of
+    Object.entries(PDF_2026_LINE_STOPS[source]||{})){
+    if(!sourceNames.has(name))continue;
+    if(served&&!served.has(normalise(name)))continue;
+    if(!hits.has(name))hits.set(name,xy);
   }
   return [...hits];
 }
 
 
-export function officialDisruptionPins2026(live,lineFilter='') {
+export function officialDisruptionPins2026(live,lineFilter='',network=null) {
   const results=[],seen=new Set();
-  const lines=lineFilter?new Set((ROUTES_2026[lineFilter]||[]).flat()):null;
-  const locations=new Map(source2026StationHits(lineFilter)
+  const lines=lineFilter?new Set(
+    (SHARED_PRINTED_CORRIDORS_2026[lineFilter]||[lineFilter])
+      .flatMap(source=>(ROUTES_2026[source]||[]).flat())):null;
+  const locations=new Map(source2026StationHits(lineFilter,network)
     .map(([name,xy])=>[normalise(name),{name,xy}]));
   for(const overlay of live?.overlays||[]) {
     if(lineFilter&&!(overlay.lines||[]).includes(lineFilter))continue;
     for(const info of [...(overlay.pins||[]),...(overlay.spins||[])]) {
       const original=locations.get(normalise(info[2]));
       if(!original||lines&&!lines.has(original.name))continue;
-      const chosen=PDF_2026_LINE_STOPS[lineFilter]?.[original.name]||
-        Object.values(PDF_2026_LINE_STOPS).find(line=>line[original.name])?.[original.name];
+      const chosen=original.xy;
       if(!chosen)continue; // no printed 2026 source-symbol match
       const point={...original,xy:chosen};
       const id=overlay.kind+'|'+point.name;
