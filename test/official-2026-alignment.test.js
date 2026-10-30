@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {project} from '../src/lib/netmap.js';
 import {
- PDF_2026_SHA256,PDF_2026_EDITION,STOP_PIXELS_2026,
+ PDF_2026_SHA256,PDF_2026_EDITION,STOP_PIXELS_2026,PDF_2026_LINE_STOPS,
  ROUTES_2026,source2026StationHits,build2026PdfAlignment,locate2026Train,
  officialDisruptionPins2026
 } from '../site/official-2026-alignment.js';
@@ -81,7 +81,7 @@ test('source named-station taps and disruption pins stay bounded to 2026 registr
       spins:[[1,2,'Bankstown Station']]}
   ]},'M1');
   assert.equal(pins.length,1);
-  assert.deepEqual(pins[0].xy,STOP_PIXELS_2026.Bankstown);
+  assert.deepEqual(pins[0].xy,PDF_2026_LINE_STOPS.M1.Bankstown);
   assert.equal(officialDisruptionPins2026({overlays:[]},'M1').length,0);
 });
 test('the new 2026 alignment cannot accidentally import old 2024 circle symbols',()=>{
@@ -91,4 +91,34 @@ test('the new 2026 alignment cannot accidentally import old 2024 circle symbols'
   assert.match(map,/build2026PdfAlignment\(network\)/);
   assert.match(map,/locate2026Train\(train,alignment\)/);
   assert.doesNotMatch(map,/calibrationPending:true/);
+});
+
+test('official October 2026 PDF crosswalk uses line-specific source ring locations',()=>{
+  const m=PDF_2026_LINE_STOPS.M1,t6=PDF_2026_LINE_STOPS.T6;
+  assert.equal(Object.keys(m).length,31);
+  assert.equal(Object.keys(t6).length,6);
+  assert.deepEqual(m.Bankstown,[486.74,800.81]);
+  assert.deepEqual(m.Punchbowl,[514.27,800.81]);
+  assert.deepEqual(m.Sydenham,[703.93,750.91]);
+  assert.deepEqual(m.Chatswood,[658.07,447.15]);
+  assert.deepEqual(t6.Bankstown,[481.92,796]);
+  assert.deepEqual(t6.Yagoona,[469.52,783.89]);
+  const taps=source2026StationHits('M1');
+  const bank=taps.find(([name])=>name==='Bankstown');
+  assert.deepEqual(bank[1],m.Bankstown);
+  assert.notDeepEqual(m.Bankstown,t6.Bankstown);
+  const t6Tap=source2026StationHits('T6').find(([name])=>name==='Bankstown');
+  assert.deepEqual(t6Tap[1],t6.Bankstown);
+});
+test('geographic tolerance is bounded at 250 metres even for an otherwise matched station pair',()=>{
+  const a=build2026PdfAlignment(data());
+  const edge=a.M1.find(e=>e.from==='Tallawong'&&e.to==='Rouse Hill');
+  assert.ok(edge);
+  const midpoint=edge.geoA.map((v,i)=>(v+edge.geoB[i])/2);
+  const direction=[edge.geoB[0]-edge.geoA[0],edge.geoB[1]-edge.geoA[1]];
+  const norm=Math.hypot(...direction);
+  const nearby=[midpoint[0]-direction[1]/norm*15,midpoint[1]+direction[0]/norm*15];
+  const far=[midpoint[0]-direction[1]/norm*32,midpoint[1]+direction[0]/norm*32];
+  assert.ok(locate2026Train(['M1',...nearby],{M1:[edge]}));
+  assert.equal(locate2026Train(['M1',...far],{M1:[edge]}),null);
 });
