@@ -62,7 +62,7 @@ test('published network map keeps verified source artwork and honest confidence 
   assert.match(map,/loadOfficialMapImage\(officialImageUrl\)/);
   assert.match(map,/drawOfficialOverlay\(holder, \{/);
   assert.match(map,/30 October 2026 TfNSW diagram includes M1 to Bankstown/);
-  assert.match(map,/2024 PDF are disabled on this revised artwork/);
+  assert.match(map,/Train positions are estimated only between verified 2026 diagram station anchors/);
   assert.match(map,/namedStations\+' confirmed station locations/);
   assert.match(map,/geo\.unmatched\+' unpositioned/);
   assert.match(official,/nearestPdfSymbol/);
