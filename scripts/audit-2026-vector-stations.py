@@ -36,6 +36,25 @@ for drawing in page.get_drawings():
 source=pathlib.Path(a.source).read_text()
 body=source.split('STOP_PIXELS_2026 = Object.freeze({',1)[1].split('});',1)[0]
 named={k:[float(x),float(y)] for k,x,y in re.findall(r"'([^']+)':\s*\[\s*([\d.]+)\s*,\s*([\d.]+)\s*\]",body)}
+# Fail closed: each explicitly calibrated M1 and T6 station must match a
+# colour-coded circular vector symbol from this exact approved PDF page.
+# No closest-approximate fallback: drift or a missing source symbol is an error.
+line_section=source.split('PDF_2026_LINE_STOPS = Object.freeze({',1)[1].split('export const ROUTES_2026',1)[0]
+verified_counts={}
+for line,expected in [('M1',31),('T6',6)]:
+    match=re.search(r'\\b'+line+r':Object\\.freeze\\(\\{(.*?)\\}\\)',line_section,re.S)
+    if not match:raise RuntimeError('Missing source-specific '+line+' calibration')
+    positions={name:[float(x),float(y)] for name,x,y in re.findall(
+        r"'([^']+)':\\s*\\[\\s*([\\d.]+)\\s*,\\s*([\\d.]+)\\s*\\]",match.group(1))}
+    if len(positions)!=expected:raise RuntimeError(line+' requires '+str(expected)+' calibrated stations')
+    source_points=[p['point'] for p in candidates if p['line']==line and p['point'][1]<1200]
+    for name,point in positions.items():
+        if not source_points:raise RuntimeError(line+' source station symbols unavailable')
+        delta=min(math.dist(point,p) for p in source_points)
+        if delta>0.3:raise RuntimeError(line+' '+name+' is '+str(round(delta,2))+
+             'px from any official source station circle')
+    verified_counts[line]=len(positions)
+print('SOURCE_VERIFIED_STOP_COUNTS '+json.dumps(verified_counts,sort_keys=True))
 review=[]
 for line,names in {'M1':['Tallawong','Rouse Hill','Epping','Chatswood','Central','Sydenham',
 'Marrickville','Dulwich Hill','Hurlstone Park','Canterbury','Campsie','Belmore','Lakemba',
