@@ -1,5 +1,7 @@
 import {reconcilePdfStations,REFERENCE_2024_ROUTES,OFFICIAL_LINE_PALETTE,nearestPdfSymbol} from './official-vector-stops.js';
 import {reportedSouthwestMetroProjected} from './metro-southwest.js';
+import {build2026PdfAlignment,locate2026Train,source2026StationHits,
+  ROUTES_2026,officialDisruptionPins2026} from './official-2026-alignment.js';
 
 // The official TfNSW published network PDF is rendered at deployment time.
 // Calibration is to the 2024 first-page artwork, in image units 1024 x 1447.
@@ -250,25 +252,17 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   const unit=px=>px/scale;
   const svg=el('svg',{viewBox:frame.join(' '),width:W,height:H,
     class:'map-svg official-tfnsw-svg'+(zoom?' zoomed':''),
-    role:'group','aria-label':'Official Transport for NSW 2026 Sydney rail network diagram showing Metro to Bankstown; live positions available on the Geographic Map'});
+    role:'group','aria-label':'Official TfNSW October 2026 Sydney rail diagram with approximate positions for live services on source-verified station corridors'});
   // Whole PDF page is a single authored background: no redraw or tracing of TfNSW routes.
   svg.append(el('image',{href:imageUrl,x:0,y:0,width:OFFICIAL_MAP.width,
     height:OFFICIAL_MAP.height,preserveAspectRatio:'none',class:'official-source-map'}));
-  // IMPORTANT: 2026 official PDF has a newly laid out Metro to Bankstown route.
-  // The historic 2024 station dot calibration must never be used as an overlay
-  // on this new image. Current geographic tracking retains validated GTFS points.
-  // Reintroduce interactive stations/trains here only after independent
-  // 2026 artwork vector-symbol calibration and visual QA are accepted.
-  if (OFFICIAL_MAP.edition === '30 October 2026') {
-    container.replaceChildren(svg);
-    return {svg,base,W,H,positioned:null,unmatched:null,
-      namedStations:null,pdfSymbols:null,calibrationPending:true};
-  }
-  const alignment=buildVerifiedPdfAlignment(network);
-  const selected=new Set((REFERENCE_2024_ROUTES[lineFilter]||[]).flat());
+  // Use only the 30 October 2026 source-page crosswalk. The older station
+  // circle registry has a different layout and is deliberately not reused.
+  const alignment=build2026PdfAlignment(network);
+  const selected=new Set((ROUTES_2026[lineFilter]||[]).flat());
   const stationLayer=el('g',{class:'official-station-hits'});
   const hitRadius=Math.max(unit(11),3);
-  for (const [name,pos] of PDF_STATION_CROSSWALK.positions) {
+  for (const [name,pos] of source2026StationHits(lineFilter)) {
     if(lineFilter && !selected.has(name)) continue;
     const c=el('circle',{cx:pos[0],cy:pos[1],r:hitRadius,
       class:'official-station-target','aria-label':'Fixed station '+name,tabindex:'0',role:'button'});
@@ -280,7 +274,7 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   // Affected named stations only, not guessed affected corridors. The incident
   // panel below the map retains full descriptions and unpositioned alerts.
   const disruptions=el('g',{class:'official-disruption-markers'});
-  for (const pin of officialDisruptionPins(live,lineFilter)) {
+  for (const pin of officialDisruptionPins2026(live,lineFilter)) {
     const icon=el('circle',{cx:pin.xy[0],cy:pin.xy[1],r:unit(12),
       fill:'none',stroke:pin.kind==='closed'?'#a66c15':'#ce4226',
       'stroke-width':unit(3),class:'official-disruption',role:'img',
@@ -295,8 +289,8 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   for(const train of live?.trains||[]){
     const [line,,,delay,pax,fullest,,headsign]=train;
     if(lineFilter&&line!==lineFilter)continue;
-    if(!REFERENCE_2024_ROUTES[line])continue; // intercity not shown on the printed map
-    const pos=locateOfficialTrain(train,alignment);
+    if(!ROUTES_2026[line])continue; // only lines verified on 2026 source
+    const pos=locate2026Train(train,alignment);
     if(!pos){unmatched++;continue;}
     positioned.push({train,pos});
   }
@@ -319,7 +313,7 @@ const g = el('g', {
   role: 'button',
   'aria-label': 'Moving ' + line + ' train' +
     (headsign ? ' towards ' + headsign : '') +
-    ', position estimated on 2024 map'
+    ', approximate position on 2026 map'
 });
 // Invisible 30px touch target for mobile usability
 g.append(el('rect', {
@@ -394,7 +388,7 @@ g.append(label);
       onHoverEnd?.();
       onTrainSelect?.(line+' '+(headsign?'towards '+headsign+'. ':'')+
         (delay==null?'Delay not reported. ':delay<60?'On time. ':Math.round(delay/60)+' minutes late. ')+
-        'Shown approximately between '+pos.from+' and '+pos.to+' on the historical diagram.'+
+        'Shown approximately between '+pos.from+' and '+pos.to+' on the 2026 published diagram.'+
         (pax!=null?' Estimated '+Math.round(pax)+' passengers aboard.':''));
     };
     g.addEventListener('click',select);
@@ -404,6 +398,6 @@ g.append(label);
   svg.append(trainLayer);
   container.replaceChildren(svg);
   return {svg,base,W,H,positioned:positioned.length,unmatched,
-    namedStations:PDF_STATION_CROSSWALK.positions.size,
-    pdfSymbols:PDF_STATION_COVERAGE.pdfSymbols};
+    namedStations:source2026StationHits(lineFilter).length,
+    pdfSymbols:null,calibrationPending:false,edition:'2026'};
 }

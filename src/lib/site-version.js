@@ -9,7 +9,7 @@ const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 // Every local asset referenced by index.html must receive an immutable URL.
 // ux-refresh.css was previously copied but not stamped, so cached Safari/PWA
 // sessions could mix old UX layouts with newly published JavaScript.
-const baseFiles = ['app.js', 'metro-southwest.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'official-vector-stops.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css', 'ux-refresh.css', 'favicon.svg', 'rail-mark.svg'];
+const baseFiles = ['app.js', 'official-2026-alignment.js', 'metro-southwest.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'official-vector-stops.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css', 'ux-refresh.css', 'favicon.svg', 'rail-mark.svg'];
 
 function filesUnder(dir, prefix = '') {
   return fs.readdirSync(path.join(dir, prefix), { withFileTypes: true })
@@ -57,6 +57,8 @@ export function publishSiteRelease(siteDir, outputDir, { generatedAt = Date.now(
     "from './" + stamped['official-vector-stops.js'] + "'", 'official-map.js');
   officialMap = replaceOnce(officialMap, "from './metro-southwest.js'",
     "from './" + stamped['metro-southwest.js'] + "'", 'official-map.js');
+  officialMap = replaceOnce(officialMap, "from './official-2026-alignment.js'",
+    "from './" + stamped['official-2026-alignment.js'] + "'", 'official-map.js');
   stamped['official-map.js'] = 'official-map.' + hash(officialMap).slice(0,12) + '.js';
   fs.writeFileSync(path.join(outputDir, stamped['official-map.js']), officialMap);
 
