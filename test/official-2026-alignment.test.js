@@ -124,7 +124,7 @@ test('geographic tolerance is bounded at 250 metres even for an otherwise matche
 });
 
 test('only 2026 source-circle-backed conventional train corridors may display markers',()=>{
-  const expected={T1:27,T2:13,T3:8,T4:6,T5:18,T7:2,T8:14,T9:6};
+  const expected={T1:27,T2:13,T3:8,T4:28,T5:18,T7:2,T8:14,T9:6};
   for(const [line,count] of Object.entries(expected))
     assert.equal(Object.keys(PDF_2026_LINE_STOPS[line]||{}).length,count,line);
   assert.deepEqual(PDF_2026_LINE_STOPS.T7.Lidcombe,[448.6,672.95]);
@@ -144,4 +144,86 @@ test('only 2026 source-circle-backed conventional train corridors may display ma
   assert.ok(a.T4.some(e=>e.from==='Sydenham'&&e.to==='Wolli Creek'));
   assert.ok(!source2026StationHits('T4').some(([name])=>name==='Bondi Junction'));
   assert.ok(source2026StationHits('T7').some(([name])=>name==='Olympic Park'));
+});
+
+test('T4 official 2026 source rings provide every adjacent southern corridor from Wolli Creek through Sutherland',()=>{
+  const stops=[
+    ['Wolli Creek',-33.92855,151.15411],
+    ['Arncliffe',-33.93646,151.14730],
+    ['Banksia',-33.94529,151.14043],
+    ['Rockdale',-33.95188,151.13686],
+    ['Kogarah',-33.96215,151.13264],
+    ['Carlton',-33.96827,151.12434],
+    ['Allawah',-33.96958,151.11433],
+    ['Hurstville',-33.96745,151.10276],
+    ['Penshurst',-33.96613,151.08939],
+    ['Mortdale',-33.97059,151.08129],
+    ['Oatley',-33.98085,151.07897],
+    ['Como',-34.00427,151.06800],
+    ['Jannali',-34.01613,151.06466],
+    ['Sutherland',-34.03179,151.05719],
+  ];
+  const network={stations:stops.map(([name,lat,lon])=>station(name,lat,lon,'T4 SCO'))};
+  const alignment=build2026PdfAlignment(network);
+  assert.equal(alignment.T4.length,stops.length-1);
+  for(let i=1;i<stops.length;i++){
+    const [from,to]=[stops[i-1][0],stops[i][0]];
+    assert.ok(alignment.T4.some(edge=>edge.from===from&&edge.to===to),from+' → '+to);
+  }
+  const expected={
+    'Hurstville':[688.76,942.64],
+    'Penshurst':[688.78,962.62],
+    'Mortdale':[688.78,982.79],
+    'Oatley':[688.78,1002.96],
+    'Como':[688.78,1023.14],
+    'Jannali':[688.78,1043.31],
+    'Sutherland':[688.76,1063.48],
+  };
+  for(const [name,xy] of Object.entries(expected)){
+    assert.deepEqual(PDF_2026_LINE_STOPS.T4[name],xy);
+    assert.deepEqual(source2026StationHits('T4').find(([n])=>n===name)?.[1],xy);
+  }
+});
+
+test('T4 train at Penshurst–Mortdale or Oatley–Como is restored, never snapped to another line',()=>{
+  const stops=[
+    ['Hurstville',-33.96745,151.10276],
+    ['Penshurst',-33.96613,151.08939],
+    ['Mortdale',-33.97059,151.08129],
+    ['Oatley',-33.98085,151.07897],
+    ['Como',-34.00427,151.068],
+  ];
+  const alignment=build2026PdfAlignment({
+    stations:stops.map(([name,lat,lon])=>station(name,lat,lon,'T4 SCO'))
+  });
+  for(const [from,to] of [['Penshurst','Mortdale'],['Mortdale','Oatley'],['Oatley','Como']]){
+    const e=alignment.T4.find(edge=>edge.from===from&&edge.to===to);
+    assert.ok(e,from+' to '+to+' should be supported');
+    const midpoint=e.geoA.map((n,i)=>Math.round((n+e.geoB[i])/2));
+    const position=locate2026Train(['T4',...midpoint],alignment);
+    assert.ok(position,from+' to '+to+' vehicle was missing before PR68');
+    assert.deepEqual([position.from,position.to],[from,to]);
+    assert.ok(Math.abs(position.x-688.78)<0.05, 'icon must lie on source T4 track');
+    assert.ok(position.y>=Math.min(e.pdfA[1],e.pdfB[1]));
+    assert.ok(position.y<=Math.max(e.pdfA[1],e.pdfB[1]));
+  }
+  const actualPosition=project(-33.98977,151.07547);
+  const pos=locate2026Train(['T4',...actualPosition],alignment);
+  assert.ok(pos);
+  assert.deepEqual([pos.from,pos.to],['Oatley','Como']);
+  assert.ok(pos.distanceMetres<=250);
+  assert.equal(locate2026Train(['T8',...actualPosition],alignment),null);
+});
+
+test('T4 Cronulla and Waterfall branches retain distinct, source-backed endpoints',()=>{
+  for(const name of ['Loftus','Engadine','Heathcote','Waterfall',
+    'Kirrawee','Gymea','Miranda','Caringbah','Woolooware','Cronulla'])
+    assert.ok(PDF_2026_LINE_STOPS.T4[name],name);
+  const lines=ROUTES_2026.T4;
+  const south=lines.find(route=>route.includes('Heathcote'));
+  const cronulla=lines.find(route=>route.includes('Kirrawee'));
+  assert.deepEqual(south.slice(south.indexOf('Sutherland')),
+    ['Sutherland','Loftus','Engadine','Heathcote','Waterfall']);
+  assert.deepEqual(cronulla,['Sutherland','Kirrawee','Gymea',
+    'Miranda','Caringbah','Woolooware','Cronulla']);
 });
