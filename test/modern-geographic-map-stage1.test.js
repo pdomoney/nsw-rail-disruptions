@@ -23,7 +23,7 @@ test('legacy hand-drawn map and controls are removed from the public application
   assert.match(nav,/\['track','Geographic map · GTFS'\]/);
   assert.match(map,/requested==='legacy'\|\|requested==='diagram'\?'official'/);
   assert.match(map,/p\.set\('map',kind\)/);
-  assert.match(map,/const lineIds = Object\.keys\(\(kind === 'track' \? net : D\.schematic\)\.lines\)/);
+  assert.match(map,/const lineIds = D\.meta\.lines\.map\(l=>l\.id\)/);
   assert.match(app,/kind === 'official' && !D\.schematic/);
   assert.match(builder,/buildPatronageRoutes/);
   assert.match(builder,/buildSchematic\(\)/);

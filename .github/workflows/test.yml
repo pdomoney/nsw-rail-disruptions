@@ -15,6 +15,23 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      - name: Pin current TfNSW collected-data revision for all-line coverage
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: source-data
+          persist-credentials: false
+      - name: Review every tracked line against 2026 source-matched station pairs
+        run: |
+          mkdir -p test-artifacts/all-line-review
+          node scripts/audit-2026-all-line-coverage.mjs source-data test-artifacts/all-line-review
+          cat test-artifacts/all-line-review/all-line-coverage.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload detailed all-line marker-coverage evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfnsw-2026-all-line-coverage
+          path: test-artifacts/all-line-review/
+          retention-days: 21
       - name: Verify and render published TfNSW PDF background
         run: |
           if ! command -v pdftoppm >/dev/null || ! command -v pdftotext >/dev/null; then
