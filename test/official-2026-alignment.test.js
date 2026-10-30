@@ -141,7 +141,10 @@ test('only 2026 source-circle-backed conventional train corridors may display ma
   assert.ok(a.T7.some(e=>e.from==='Lidcombe'&&e.to==='Olympic Park'));
   assert.ok(!a.T4.some(e=>e.from==='Bondi Junction'&&e.to==='Kings Cross'),
     'unverified 2026 stop pair must not receive train symbols');
-  assert.ok(a.T4.some(e=>e.from==='Sydenham'&&e.to==='Wolli Creek'));
+  // Verified 2026 diagram includes Tempe between these two stations.
+  assert.ok(!a.T4.some(e=>e.from==='Sydenham'&&e.to==='Wolli Creek'));
+  assert.ok(!a.T4.some(e=>e.from==='Sydenham'&&e.to==='Tempe'),
+    'missing Tempe geo station must not fabricate a segment');
   assert.ok(!source2026StationHits('T4').some(([name])=>name==='Bondi Junction'));
   assert.ok(source2026StationHits('T7').some(([name])=>name==='Olympic Park'));
 });
@@ -226,4 +229,16 @@ test('T4 Cronulla and Waterfall branches retain distinct, source-backed endpoint
     ['Sutherland','Loftus','Engadine','Heathcote','Waterfall']);
   assert.deepEqual(cronulla,['Sutherland','Kirrawee','Gymea',
     'Miranda','Caringbah','Woolooware','Cronulla']);
+});
+
+test('new 2026 PDF stop targets and named T4 disruption pins include Mortdale and Penshurst',()=>{
+  const hits=source2026StationHits('T4');
+  assert.deepEqual(hits.find(([name])=>name==='Mortdale')?.[1],[688.78,982.79]);
+  assert.deepEqual(hits.find(([name])=>name==='Penshurst')?.[1],[688.78,962.62]);
+  const pins=officialDisruptionPins2026({overlays:[{
+    kind:'incident',lines:['T4'],title:'Station disruption',
+    pins:[[0,0,'Mortdale Station']],spins:[]
+  }]},'T4');
+  assert.equal(pins.length,1);
+  assert.deepEqual(pins[0].xy,[688.78,982.79]);
 });
