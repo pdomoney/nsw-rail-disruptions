@@ -317,23 +317,25 @@ export function locate2026Train(train,alignment,maxDistanceUnits=25) {
 }
 export function source2026StationHits(lineFilter='') {
   const selected=lineFilter?new Set((ROUTES_2026[lineFilter]||[]).flat()):null;
-  return Object.entries(STOP_PIXELS_2026)
-    .filter(([name])=>!selected||selected.has(name))
-    .filter(([name])=>lineFilter
-      ? Boolean(PDF_2026_LINE_STOPS[lineFilter]?.[name])
-      : Object.values(PDF_2026_LINE_STOPS).some(line=>line[name]))
-    .map(([name,point])=>{
-      const vetted=PDF_2026_LINE_STOPS[lineFilter]?.[name]||
-        Object.values(PDF_2026_LINE_STOPS).find(line=>line[name])?.[name];
-      return [name,vetted||point];
-    });
+  const hits=new Map();
+  // The generic PR64 registry covers only some printed stations. After
+  // the 2026 source-vector audit the line-specific registry is the actual
+  // authoritative set for both stop selection and diagram vehicle sections.
+  for(const [line,stations] of Object.entries(PDF_2026_LINE_STOPS)) {
+    if(lineFilter&&line!==lineFilter)continue;
+    for(const [name,point] of Object.entries(stations)) {
+      if(selected&&!selected.has(name))continue;
+      if(!hits.has(name))hits.set(name,point);
+    }
+  }
+  return [...hits];
 }
 
 
 export function officialDisruptionPins2026(live,lineFilter='') {
   const results=[],seen=new Set();
   const lines=lineFilter?new Set((ROUTES_2026[lineFilter]||[]).flat()):null;
-  const locations=new Map(Object.entries(STOP_PIXELS_2026)
+  const locations=new Map(source2026StationHits(lineFilter)
     .map(([name,xy])=>[normalise(name),{name,xy}]));
   for(const overlay of live?.overlays||[]) {
     if(lineFilter&&!(overlay.lines||[]).includes(lineFilter))continue;
