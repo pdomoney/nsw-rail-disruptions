@@ -42,4 +42,7 @@ pdftoppm -f 1 -l 1 -scale-to-x 2048 -scale-to-y -1 -png -singlefile \
   "$TMP/map.pdf" "$TMP/map" >/dev/null 2>&1
 test -s "$TMP/map.png"
 cp "$TMP/map.png" "$DEST/$FILE"
+if [[ "${OFFICIAL_MAP_SOURCE_AUDIT:-0}" == "1" ]]; then
+  cp "$TMP/map.pdf" "$DEST/tfnsw-sydney-rail-2026.pdf"
+fi
 echo "Rendered checksum-verified TfNSW 2026 map: $(du -h "$DEST/$FILE" | cut -f1)"

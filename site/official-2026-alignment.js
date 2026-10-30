@@ -8,20 +8,20 @@ export const PDF_2026_SHA256 =
   '7877f5bed61ef5f04fbda86752ca1582732544752242ca4777e2e93b00662669';
 export const PDF_2026_EDITION = '30 October 2026';
 export const STOP_PIXELS_2026 = Object.freeze({
-  'Tallawong':[219,401], 'Rouse Hill':[247,401], 'Kellyville':[274,401],
-  'Bella Vista':[302,401], 'Norwest':[330,401], 'Hills Showground':[357,401],
-  'Castle Hill':[385,401], 'Cherrybrook':[412,401], 'Epping':[508,417],
-  'Macquarie University':[564,436], 'Macquarie Park':[595,436],
-  'North Ryde':[625,436], 'Chatswood':[696,459],
-  'Crows Nest':[704,487], 'Victoria Cross':[733,520],
-  'Barangaroo':[740,563], 'Martin Place':[780,599], 'Gadigal':[780,632],
-  'Central':[758,652], 'Waterloo':[766,685], 'Sydenham':[690,749],
-  'Marrickville':[665,766], 'Dulwich Hill':[641,785],
-  'Hurlstone Park':[613,800], 'Canterbury':[583,800], 'Campsie':[555,800],
-  'Belmore':[526,800], 'Lakemba':[498,800], 'Wiley Park':[468,800],
-  'Punchbowl':[441,800], 'Bankstown':[418,824],
-  'Lidcombe':[448,691], 'Berala':[448,728], 'Regents Park':[449,767],
-  'Birrong':[450,797], 'Yagoona':[447,821], 'Olympic Park':[449,588],
+  'Tallawong':[222.16,409.53], 'Rouse Hill':[255.36,401.49], 'Kellyville':[282.31,401.49],
+  'Bella Vista':[309.25,401.49], 'Norwest':[336.2,401.49], 'Hills Showground':[363.15,401.49],
+  'Castle Hill':[390.09,401.49], 'Cherrybrook':[417.04,401.49], 'Epping':[508,417],
+  'Macquarie University':[565.17,434.81], 'Macquarie Park':[596.41,434.81],
+  'North Ryde':[627.64,434.81], 'Chatswood':[696,459],
+  'Crows Nest':[691.58,480.64], 'Victoria Cross':[725.83,514.84],
+  'Barangaroo':[735.84,562.66], 'Martin Place':[780,599], 'Gadigal':[783.68,619.39],
+  'Central':[758,652], 'Waterloo':[778.41,684.73], 'Sydenham':[690,749],
+  'Marrickville':[666.62,750.79], 'Dulwich Hill':[647.35,750.99],
+  'Hurlstone Park':[624.8,761.89], 'Canterbury':[611.64,775.04], 'Campsie':[596.85,789.81],
+  'Belmore':[573.19,800.81], 'Lakemba':[553.55,800.81], 'Wiley Park':[533.91,800.81],
+  'Punchbowl':[514.27,800.81], 'Bankstown':[484.33,798.41],
+  'Lidcombe':[448,691], 'Berala':[448.56,724.12], 'Regents Park':[448.56,748.22],
+  'Birrong':[457.6,771.99], 'Yagoona':[469.52,783.89], 'Olympic Park':[449,588],
   'Richmond':[155,296], 'East Richmond':[156,319],
   'Clarendon':[157,335], 'Windsor':[157,355], 'Mulgrave':[157,376],
   'Vineyard':[157,396], 'Riverstone':[157,415], 'Schofields':[157,435],
@@ -55,18 +55,140 @@ export const STOP_PIXELS_2026 = Object.freeze({
 // line-specific offsets can be refined independently of the route-stop names.
 export const PDF_2026_LINE_STOPS = Object.freeze({
   M1:Object.freeze({
-    'Central':[769,653],'Martin Place':[780,598],
-    'Sydenham':[697,746],'Bankstown':[424,823],
+    'Tallawong':[222.16,409.53], 'Rouse Hill':[255.36,401.49],
+    'Kellyville':[282.31,401.49], 'Bella Vista':[309.25,401.49],
+    'Norwest':[336.20,401.49], 'Hills Showground':[363.15,401.49],
+    'Castle Hill':[390.09,401.49], 'Cherrybrook':[417.04,401.49],
+    'Epping':[505.16,417.88], 'Macquarie University':[565.17,434.81],
+    'Macquarie Park':[596.41,434.81], 'North Ryde':[627.64,434.81],
+    'Chatswood':[658.07,447.15], 'Crows Nest':[691.58,480.64],
+    'Victoria Cross':[725.83,514.84], 'Barangaroo':[735.84,562.66],
+    'Martin Place':[783.68,600.69], 'Gadigal':[783.68,619.39],
+    'Central':[778.41,651.67], 'Waterloo':[778.41,684.73],
+    'Sydenham':[703.93,750.91], 'Marrickville':[666.62,750.79],
+    'Dulwich Hill':[647.35,750.99], 'Hurlstone Park':[624.80,761.89],
+    'Canterbury':[611.64,775.04], 'Campsie':[596.85,789.81],
+    'Belmore':[573.19,800.81], 'Lakemba':[553.55,800.81],
+    'Wiley Park':[533.91,800.81], 'Punchbowl':[514.27,800.81],
+    'Bankstown':[486.74,800.81],
   }),
-  T6:Object.freeze({'Bankstown':[433,831], 'Lidcombe':[451,691]}),
-  T4:Object.freeze({'Central':[780,653], 'Sydenham':[691,749]}),
-  T8:Object.freeze({'Central':[766,653], 'Wolli Creek':[694,795]}),
-  T1:Object.freeze({'Central':[745,652],'Town Hall':[742,615],
-    'Wynyard':[741,581],'Lidcombe':[450,692]}),
-  T2:Object.freeze({'Central':[749,653],'Lidcombe':[452,694]}),
-  T3:Object.freeze({'Central':[752,653],'Lidcombe':[455,697]}),
-  T9:Object.freeze({'Central':[752,654]}),
+  T6:Object.freeze({
+    'Lidcombe':[448.60,700.00], 'Berala':[448.56,724.12],
+    'Regents Park':[448.56,748.22], 'Birrong':[457.60,771.99],
+    'Yagoona':[469.52,783.89], 'Bankstown':[481.92,796.00],
+  }),
+  T1:Object.freeze({
+    'Richmond':[160.27,295.29],
+    'East Richmond':[160.27,315.61],
+    'Clarendon':[160.27,335.76],
+    'Windsor':[160.27,355.92],
+    'Mulgrave':[160.27,376.15],
+    'Vineyard':[160.27,396.36],
+    'Riverstone':[160.27,416.4],
+    'Schofields':[160.27,436.69],
+    'Quakers Hill':[160.27,456.34],
+    'Marayong':[164.96,475.47],
+    'Blacktown':[244.74,551.85],
+    'Seven Hills':[278.28,551.85],
+    'Toongabbie':[295.17,551.85],
+    'Pendle Hill':[320.63,558.13],
+    'Wentworthville':[330.38,567.87],
+    'Westmead':[353.89,591.43],
+    'Harris Park':[387.22,624.79],
+    'Granville':[411.26,648.81],
+    'Strathfield':[519.96,679.66],
+    'Central':[748.34,651.67],
+    'Town Hall':[748.33,619.4],
+    'Wynyard':[748.34,583.83],
+    'North Sydney':[748.37,527.7],
+    'Chatswood':[696.23,465.96],
+    'Gordon':[609.93,379.84],
+    'Hornsby':[519.94,281.44],
+    'Berowra':[519.94,199.25],
+  }),
+  T2:Object.freeze({
+    'Leppington':[141.35,941.89],
+    'Edmondson Park':[174.99,941.89],
+    'Liverpool':[298.51,847.66],
+    'Warwick Farm':[298.51,820.75],
+    'Cabramatta':[298.51,793.89],
+    'Canley Vale':[298.51,767.02],
+    'Fairfield':[298.51,739.69],
+    'Yennora':[298.51,712.92],
+    'Granville':[406.32,653.3],
+    'Lidcombe':[448.6,686.34],
+    'Strathfield':[519.96,686.34],
+    'Burwood':[553.01,686.34],
+    'Central':[754.09,651.67],
+  }),
+  T3:Object.freeze({
+    'Liverpool':[305.2,847.66],
+    'Warwick Farm':[305.2,820.75],
+    'Cabramatta':[305.2,793.89],
+    'Regents Park':[441.74,748.22],
+    'Lidcombe':[448.6,693.32],
+    'Strathfield':[519.96,693.02],
+    'Burwood':[553.01,693.01],
+    'Central':[759.84,651.67],
+  }),
+  T4:Object.freeze({
+    'Martin Place':[789.09,606.57],
+    'Central':[771.35,651.67],
+    'Sydenham':[699.49,746.39],
+    'Wolli Creek':[688.74,801.27],
+    'Hurstville':[688.76,942.64],
+    'Waterfall':[688.76,1150.95],
+  }),
+  T5:Object.freeze({
+    'Richmond':[153.55,295.29],
+    'East Richmond':[153.55,315.61],
+    'Clarendon':[153.55,335.76],
+    'Windsor':[153.55,355.95],
+    'Mulgrave':[153.54,376.15],
+    'Vineyard':[153.54,396.36],
+    'Riverstone':[153.53,416.4],
+    'Schofields':[153.54,436.61],
+    'Quakers Hill':[153.54,456.25],
+    'Marayong':[160.2,480.22],
+    'Blacktown':[244.74,558.48],
+    'Yennora':[291.75,712.96],
+    'Fairfield':[291.75,739.74],
+    'Canley Vale':[291.75,767.07],
+    'Cabramatta':[291.75,793.94],
+    'Warwick Farm':[291.75,820.8],
+    'Casula':[291.75,881.37],
+    'Leppington':[141.3,935.14],
+  }),
+  T7:Object.freeze({
+    'Lidcombe':[448.6,672.95],
+    'Olympic Park':[469.26,591.66],
+  }),
+  T8:Object.freeze({
+    'Macarthur':[305.17,1096.52],
+    'Campbelltown':[305.2,1069.63],
+    'Holsworthy':[352.38,897.39],
+    'East Hills':[381.05,897.39],
+    'Panania':[409.71,897.39],
+    'Revesby':[438.38,897.39],
+    'Padstow':[467.04,897.39],
+    'Riverwood':[495.71,897.39],
+    'Narwee':[524.37,897.39],
+    'Wolli Creek':[695.48,794.52],
+    'International Airport':[749.65,789.36],
+    'Mascot':[765.58,745.79],
+    'Green Square':[765.58,717.78],
+    'Central':[765.59,651.67],
+  }),
+  T9:Object.freeze({
+    'Hornsby':[513.23,281.44],
+    'Epping':[513.23,417.89],
+    'Central':[742.56,651.67],
+    'Town Hall':[742.56,619.4],
+    'Wynyard':[742.56,583.83],
+    'North Sydney':[742.56,527.7],
+  }),
 });
+
 export const ROUTES_2026 = Object.freeze({
   M1:[['Tallawong','Rouse Hill','Kellyville','Bella Vista','Norwest',
     'Hills Showground','Castle Hill','Cherrybrook'],
@@ -135,6 +257,11 @@ export function build2026PdfAlignment(network) {
       const from=chain[i-1],to=chain[i];
       const a=stationGeo.get(normalise(from)),b=stationGeo.get(normalise(to));
       if(!a?.lines.has(line)||!b?.lines.has(line))continue;
+      // For conventional trains the initial PR64 coordinates remain partly
+      // inaccurate. Only use station pairs individually matched to same-line
+      // coloured vector circles in the checksum-pinned 2026 official PDF.
+      if(line!=='M1'&&line!=='T6'&&
+        (!PDF_2026_LINE_STOPS[line]?.[from]||!PDF_2026_LINE_STOPS[line]?.[to]))continue;
       const pdfA=PDF_2026_LINE_STOPS[line]?.[from]||STOP_PIXELS_2026[from];
       const pdfB=PDF_2026_LINE_STOPS[line]?.[to]||STOP_PIXELS_2026[to];
       if(!pdfA||!pdfB||pointDistance(pdfA,pdfB)<2)continue;
@@ -144,7 +271,7 @@ export function build2026PdfAlignment(network) {
   }
   return result;
 }
-export function locate2026Train(train,alignment,maxDistanceUnits=65) {
+export function locate2026Train(train,alignment,maxDistanceUnits=25) {
   const [line,x,y]=train;
   if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(maxDistanceUnits))return null;
   let selected=null;
@@ -154,7 +281,7 @@ export function locate2026Train(train,alignment,maxDistanceUnits=65) {
     if(selected==null||match.distance<selected.distance)
       selected={...match,edge};
   }
-  // Source feed positions are projected in 10 m units. 65 => 650 m max.
+  // Source feed positions are projected in 10 m units. 25 => 250 m maximum. This rejects distant parallel line matches.
   // No 2024 alignment fallback, and no interpolation over missing stations.
   if(!selected||selected.distance>maxDistanceUnits)return null;
   const {pdfA,pdfB,from,to}=selected.edge;
@@ -167,7 +294,15 @@ export function locate2026Train(train,alignment,maxDistanceUnits=65) {
 export function source2026StationHits(lineFilter='') {
   const selected=lineFilter?new Set((ROUTES_2026[lineFilter]||[]).flat()):null;
   return Object.entries(STOP_PIXELS_2026)
-    .filter(([name])=>!selected||selected.has(name));
+    .filter(([name])=>!selected||selected.has(name))
+    .filter(([name])=>lineFilter
+      ? Boolean(PDF_2026_LINE_STOPS[lineFilter]?.[name])
+      : Object.values(PDF_2026_LINE_STOPS).some(line=>line[name]))
+    .map(([name,point])=>{
+      const vetted=PDF_2026_LINE_STOPS[lineFilter]?.[name]||
+        Object.values(PDF_2026_LINE_STOPS).find(line=>line[name])?.[name];
+      return [name,vetted||point];
+    });
 }
 
 
@@ -179,8 +314,12 @@ export function officialDisruptionPins2026(live,lineFilter='') {
   for(const overlay of live?.overlays||[]) {
     if(lineFilter&&!(overlay.lines||[]).includes(lineFilter))continue;
     for(const info of [...(overlay.pins||[]),...(overlay.spins||[])]) {
-      const point=locations.get(normalise(info[2]));
-      if(!point||lines&&!lines.has(point.name))continue;
+      const original=locations.get(normalise(info[2]));
+      if(!original||lines&&!lines.has(original.name))continue;
+      const chosen=PDF_2026_LINE_STOPS[lineFilter]?.[original.name]||
+        Object.values(PDF_2026_LINE_STOPS).find(line=>line[original.name])?.[original.name];
+      if(!chosen)continue; // no printed 2026 source-symbol match
+      const point={...original,xy:chosen};
       const id=overlay.kind+'|'+point.name;
       if(seen.has(id))continue;
       seen.add(id);

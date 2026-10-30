@@ -21,8 +21,25 @@ jobs:
             sudo apt-get -qq update
             sudo apt-get -y -qq install poppler-utils
           fi
-          OFFICIAL_MAP_PNG_INPUT="" bash scripts/render-official-map.sh test-artifacts/assets
+          OFFICIAL_MAP_SOURCE_AUDIT=1 OFFICIAL_MAP_PNG_INPUT="" bash scripts/render-official-map.sh test-artifacts/assets
           node scripts/verify-official-map.mjs test-artifacts/assets/tfnsw-sydney-rail-2026.png
+      - name: Inspect real 2026 TfNSW PDF station circles and source anchor displacement
+        run: |
+          python3 -m pip -q install pymupdf
+          mkdir -p test-artifacts/vector-review
+          node scripts/export-2026-diagram-source-pairs.mjs test-artifacts/vector-review/expected-pairs.json
+          python3 scripts/audit-2026-vector-stations.py \
+            --pdf test-artifacts/assets/tfnsw-sydney-rail-2026.pdf \
+            --source site/official-2026-alignment.js \
+            --pairs test-artifacts/vector-review/expected-pairs.json \
+            --out-dir test-artifacts/vector-review
+          cat test-artifacts/vector-review/station-vector-audit.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Save source station-symbol evidence for operator verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfnsw-2026-vector-station-audit
+          path: test-artifacts/vector-review/
+          retention-days: 21
       - name: Upload approved 2026 map rendition for source review
         uses: actions/upload-artifact@v4
         with:
