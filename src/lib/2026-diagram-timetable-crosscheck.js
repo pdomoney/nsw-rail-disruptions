@@ -53,12 +53,12 @@ const selectedReason=(r)=>{
   if(r.routeConflict||r.cancelledByTripUpdate||r.serviceCalendarRuns===false)
     return 'source-conflict';
   if(r.shapeDistanceMetres>MAX_SHAPE_DISTANCE_M)return 'off-trip-gtfs-shape';
-  if(!r.tripUpdateMatched)return 'trip-update-evidence-unavailable';
   if(!r.markerVisible)return 'diagram-marker-not-displayed';
   if(r.scheduledPairOnTrip===false)return 'diagram-pair-not-in-trip-stop-sequence';
   if(!r.serviceDay||r.serviceCalendarRuns==null||r.scheduledPairOnTrip==null||
     r.tripTimeWindowPlausible!==true||r.scheduledPairWindowPlausible!==true)
     return 'timetable-not-corroborated';
+  if(!r.tripUpdateMatched)return 'trip-update-evidence-unavailable';
   return 'coordinate-and-timetable-corroborated';
 };
 
