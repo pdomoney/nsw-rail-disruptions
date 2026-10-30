@@ -98,14 +98,14 @@ jobs:
           OUT_DIR: dist
         run: node src/build.js
 
-      # The official PDF is an immutable 2024 background, unlike the live data
+      # The checksum-pinned official PDF is a 30 October 2026 background, unlike the live data
       # collected every five minutes. Keep the approved raster cached between runs.
       - name: Restore the official TfNSW map background
         id: official-cache
         uses: actions/cache/restore@v4
         with:
-          path: .cache/official-tfnsw-map-2024.png
-          key: tfnsw-map-2024-v1
+          path: .cache/official-tfnsw-map-2026.png
+          key: tfnsw-map-2026-v1
 
       # The PR test workflow installs Poppler, but production previously did not.
       # Every green Pages deployment therefore omitted the original map image.
@@ -126,22 +126,22 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/assets .cache
-          if test -s .cache/official-tfnsw-map-2024.png; then
-            OFFICIAL_MAP_PNG_INPUT=".cache/official-tfnsw-map-2024.png" \
+          if test -s .cache/official-tfnsw-map-2026.png; then
+            OFFICIAL_MAP_PNG_INPUT=".cache/official-tfnsw-map-2026.png" \
               bash scripts/render-official-map.sh dist/assets
           else
             OFFICIAL_MAP_PNG_INPUT="" bash scripts/render-official-map.sh dist/assets
-            cp dist/assets/tfnsw-sydney-rail-2024.png .cache/official-tfnsw-map-2024.png
+            cp dist/assets/tfnsw-sydney-rail-2026.png .cache/official-tfnsw-map-2026.png
           fi
-          node scripts/verify-official-map.mjs dist/assets/tfnsw-sydney-rail-2024.png
+          node scripts/verify-official-map.mjs dist/assets/tfnsw-sydney-rail-2026.png
           echo "TfNSW original-map PNG verified and included in Pages deployment."
 
       - name: Cache the approved official map image
-        if: steps.official-cache.outputs.cache-hit != 'true' && hashFiles('.cache/official-tfnsw-map-2024.png') != ''
+        if: steps.official-cache.outputs.cache-hit != 'true' && hashFiles('.cache/official-tfnsw-map-2026.png') != ''
         uses: actions/cache/save@v4
         with:
-          path: .cache/official-tfnsw-map-2024.png
-          key: tfnsw-map-2024-v1
+          path: .cache/official-tfnsw-map-2026.png
+          key: tfnsw-map-2026-v1
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

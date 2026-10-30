@@ -28,7 +28,7 @@ test('real site HTML refers to fingerprinted CSS and JS, including both imported
       assert.ok(fs.existsSync(path.join(out, stamped[asset])));
       assert.ok(!html.includes('="' + asset + '"'), 'HTML must not use stale ' + asset);
     }
-    for (const asset of ['charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js']) {
+    for (const asset of ['charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'metro-southwest.js']) {
       assert.ok(app.includes("from './" + stamped[asset] + "'"), 'App import must be versioned: ' + asset);
       assert.ok(fs.existsSync(path.join(out, stamped[asset])));
     }

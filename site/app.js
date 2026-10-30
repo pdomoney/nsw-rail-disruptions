@@ -1927,11 +1927,11 @@ async function viewMap(main) {
     frame.classList.toggle('map-frame-city', kind === 'official' && view === 'city');
     frame.classList.toggle('map-geographic-focus', kind === 'track' && railFocus === 'rail');
     mapLabel.replaceChildren(
-      h('strong', {}, kind === 'official' ? 'PUBLISHED TfNSW NETWORK DIAGRAM' : 'GEOGRAPHIC RAIL NETWORK'),
-      h('span', {}, kind === 'official' ? '2024 SOURCE ARTWORK · MATCHED LIVE OVERLAYS'
+      h('strong', {}, kind === 'official' ? 'TFNSW NETWORK DIAGRAM · OCT 2026' : 'GEOGRAPHIC RAIL NETWORK'),
+      h('span', {}, kind === 'official' ? '2026 OFFICIAL SOURCE ARTWORK · LIVE TRACKING IN GEOGRAPHIC MAP'
         : 'GTFS ROUTE SHAPES + REPORTED VEHICLE POSITIONS'),
       h('small', {}, plotCount
-        ? `${plotCount.toLocaleString('en-AU')} reported vehicles ${kind === 'official' ? 'assessed for placement' : 'with mapped coordinates'}`
+        ? `${plotCount.toLocaleString('en-AU')} reported vehicles ${kind === 'official' ? 'on the Geographic Map' : 'with mapped coordinates'}`
         : 'No live vehicle positions reported'));
     if (kind === 'official') {
       if (geographic) { geographic.destroy(); geographic=null; }
@@ -2025,20 +2025,6 @@ async function viewMap(main) {
     const southwest=southwestMetroMapSummary(net,live);
     metroOpeningPanel.hidden=!southwest.officiallyOpened;
     if(southwest.officiallyOpened){
-      const focusSouthwest=async()=>{
-        if(kind!=='track'){
-          kind='track';vb=null;clearSelectedMapItem();
-          if(!geographicReady){
-            try{await loadLeaflet();geographicReady=true;}
-            catch(e){console.warn('Using offline geographic fallback:',e.message);}
-          }
-          await loadMap(false,kind);
-          if(main.dataset.routeId!==requestRoute)return;
-        }
-        view='sydney';lineFilter='M1';vb=null;clearSelectedMapItem();
-        prefs.set('mapKind','track');prefs.set('mapView','sydney');
-        setState();draw();
-      };
       const observations=southwest.positionsFresh
         ? southwest.m1Positions+' TfNSW-reported M1 vehicles · '+
           southwest.southwestReportedPositions+' in a Southwest geographic review area · '+
@@ -2056,14 +2042,12 @@ async function viewMap(main) {
           h('p',{class:'metro-opening-data'},stationStatus+' '+observations),
           ...(kind==='official'
             ? [h('p',{class:'metro-opening-warning'},
-                'The original TfNSW network diagram is dated September 2024 and ends M1 at Sydenham. '+
-                'It cannot display Southwest Metro trains on the extension. Use the Geographic Map for live data.')]
+                'The 30 October 2026 TfNSW diagram includes M1 to Bankstown. '+
+                'Live markers require new diagram calibration; the Geographic Map provides current GTFS train tracking.')]
             : [h('p',{class:'metro-opening-method'},
                 'Feed-reported positions are not exact GPS or confirmed station calls; the Southwest review area is approximate.')])
         ),
         h('div',{class:'metro-opening-actions'},
-          h('button',{type:'button',class:'metro-map-shortcut',onclick:focusSouthwest},
-            'Show M1 to Bankstown on Geographic Map'),
           h('a',{href:METRO_SOUTHWEST_OFFICIAL_URL,target:'_blank',rel:'noopener noreferrer'},
             'TfNSW opening information')
         )
@@ -2146,7 +2130,9 @@ async function viewMap(main) {
       h('div',{class:'map-primary-controls'},mapKindControl,lineControl),
       extraDisplay);
     drawMapOnly();
-    if (kind === 'official' && geo?.positioned != null) {
+    if(kind==='official'&&geo?.calibrationPending)
+      mapLabel.append(h('small',{},'2026 diagram · live markers available in Geographic Map'));
+    else if (kind === 'official' && geo?.positioned != null) {
       mapLabel.append(h('small', {}, geo.namedStations+' confirmed station locations · '
         +geo.positioned+' positioned trains · '+geo.unmatched+' unpositioned (no trusted match)'));
     }
@@ -2158,17 +2144,17 @@ async function viewMap(main) {
       h('div', { class:'key' },
         h('span', {}, h('i', { class:'map-sec incident' }), 'Incident'),
         h('span', {}, h('i', { class:'map-sec closed' }), 'Closed for trackwork now')));
+    if(kind==='official')
+      legend.replaceChildren(h('p',{class:'map-source-credit'},
+        'Official 2026 rail diagram. Live train and station-marker overlays are paused until 2026 artwork calibration; use the Geographic Map.'));
     const modeSource=kind==='official'
-      ? 'The 2024 TfNSW published network diagram is schematic, not geographically to scale. '+
-        'The map labels and background reflect that edition, while stations are individually '+
-        'verified against source vector stop symbols. Only matched services are positioned; '+
-        'unmatched trains are omitted rather than placed speculatively.'
+      ? 'The official 30 October 2026 TfNSW schematic includes M1 to Bankstown. Live marker coordinates calibrated to the 2024 PDF are disabled on this revised artwork. Use the Geographic Map for live GTFS positions.'
       :geographic
         ? 'TfNSW GTFS shapes.txt supplies service route paths and GTFS stops supply geographic station positions. '+
           'Live markers use coordinates reported by TfNSW, which may not represent an exact position.'
         : 'Offline geographic fallback draws TfNSW GTFS stop and route geometry without street tiles.';
     sourceCredit.replaceChildren(kind==='official'
-      ? 'Published 2024 network artwork: © Transport for NSW (CC BY 4.0). '
+      ? 'Published 2026 network artwork: © Transport for NSW (CC BY 4.0). '
       : 'Geographic rail shapes and station positions: Transport for NSW GTFS. ',
       h('a', { href: kind==='official'
         ? 'https://transportnsw.info/sydney-trains-network-map'
@@ -2181,8 +2167,8 @@ async function viewMap(main) {
       h('p', {}, 'An open circle represents a station; a solid vehicle symbol represents a service. '+
         'Map delay colours and closure markers are explained in the legend above. Tap or focus a symbol '+
         'to inspect its details. Where there is no live position or reliable match, no position is invented.'),
-      h('p', {}, '© 2024 Transport for NSW, Sydney network map under CC BY 4.0. '+
-        'The printed routes may differ from current services. The source artwork is not changed by this website.'),
+      h('p', {}, '© 2026 Transport for NSW, Sydney network map under CC BY 4.0. '+
+        'The 2026 source artwork is preserved as published; overlay calibration remains a separate verification task.'),
       h('p', {}, 'Live overlay data uses TfNSW GTFS feeds. Geographic view maps use TfNSW stop locations '+
         'and OpenStreetMap streets/coastline subject to map tile availability.'));
     const ov = (live.overlays || []).filter(o => !lineFilter || o.lines.includes(lineFilter));

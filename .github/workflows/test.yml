@@ -21,24 +21,16 @@ jobs:
             sudo apt-get -qq update
             sudo apt-get -y -qq install poppler-utils
           fi
-          OFFICIAL_MAP_PREVIEW_UNVERIFIED="1" OFFICIAL_MAP_PNG_INPUT="" bash scripts/render-official-map.sh test-artifacts/assets
-          node scripts/verify-official-map.mjs test-artifacts/assets/tfnsw-sydney-rail-2024.png
-      - name: Upload original map rendition for calibration review
+          OFFICIAL_MAP_PNG_INPUT="" bash scripts/render-official-map.sh test-artifacts/assets
+          node scripts/verify-official-map.mjs test-artifacts/assets/tfnsw-sydney-rail-2026.png
+      - name: Upload approved 2026 map rendition for source review
         uses: actions/upload-artifact@v4
         with:
           name: official-tfnsw-map-background
-          path: test-artifacts/assets/tfnsw-sydney-rail-2024.png
+          path: test-artifacts/assets/tfnsw-sydney-rail-2026.png
           retention-days: 21
-      - name: Generate station coordinate audit and review image
-        run: |
-          node scripts/review-official-alignment.mjs test-artifacts/official-review
-          cp test-artifacts/assets/tfnsw-sydney-rail-2024.png test-artifacts/official-review/
-      - name: Upload PDF-aligned station reconciliation review
-        uses: actions/upload-artifact@v4
-        with:
-          name: official-station-coordinate-audit
-          path: test-artifacts/official-review/
-          retention-days: 28
+      # Historical 2024 overlay calibration is intentionally NOT run against
+      # the reorganised 2026 PDF: it would produce false station coordinates.
       - name: Render network layout review previews
         run: node scripts/preview-network.js
       - name: Attach network diagram previews

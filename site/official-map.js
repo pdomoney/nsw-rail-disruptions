@@ -8,10 +8,10 @@ import {reportedSouthwestMetroProjected} from './metro-southwest.js';
 // Resolve relative to this published module, not the browser's current page URL.
 // Home Screen apps and fragment navigation must use the same asset location.
 export function officialMapAssetUrl(moduleUrl = import.meta.url) {
-  return new URL('assets/tfnsw-sydney-rail-2024.png?asset=verified-render-v3', moduleUrl).href;
+  return new URL('assets/tfnsw-sydney-rail-2026.png?asset=20261030-pinned-7877f5be', moduleUrl).href;
 }
 export const OFFICIAL_MAP = Object.freeze({
-  width: 1024, height: 1447, edition: '30 September 2024',
+  width: 1024, height: 1447, edition: '30 October 2026',
   // Revised URL also bypasses cached 404 responses from the broken release.
   image: officialMapAssetUrl(),
   source: 'https://transportnsw.info/sydney-trains-network-map',
@@ -250,10 +250,20 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   const unit=px=>px/scale;
   const svg=el('svg',{viewBox:frame.join(' '),width:W,height:H,
     class:'map-svg official-tfnsw-svg'+(zoom?' zoomed':''),
-    role:'group','aria-label':'Original Transport for NSW 2024 Sydney rail network map with separately added live train symbols'});
+    role:'group','aria-label':'Official Transport for NSW 2026 Sydney rail network diagram showing Metro to Bankstown; live positions available on the Geographic Map'});
   // Whole PDF page is a single authored background: no redraw or tracing of TfNSW routes.
   svg.append(el('image',{href:imageUrl,x:0,y:0,width:OFFICIAL_MAP.width,
     height:OFFICIAL_MAP.height,preserveAspectRatio:'none',class:'official-source-map'}));
+  // IMPORTANT: 2026 official PDF has a newly laid out Metro to Bankstown route.
+  // The historic 2024 station dot calibration must never be used as an overlay
+  // on this new image. Current geographic tracking retains validated GTFS points.
+  // Reintroduce interactive stations/trains here only after independent
+  // 2026 artwork vector-symbol calibration and visual QA are accepted.
+  if (OFFICIAL_MAP.edition === '30 October 2026') {
+    container.replaceChildren(svg);
+    return {svg,base,W,H,positioned:null,unmatched:null,
+      namedStations:null,pdfSymbols:null,calibrationPending:true};
+  }
   const alignment=buildVerifiedPdfAlignment(network);
   const selected=new Set((REFERENCE_2024_ROUTES[lineFilter]||[]).flat());
   const stationLayer=el('g',{class:'official-station-hits'});

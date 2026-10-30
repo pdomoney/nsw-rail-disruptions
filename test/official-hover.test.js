@@ -40,51 +40,24 @@ test('official and legacy map tooltip rows share identical train details', () =>
   ]);
 });
 
-test('official train uses styled hover callbacks, not the grey native SVG title bubble', () => {
-  const old = globalThis.document;
-  globalThis.document = { createElementNS: (_ns,tag) => node(tag) };
-  try {
-    const main = { clientWidth: 900, children: [], replaceChildren(...children) { this.children=children; } };
-    const hovered=[], dismissed=[], selected=[];
-    const result=drawOfficialOverlay(main, {
-      network:{stations:[
-        ['Tallawong Station',100,100,'M1',1],
-        ['Rouse Hill Station',200,100,'M1',1],
-      ]},
-      live:{trains:[['M1',150,100,120,243,3,null,null]],overlays:[]},
+test('the newly published 2026 PDF withholds 2024 markers, rather than misplacing vehicles',()=>{
+  const old=globalThis.document;
+  globalThis.document={createElementNS:(_namespace,tag)=>node(tag)};
+  try{
+    const main={clientWidth:900,children:[],replaceChildren(...children){this.children=children}};
+    const result=drawOfficialOverlay(main,{
+      network:{stations:[['Tallawong Station',100,100,'M1',1],
+        ['Bankstown Station',200,100,'M1 T6',1]]},
+      live:{trains:[['M1',150,100,120,243,3,null,'Bankstown']],overlays:[]},
       view:'sydney',
-      onTrainHover:(rows,x,y)=>hovered.push({rows,x,y}),
-      onHoverEnd:()=>dismissed.push(true),
-      onTrainSelect:message=>selected.push(message),
-      onStationSelect:()=>{},
     });
-    assert.equal(result.positioned,1);
-    const marker=find(main.children[0],x=>x.attrs.class==='official-vehicle');
-    assert.ok(marker,'train drawn on the actual PDF source route');
-    assert.ok(!marker.children.some(x=>x.tag==='title'),'no browser-default grey tooltip remains on the train');
-    assert.ok(marker.children.some(x=>x.attrs.class==='official-train-hit'),'generous invisible tap target retained');
-    assert.ok(marker.children.some(x=>x.attrs.class==='official-train-body'),'visible train body is separately styled');
-    marker.fire('pointerenter',{pointerType:'mouse',buttons:0,clientX:450,clientY:320});
-    assert.equal(hovered.length,1);
-    assert.deepEqual(hovered[0].rows,mapTrainHoverRows({line:'M1',headsign:null,delay:120,pax:243}));
-    marker.fire('pointermove',{pointerType:'mouse',buttons:0,clientX:451,clientY:321});
-    assert.equal(hovered.length,2);
-    marker.fire('pointerenter',{pointerType:'touch',buttons:0,clientX:452,clientY:322});
-    marker.fire('pointermove',{pointerType:'mouse',buttons:1,clientX:453,clientY:323});
-    assert.equal(hovered.length,2,'drag and touch must not show a stuck tooltip');
-    marker.fire('pointerleave');
-    assert.equal(dismissed.length,1);
-    marker.fire('focus');
-    assert.deepEqual([hovered.at(-1).x,hovered.at(-1).y],[115,200]);
-    marker.fire('blur');
-    assert.equal(dismissed.length,2);
-    marker.fire('click');
-    assert.equal(dismissed.length,3);
-    assert.equal(selected.length,1);
-    assert.match(selected[0],/between Tallawong and Rouse Hill/);
-  } finally {
-    globalThis.document=old;
-  }
+    assert.equal(result.calibrationPending,true);
+    assert.equal(result.positioned,null);
+    assert.equal(main.children[0].tag,'svg');
+    assert.ok(find(main.children[0],item=>item.tag==='image'), 'official source artwork retained');
+    assert.equal(find(main.children[0],item=>item.attrs.class==='official-vehicle'),null);
+    assert.equal(find(main.children[0],item=>item.attrs.class==='official-station-target'),null);
+  }finally{globalThis.document=old;}
 });
 
 test('official hover styling only outlines the visible icon, never the transparent touch rectangle',()=>{
