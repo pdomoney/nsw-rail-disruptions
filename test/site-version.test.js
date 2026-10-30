@@ -36,6 +36,8 @@ test('real site HTML refers to fingerprinted CSS and JS, including both imported
     assert.ok(official.includes("from './" + stamped['official-vector-stops.js'] + "'"),
       'TfNSW coordinate registry must be referenced by a hashed module filename');
     assert.ok(fs.existsSync(path.join(out, stamped['official-vector-stops.js'])));
+    assert.ok(official.includes("from './" + stamped['official-2026-alignment.js'] + "'"));
+    assert.ok(fs.existsSync(path.join(out, stamped['official-2026-alignment.js'])));
     assert.ok(app.includes("const SITE_RELEASE = '" + release + "'"));
     assert.ok(!app.includes('__SITE_RELEASE__'));
     const syntax = spawnSync(process.execPath, ['--check', path.join(out, stamped['app.js'])], { encoding: 'utf8' });
