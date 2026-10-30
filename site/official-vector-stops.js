@@ -21,7 +21,8 @@ export const PDF_SYMBOL_COUNT = 277;
 
 export const OFFICIAL_LINE_PALETTE = Object.freeze({
  T1:'#F99E1D', T2:'#0098CD', T3:'#F37021', T4:'#005AA9', T5:'#C32792',
- T6:'#783F20', T7:'#92969A', T8:'#00984C', T9:'#D11F36', M1:'#00969B'
+ T6:'#783F20', T7:'#92969A', T8:'#00984C', T9:'#D11F36', M1:'#00969B',
+ BMT:'#F99D1C', CCN:'#D11F2F', SCO:'#005AA3', SHL:'#00954C'
 });
 
 export function decodePdfSymbols() {
