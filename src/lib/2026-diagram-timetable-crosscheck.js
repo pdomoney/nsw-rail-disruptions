@@ -56,7 +56,8 @@ const selectedReason=(r)=>{
   if(!r.markerVisible)return 'diagram-marker-not-displayed';
   if(r.scheduledPairOnTrip===false)return 'diagram-pair-not-in-trip-stop-sequence';
   if(!r.serviceDay||r.serviceCalendarRuns==null||r.scheduledPairOnTrip==null||
-    r.tripTimeWindowPlausible!==true)return 'timetable-not-corroborated';
+    r.tripTimeWindowPlausible!==true||r.scheduledPairWindowPlausible!==true)
+    return 'timetable-not-corroborated';
   return 'coordinate-and-timetable-corroborated';
 };
 
@@ -139,8 +140,11 @@ export function auditDiagramTimetableFeed({
     const startDate=vp.startDate||upd?.trip?.startDate||null;
     const day=validDate(startDate)?startDate:null;
     const eligible=day&&trip?serviceRuns(staticMap.sched.services[trip[1]],day):null;
-    const routeConflict=!!(trip&&vp.routeId&&
-      (staticMap.routes[vp.routeId]!==line||meta?.routeId!==vp.routeId));
+    const routeConflict=!!(trip&&(
+      (vp.routeId&&(staticMap.routes[vp.routeId]!==line||meta?.routeId!==vp.routeId))||
+      (upd?.trip?.routeId&&staticMap.routes[upd.trip.routeId]!==line)||
+      (upd?.trip?.startDate&&vp.startDate&&upd.trip.startDate!==vp.startDate)
+    ));
     const cancelled=upd?.trip?.scheduleRelationship===3||upd?.trip?.scheduleRelationship===7;
     const coords={lat:vp.lat,lon:vp.lon};
     const shape=meta?.shapeId&&sourceShapes.get(meta.shapeId);
