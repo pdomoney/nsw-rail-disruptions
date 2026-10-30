@@ -259,7 +259,9 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   // Use only the 30 October 2026 source-page crosswalk. The older station
   // circle registry has a different layout and is deliberately not reused.
   const alignment=build2026PdfAlignment(network);
-  const selected=new Set((ROUTES_2026[lineFilter]||[]).flat());
+  const selected=new Set(
+    (SHARED_PRINTED_CORRIDORS_2026[lineFilter]||[lineFilter])
+      .flatMap(source=>(ROUTES_2026[source]||[]).flat()));
   const stationLayer=el('g',{class:'official-station-hits'});
   const hitRadius=Math.max(unit(11),3);
   for (const [name,pos] of source2026StationHits(lineFilter,network)) {
