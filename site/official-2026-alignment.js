@@ -8,20 +8,20 @@ export const PDF_2026_SHA256 =
   '7877f5bed61ef5f04fbda86752ca1582732544752242ca4777e2e93b00662669';
 export const PDF_2026_EDITION = '30 October 2026';
 export const STOP_PIXELS_2026 = Object.freeze({
-  'Tallawong':[219,401], 'Rouse Hill':[247,401], 'Kellyville':[274,401],
-  'Bella Vista':[302,401], 'Norwest':[330,401], 'Hills Showground':[357,401],
-  'Castle Hill':[385,401], 'Cherrybrook':[412,401], 'Epping':[508,417],
-  'Macquarie University':[564,436], 'Macquarie Park':[595,436],
-  'North Ryde':[625,436], 'Chatswood':[696,459],
-  'Crows Nest':[704,487], 'Victoria Cross':[733,520],
-  'Barangaroo':[740,563], 'Martin Place':[780,599], 'Gadigal':[780,632],
-  'Central':[758,652], 'Waterloo':[766,685], 'Sydenham':[690,749],
-  'Marrickville':[665,766], 'Dulwich Hill':[641,785],
-  'Hurlstone Park':[613,800], 'Canterbury':[583,800], 'Campsie':[555,800],
-  'Belmore':[526,800], 'Lakemba':[498,800], 'Wiley Park':[468,800],
-  'Punchbowl':[441,800], 'Bankstown':[418,824],
-  'Lidcombe':[448,691], 'Berala':[448,728], 'Regents Park':[449,767],
-  'Birrong':[450,797], 'Yagoona':[447,821], 'Olympic Park':[449,588],
+  'Tallawong':[222.16,409.53], 'Rouse Hill':[255.36,401.49], 'Kellyville':[282.31,401.49],
+  'Bella Vista':[309.25,401.49], 'Norwest':[336.2,401.49], 'Hills Showground':[363.15,401.49],
+  'Castle Hill':[390.09,401.49], 'Cherrybrook':[417.04,401.49], 'Epping':[508,417],
+  'Macquarie University':[565.17,434.81], 'Macquarie Park':[596.41,434.81],
+  'North Ryde':[627.64,434.81], 'Chatswood':[696,459],
+  'Crows Nest':[691.58,480.64], 'Victoria Cross':[725.83,514.84],
+  'Barangaroo':[735.84,562.66], 'Martin Place':[780,599], 'Gadigal':[783.68,619.39],
+  'Central':[758,652], 'Waterloo':[778.41,684.73], 'Sydenham':[690,749],
+  'Marrickville':[666.62,750.79], 'Dulwich Hill':[647.35,750.99],
+  'Hurlstone Park':[624.8,761.89], 'Canterbury':[611.64,775.04], 'Campsie':[596.85,789.81],
+  'Belmore':[573.19,800.81], 'Lakemba':[553.55,800.81], 'Wiley Park':[533.91,800.81],
+  'Punchbowl':[514.27,800.81], 'Bankstown':[484.33,798.41],
+  'Lidcombe':[448,691], 'Berala':[448.56,724.12], 'Regents Park':[448.56,748.22],
+  'Birrong':[457.6,771.99], 'Yagoona':[469.52,783.89], 'Olympic Park':[449,588],
   'Richmond':[155,296], 'East Richmond':[156,319],
   'Clarendon':[157,335], 'Windsor':[157,355], 'Mulgrave':[157,376],
   'Vineyard':[157,396], 'Riverstone':[157,415], 'Schofields':[157,435],
@@ -199,8 +199,9 @@ export function officialDisruptionPins2026(live,lineFilter='') {
   for(const overlay of live?.overlays||[]) {
     if(lineFilter&&!(overlay.lines||[]).includes(lineFilter))continue;
     for(const info of [...(overlay.pins||[]),...(overlay.spins||[])]) {
-      const point=locations.get(normalise(info[2]));
-      if(!point||lines&&!lines.has(point.name))continue;
+      const original=locations.get(normalise(info[2]));
+      if(!original||lines&&!lines.has(original.name))continue;
+      const point={...original,xy:PDF_2026_LINE_STOPS[lineFilter]?.[original.name]||original.xy};
       const id=overlay.kind+'|'+point.name;
       if(seen.has(id))continue;
       seen.add(id);
