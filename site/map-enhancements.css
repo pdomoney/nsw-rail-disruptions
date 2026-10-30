@@ -355,32 +355,3 @@
   .map-frame:has(.geo-map) .map-corner-label {max-width:67%;padding:9px 10px;}
   .map-frame:has(.geo-map) .map-corner-label strong {font-size:.78rem;}
 }
-
-
-/* 2026 Southwest Metro context, with a transparent historical diagram warning */
-.metro-opening-note {
-  display:flex;align-items:center;justify-content:space-between;
-  gap:16px;flex-wrap:wrap;margin:10px 0 14px;padding:13px 16px;
-  border:1px solid #c6e1df;border-left:4px solid #168388;
-  border-radius:12px;background:#f3faf9;color:#224d52;
-}
-.metro-opening-note[hidden]{display:none}
-.metro-opening-copy{flex:1 1 430px;min-width:0}
-.metro-opening-copy strong{font-size:.94rem;font-weight:750}
-.metro-opening-copy p{margin:5px 0 0;font-size:.79rem;line-height:1.5}
-.metro-opening-copy .metro-opening-data{color:#2f5b65;font-weight:550}
-.metro-opening-copy .metro-opening-warning{color:#7b481e;background:#fff4e6;padding:8px 10px;border-radius:7px}
-.metro-opening-method{color:#56717b}
-.metro-opening-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
-.metro-opening-actions .metro-map-shortcut{
-  border:1px solid #168388;background:#168388;color:white;
-  border-radius:8px;padding:9px 12px;font-size:.8rem;font-weight:700;cursor:pointer
-}
-.metro-opening-actions a{color:#146b76;font-size:.79rem;font-weight:650}
-.metro-map-shortcut:hover{background:#0d656a}
-.metro-map-shortcut:focus-visible,.metro-opening-actions a:focus-visible{outline:3px solid #2d8ac7;outline-offset:3px}
-@media(max-width:650px){
- .metro-opening-note{padding:12px;gap:10px}
- .metro-opening-actions{width:100%}
- .metro-map-shortcut{flex:1}
-}

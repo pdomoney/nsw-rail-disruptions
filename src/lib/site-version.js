@@ -68,8 +68,9 @@ export function publishSiteRelease(siteDir, outputDir, { generatedAt = Date.now(
   app = replaceOnce(app, "from './station-patronage.js'", "from './" + stamped['station-patronage.js'] + "'", 'app.js');
   app = replaceOnce(app, "from './geo-map.js'", "from './" + stamped['geo-map.js'] + "'", 'app.js');
   app = replaceOnce(app, "from './official-map.js'", "from './" + stamped['official-map.js'] + "'", 'app.js');
-  app = replaceOnce(app, "from './metro-southwest.js'",
-    "from './" + stamped['metro-southwest.js'] + "'", 'app.js');
+  // The temporary October 2026 opening banner was removed from app.js.
+  // Keep metro-southwest.js as a versioned leaf: official-map.js still imports
+  // its geographic position-screening helper and is stamped above.
   app = replaceOnce(app, '__SITE_RELEASE__', release, 'app.js');
   stamped['app.js'] = 'app.' + hash(app).slice(0, 12) + '.js';
   fs.writeFileSync(path.join(outputDir, stamped['app.js']), app);
