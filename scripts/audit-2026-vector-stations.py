@@ -41,12 +41,14 @@ named={k:[float(x),float(y)] for k,x,y in re.findall(r"'([^']+)':\s*\[\s*([\d.]+
 # No closest-approximate fallback: drift or a missing source symbol is an error.
 line_section=source.split('PDF_2026_LINE_STOPS = Object.freeze({',1)[1].split('export const ROUTES_2026',1)[0]
 verified_counts={}
-for line,expected in [('M1',31),('T6',6)]:
+for line,expected in [('M1',31),('T6',6),('T1',27),('T2',13),('T3',8),('T4',6),('T5',18),('T7',2),('T8',14),('T9',6)]:
     match=re.search(r'\b'+line+r':Object\.freeze\(\{(.*?)\}\)',line_section,re.S)
     if not match:raise RuntimeError('Missing source-specific '+line+' calibration')
     positions={name:[float(x),float(y)] for name,x,y in re.findall(
         r"'([^']+)':\s*\[\s*([\d.]+)\s*,\s*([\d.]+)\s*\]",match.group(1))}
     if len(positions)!=expected:raise RuntimeError(line+' requires '+str(expected)+' calibrated stations')
+    if len({tuple(v) for v in positions.values()}) != len(positions):
+        raise RuntimeError(line+' assigns two different stations to the same vector symbol')
     source_points=[p['point'] for p in candidates if p['line']==line and p['point'][1]<1200]
     for name,point in positions.items():
         if not source_points:raise RuntimeError(line+' source station symbols unavailable')
