@@ -26,9 +26,12 @@ jobs:
       - name: Inspect real 2026 TfNSW PDF station circles and source anchor displacement
         run: |
           python3 -m pip -q install pymupdf
+          mkdir -p test-artifacts/vector-review
+          node scripts/export-2026-diagram-source-pairs.mjs test-artifacts/vector-review/expected-pairs.json
           python3 scripts/audit-2026-vector-stations.py \
             --pdf test-artifacts/assets/tfnsw-sydney-rail-2026.pdf \
             --source site/official-2026-alignment.js \
+            --pairs test-artifacts/vector-review/expected-pairs.json \
             --out-dir test-artifacts/vector-review
           cat test-artifacts/vector-review/station-vector-audit.md >> "$GITHUB_STEP_SUMMARY"
       - name: Save source station-symbol evidence for operator verification

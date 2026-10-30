@@ -2,7 +2,7 @@
 """Audit 2026 TfNSW PDF vector station circles; never auto-patch live coordinates."""
 import argparse,collections,hashlib,json,math,pathlib,re
 p=argparse.ArgumentParser()
-p.add_argument('--pdf',required=True);p.add_argument('--source',required=True);p.add_argument('--out-dir',required=True)
+p.add_argument('--pdf',required=True);p.add_argument('--source',required=True);p.add_argument('--out-dir',required=True);p.add_argument('--pairs')
 a=p.parse_args()
 raw=pathlib.Path(a.pdf).read_bytes()
 sha=hashlib.sha256(raw).hexdigest()
@@ -80,6 +80,30 @@ for row in review:
     md.append('| '+row['line']+' | '+row['station']+' | '+str(row['manual'])+
       ' | '+(str(hit['point']) if hit else 'none')+' | '+
       (str(hit['distance']) if hit else 'unknown')+' |')
+
+if a.pairs:
+    all_pairs=json.loads(pathlib.Path(a.pairs).read_text())
+    other=[]
+    for row in all_pairs:
+        line=row['line']
+        vec=[p['point'] for p in candidates if p['line']==line and p['point'][1]<1200]
+        nearest=sorted(vec,key=lambda p:math.dist(p,row['pixel']))[:2]
+        delta=math.dist(nearest[0],row['pixel']) if nearest else None
+        other.append({'line':line,'station':row['station'],'manual':row['pixel'],
+                      'nearest':nearest,'delta':round(delta,1) if delta is not None else None})
+    report['all_lines_operator_review']=other
+    (out/'vector-points.json').write_text(json.dumps(report,indent=2)+'\n')
+    md+=['','## Other line anchor candidates (NOT yet verified as named stations)',
+         '','| Line | Station | Existing pixel | Closest same-colour circle | Difference px |',
+         '|---|---|---|---|---:|']
+    for row in other:
+        if row['line'] in ('M1','T6'):continue
+        md.append('| '+row['line']+' | '+row['station']+' | '+str(row['manual'])+
+          ' | '+str(row['nearest'][0] if row['nearest'] else None)+
+          ' | '+str(row['delta'])+' |')
+        if row['delta'] is None or row['delta']>15:
+            print('OTHER_LINE_REVIEW',row['line'],row['station'],
+                  'delta='+str(row['delta']),'closest='+str(row['nearest'][:1]))
 (out/'station-vector-audit.md').write_text('\n'.join(md)+'\n')
 print('SOURCE_VECTOR_COUNTS '+json.dumps(dict(counts),sort_keys=True))
 for line in ('M1','T6','T8'):
