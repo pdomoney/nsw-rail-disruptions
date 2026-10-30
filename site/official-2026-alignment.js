@@ -55,10 +55,28 @@ export const STOP_PIXELS_2026 = Object.freeze({
 // line-specific offsets can be refined independently of the route-stop names.
 export const PDF_2026_LINE_STOPS = Object.freeze({
   M1:Object.freeze({
-    'Central':[769,653],'Martin Place':[780,598],
-    'Sydenham':[697,746],'Bankstown':[424,823],
+    'Tallawong':[222.16,409.53], 'Rouse Hill':[255.36,401.49],
+    'Kellyville':[282.31,401.49], 'Bella Vista':[309.25,401.49],
+    'Norwest':[336.20,401.49], 'Hills Showground':[363.15,401.49],
+    'Castle Hill':[390.09,401.49], 'Cherrybrook':[417.04,401.49],
+    'Epping':[505.16,417.88], 'Macquarie University':[565.17,434.81],
+    'Macquarie Park':[596.41,434.81], 'North Ryde':[627.64,434.81],
+    'Chatswood':[658.07,447.15], 'Crows Nest':[691.58,480.64],
+    'Victoria Cross':[725.83,514.84], 'Barangaroo':[735.84,562.66],
+    'Martin Place':[783.68,600.69], 'Gadigal':[783.68,619.39],
+    'Central':[778.41,651.67], 'Waterloo':[778.41,684.73],
+    'Sydenham':[703.93,750.91], 'Marrickville':[666.62,750.79],
+    'Dulwich Hill':[647.35,750.99], 'Hurlstone Park':[624.80,761.89],
+    'Canterbury':[611.64,775.04], 'Campsie':[596.85,789.81],
+    'Belmore':[573.19,800.81], 'Lakemba':[553.55,800.81],
+    'Wiley Park':[533.91,800.81], 'Punchbowl':[514.27,800.81],
+    'Bankstown':[486.74,800.81],
   }),
-  T6:Object.freeze({'Bankstown':[433,831], 'Lidcombe':[451,691]}),
+  T6:Object.freeze({
+    'Lidcombe':[448.60,700.00], 'Berala':[448.56,724.12],
+    'Regents Park':[448.56,748.22], 'Birrong':[457.60,771.99],
+    'Yagoona':[469.52,783.89], 'Bankstown':[481.92,796.00],
+  }),
   T4:Object.freeze({'Central':[780,653], 'Sydenham':[691,749]}),
   T8:Object.freeze({'Central':[766,653], 'Wolli Creek':[694,795]}),
   T1:Object.freeze({'Central':[745,652],'Town Hall':[742,615],
@@ -67,6 +85,7 @@ export const PDF_2026_LINE_STOPS = Object.freeze({
   T3:Object.freeze({'Central':[752,653],'Lidcombe':[455,697]}),
   T9:Object.freeze({'Central':[752,654]}),
 });
+
 export const ROUTES_2026 = Object.freeze({
   M1:[['Tallawong','Rouse Hill','Kellyville','Bella Vista','Norwest',
     'Hills Showground','Castle Hill','Cherrybrook'],
@@ -144,7 +163,7 @@ export function build2026PdfAlignment(network) {
   }
   return result;
 }
-export function locate2026Train(train,alignment,maxDistanceUnits=65) {
+export function locate2026Train(train,alignment,maxDistanceUnits=25) {
   const [line,x,y]=train;
   if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(maxDistanceUnits))return null;
   let selected=null;
@@ -154,7 +173,7 @@ export function locate2026Train(train,alignment,maxDistanceUnits=65) {
     if(selected==null||match.distance<selected.distance)
       selected={...match,edge};
   }
-  // Source feed positions are projected in 10 m units. 65 => 650 m max.
+  // Source feed positions are projected in 10 m units. 25 => 250 m maximum. This rejects distant parallel line matches.
   // No 2024 alignment fallback, and no interpolation over missing stations.
   if(!selected||selected.distance>maxDistanceUnits)return null;
   const {pdfA,pdfB,from,to}=selected.edge;
@@ -167,7 +186,8 @@ export function locate2026Train(train,alignment,maxDistanceUnits=65) {
 export function source2026StationHits(lineFilter='') {
   const selected=lineFilter?new Set((ROUTES_2026[lineFilter]||[]).flat()):null;
   return Object.entries(STOP_PIXELS_2026)
-    .filter(([name])=>!selected||selected.has(name));
+    .filter(([name])=>!selected||selected.has(name))
+    .map(([name,point])=>[name,PDF_2026_LINE_STOPS[lineFilter]?.[name]||point]);
 }
 
 
