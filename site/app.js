@@ -1,7 +1,6 @@
 import { heatmap, hbars, columns, line as lineChart, onColor, showTip, hideTip, compact } from './charts.js';
 import { viewPatronage } from './patronage.js';
 import { loadLeaflet, createGeographicMap, geographicStationLines, trainDescription } from './geo-map.js';
-import {southwestMetroMapSummary,METRO_SOUTHWEST_OFFICIAL_URL} from './metro-southwest.js';
 import { drawOfficialOverlay, OFFICIAL_MAP, loadOfficialMapImage, mapTrainHoverRows } from './official-map.js';
 import { viewStationPatronage } from './station-patronage.js';
 
@@ -1797,7 +1796,6 @@ async function viewMap(main) {
   let lineFilter = q.get('line') || '';
   if (kind === 'official' && lineFilter && !/^T[1-9]$|^M1$/.test(lineFilter))
     lineFilter = '';
-  const metroOpeningPanel=h('section',{class:'metro-opening-note',hidden:true,'aria-label':'Southwest Metro opening and live M1 positions'});
   const head = h('div', { class: 'map-head' });
   const filters = h('div', { class: 'filters map-controls',
     'aria-label':'Map view and line filters' });
@@ -2006,7 +2004,7 @@ async function viewMap(main) {
         h('h1', {}, 'Network map'),
         h('p', { class:'map-page-subtitle' },
           'Choose a map and tap a station or service for details.'))),
-    head,metroOpeningPanel,filters,mapWorkspace,legend,
+    head,filters,mapWorkspace,legend,
     h('section', { class: 'section map-current-notes',
       'aria-labelledby': 'map-notes-h' },
       h('h2', { id: 'map-notes-h' }, 'Current incidents and closures'), notes),
@@ -2022,39 +2020,6 @@ async function viewMap(main) {
   };
   const draw = () => {
     const live = D.live, net = D.network;
-    const southwest=southwestMetroMapSummary(net,live);
-    metroOpeningPanel.hidden=!southwest.officiallyOpened;
-    if(southwest.officiallyOpened){
-      const observations=southwest.positionsFresh
-        ? southwest.m1Positions+' TfNSW-reported M1 vehicles · '+
-          southwest.southwestReportedPositions+' in a Southwest geographic review area · '+
-          southwest.bankstownHeadsignPositions+' showing Bankstown as their destination. '+
-          'Position feed at '+time(southwest.positionTimestamp)+'.'
-        : 'M1 positions are unavailable or over 15 minutes old; current vehicle counts are withheld.';
-      const stationStatus=southwest.sourceHasMetroLine
-        ? southwest.newStationsInSource+'/'+southwest.expectedNewStations+
-          ' new Southwest Metro stops represented in collected GTFS.'
-        : 'M1 GTFS line geometry not available; map coverage cannot be confirmed.';
-      metroOpeningPanel.replaceChildren(
-        h('div',{class:'metro-opening-copy'},
-          h('strong',{},'M1 Southwest Metro · Bankstown extension now open'),
-          h('p',{},'Opened Friday 30 October 2026 at 4:31am AEDT; through services connect Bankstown, the City and Tallawong.'),
-          h('p',{class:'metro-opening-data'},stationStatus+' '+observations),
-          ...(kind==='official'
-            ? [h('p',{class:'metro-opening-warning'},
-                'This 2026 TfNSW diagram now shows live services on reviewed station-to-station corridors. '+
-                'Markers are approximate: any vehicle without a trusted 2026 segment match is omitted. '+
-                'The Geographic Map provides full GTFS-based tracking.')]
-            : [h('p',{class:'metro-opening-method'},
-                'Feed-reported positions are not exact GPS or confirmed station calls; the Southwest review area is approximate.')])
-        ),
-        h('div',{class:'metro-opening-actions'},
-          h('a',{href:METRO_SOUTHWEST_OFFICIAL_URL,target:'_blank',rel:'noopener noreferrer'},
-            'TfNSW opening information')
-        )
-      );
-    }
-
     const c = live.counts || {};
     const top = Object.entries(c.byLine || {}).sort((a, b) => b[1] - a[1]).filter(([, n]) => n >= 2).slice(0, 3).map(([id]) => id);
     head.replaceChildren(
