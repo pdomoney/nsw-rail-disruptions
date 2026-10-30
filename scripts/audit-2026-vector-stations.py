@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""Audit 2026 TfNSW PDF vector station circles; never auto-patch live coordinates."""
+import argparse,collections,hashlib,json,math,pathlib,re
+p=argparse.ArgumentParser()
+p.add_argument('--pdf',required=True);p.add_argument('--source',required=True);p.add_argument('--out-dir',required=True)
+a=p.parse_args()
+raw=pathlib.Path(a.pdf).read_bytes()
+sha=hashlib.sha256(raw).hexdigest()
+if sha!='7877f5bed61ef5f04fbda86752ca1582732544752242ca4777e2e93b00662669':
+    raise RuntimeError('Unapproved TfNSW PDF checksum')
+import fitz
+doc=fitz.open(a.pdf)
+if len(doc)!=1:raise RuntimeError('Unexpected PDF page count')
+page=doc[0]; sx=1024/page.rect.width;sy=1447/page.rect.height
+palette={'M1':(0,150,155),'T6':(120,63,32),'T1':(249,158,29),'T2':(0,152,205),
+'T3':(243,112,33),'T4':(0,90,169),'T5':(195,39,146),'T7':(146,150,154),
+'T8':(0,152,76),'T9':(209,31,54)}
+def closest(c):
+    if c is None:return None
+    rgb=tuple(int(round(255*x)) for x in c[:3])
+    dist,line=min((math.dist(rgb,v),k) for k,v in palette.items())
+    return line if dist<=55 else None
+candidates=[]; counts=collections.Counter()
+for drawing in page.get_drawings():
+    r=drawing.get('rect')
+    if r is None:continue
+    w,h=r.width*sx,r.height*sy
+    if not (2<=w<=16 and 2<=h<=16 and abs(w-h)<=5):continue
+    line=closest(drawing.get('color')) or closest(drawing.get('fill'))
+    if not line:continue
+    methods=collections.Counter(q[0] for q in drawing.get('items',[]))
+    if methods.get('c',0)<2 and methods.get('qu',0)<1:continue
+    pt=[round((r.x0+r.x1)*sx/2,2),round((r.y0+r.y1)*sy/2,2)]
+    candidates.append({'line':line,'point':pt,'diameter':[round(w,2),round(h,2)]})
+    counts[line]+=1
+source=pathlib.Path(a.source).read_text()
+body=source.split('STOP_PIXELS_2026 = Object.freeze({',1)[1].split('});',1)[0]
+named={k:[float(x),float(y)] for k,x,y in re.findall(r"'([^']+)':\s*\[\s*([\d.]+)\s*,\s*([\d.]+)\s*\]",body)}
+review=[]
+for line,names in {'M1':['Tallawong','Rouse Hill','Epping','Chatswood','Central','Sydenham',
+'Marrickville','Dulwich Hill','Hurlstone Park','Canterbury','Campsie','Belmore','Lakemba',
+'Wiley Park','Punchbowl','Bankstown'],
+'T6':['Lidcombe','Berala','Regents Park','Birrong','Yagoona','Bankstown']}.items():
+    pts=[v for v in candidates if v['line']==line]
+    for name in names:
+        if name not in named:continue
+        near=sorted(pts,key=lambda p:math.dist(p['point'],named[name]))[:4]
+        review.append({'line':line,'station':name,'manual':named[name],
+                       'near':[{**v,'distance':round(math.dist(v['point'],named[name]),1)} for v in near]})
+out=pathlib.Path(a.out_dir);out.mkdir(parents=True,exist_ok=True)
+report={'source_sha256':sha,'counts':dict(counts),'candidate_count':len(candidates),
+        'candidates':candidates,'nearest_symbols_not_approved_station_labels':review}
+(out/'vector-points.json').write_text(json.dumps(report,indent=2)+'\n')
+md=['# 2026 official TfNSW station circle evidence','',
+'This is an operator-only diagnostic. Nearest station symbols may belong to a neighboring stop.',
+'No automated coordinate changes are authorized.','',
+'| Line | Name | Current anchor | Nearest same-color source symbol | Offset (px) |',
+'|---|---|---|---|---:|']
+for row in review:
+    hit=row['near'][0] if row['near'] else None
+    md.append('| '+row['line']+' | '+row['station']+' | '+str(row['manual'])+
+      ' | '+(str(hit['point']) if hit else 'none')+' | '+
+      (str(hit['distance']) if hit else 'unknown')+' |')
+(out/'station-vector-audit.md').write_text('\n'.join(md)+'\n')
+print('SOURCE_VECTOR_COUNTS '+json.dumps(dict(counts),sort_keys=True))
+for row in review:
+    hit=row['near'][0] if row['near'] else None
+    print('ANCHOR_REVIEW',row['line'],row['station'],'manual='+str(row['manual']),
+          'source_candidate='+str(hit['point'] if hit else None),
+          'delta='+str(hit['distance'] if hit else 'none'))
