@@ -41,7 +41,7 @@ named={k:[float(x),float(y)] for k,x,y in re.findall(r"'([^']+)':\s*\[\s*([\d.]+
 # No closest-approximate fallback: drift or a missing source symbol is an error.
 line_section=source.split('PDF_2026_LINE_STOPS = Object.freeze({',1)[1].split('export const ROUTES_2026',1)[0]
 verified_counts={}
-for line,expected in [('M1',31),('T6',6),('T1',27),('T2',13),('T3',8),('T4',6),('T5',18),('T7',2),('T8',14),('T9',6)]:
+for line,expected in [('M1',31),('T6',6),('T1',27),('T2',13),('T3',8),('T4',28),('T5',18),('T7',2),('T8',14),('T9',6)]:
     match=re.search(r'\b'+line+r':Object\.freeze\(\{(.*?)\}\)',line_section,re.S)
     if not match:raise RuntimeError('Missing source-specific '+line+' calibration')
     positions={name:[float(x),float(y)] for name,x,y in re.findall(
@@ -107,9 +107,13 @@ if a.pairs:
               'delta='+str(row['delta']),'closest='+str(row['nearest'][:1]))
 (out/'station-vector-audit.md').write_text('\n'.join(md)+'\n')
 print('SOURCE_VECTOR_COUNTS '+json.dumps(dict(counts),sort_keys=True))
-for line in ('M1','T6','T8'):
+for line in ('M1','T6','T8','T4'):
     pts=sorted([x['point'] for x in candidates if x['line']==line],key=lambda p:(round(p[1]/12),p[0]))
     print('SOURCE_CANDIDATES_'+line+' '+json.dumps(pts))
+    if line == 'T4':
+        print('T4_SOUTH_SOURCE_CIRCLES '+json.dumps([p for p in pts
+              if 650 <= p[0] <= 730 and 890 <= p[1] <= 1110]))
+
 
 for row in review:
     hit=row['near'][0] if row['near'] else None

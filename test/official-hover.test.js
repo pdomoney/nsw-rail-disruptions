@@ -92,3 +92,49 @@ test('official hover styling only outlines the visible icon, never the transpare
   assert.match(app,/onTrainHover:showTip,onHoverEnd:hideTip/);
   assert.match(app,/const tip = mapTrainHoverRows\(\{line,headsign,delay,pax\}\)/);
 });
+
+test('official 2026 diagram renders two independent T4 trains around Penshurst and Mortdale',()=>{
+  const previous=globalThis.document;
+  globalThis.document={createElementNS:(_namespace,tag)=>node(tag)};
+  try{
+    const project=(lat,lon)=>[
+      Math.round((lon-151)*(111320*Math.cos(-33.87*Math.PI/180)/10)),
+      Math.round((-33.87-lat)*(110574/10))
+    ];
+    const known=[
+      ['Hurstville',-33.96745,151.10276],
+      ['Penshurst',-33.96613,151.08939],
+      ['Mortdale',-33.97059,151.08129],
+      ['Oatley',-33.98085,151.07897],
+      ['Como',-34.00427,151.068],
+    ];
+    const stations=known.map(([name,lat,lon])=>[
+      name+' Station',...project(lat,lon),'T4 SCO',1
+    ]);
+    const between=(a,b)=>{
+      const A=project(...a),B=project(...b);
+      return A.map((v,i)=>Math.round((v+B[i])/2));
+    };
+    const trains=[
+      ['T4',...between([-33.96613,151.08939],[-33.97059,151.08129]),0,200,2,null,'Cronulla'],
+      ['T4',...between([-33.97059,151.08129],[-33.98085,151.07897]),30,180,1,null,'Bondi Junction'],
+    ];
+    const holder={clientWidth:950,children:[],replaceChildren(...v){this.children=v}};
+    const result=drawOfficialOverlay(holder,{
+      network:{stations},live:{trains,overlays:[]},lineFilter:'T4'
+    });
+    assert.equal(result.positioned,2);
+    assert.equal(result.unmatched,0);
+    const group=find(holder.children[0],item=>item.attrs.class==='official-train-markers');
+    const icons=group.children.filter(n=>n.attrs.class==='official-vehicle');
+    assert.equal(icons.length,2);
+    for(const icon of icons){
+      assert.equal(icon.attrs['aria-label'].includes('T4'),true);
+      const match=icon.attrs.transform.match(/^translate\(([-\d.]+) ([-\d.]+)\)$/);
+      assert.ok(match,'position transform is present');
+      assert.ok(Math.abs(Number(match[1])-688.78)<1,
+        'train should follow the verified vertical T4 diagram corridor');
+      assert.ok(Number(match[2])>=962.62&&Number(match[2])<=1002.96);
+    }
+  }finally{globalThis.document=previous;}
+});

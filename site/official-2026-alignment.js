@@ -135,9 +135,31 @@ export const PDF_2026_LINE_STOPS = Object.freeze({
     'Martin Place':[789.09,606.57],
     'Central':[771.35,651.67],
     'Sydenham':[699.49,746.39],
+    'Tempe':[688.79,781.06],
     'Wolli Creek':[688.74,801.27],
+    'Arncliffe':[688.78,821.41],
+    'Banksia':[688.78,841.54],
+    'Rockdale':[688.78,861.75],
+    'Kogarah':[688.78,881.92],
+    'Carlton':[688.78,902.10],
+    'Allawah':[688.78,922.27],
     'Hurstville':[688.76,942.64],
+    'Penshurst':[688.78,962.62],
+    'Mortdale':[688.78,982.79],
+    'Oatley':[688.78,1002.96],
+    'Como':[688.78,1023.14],
+    'Jannali':[688.78,1043.31],
+    'Sutherland':[688.76,1063.48],
+    'Loftus':[688.78,1090.38],
+    'Engadine':[688.78,1110.55],
+    'Heathcote':[688.78,1130.72],
     'Waterfall':[688.76,1150.95],
+    'Kirrawee':[756.06,1076.93],
+    'Gymea':[776.12,1076.93],
+    'Miranda':[796.44,1076.93],
+    'Caringbah':[816.63,1076.93],
+    'Woolooware':[836.82,1076.93],
+    'Cronulla':[857.02,1076.93],
   }),
   T5:Object.freeze({
     'Richmond':[153.55,295.29],
@@ -216,9 +238,11 @@ export const ROUTES_2026 = Object.freeze({
     ['Regents Park','Lidcombe','Strathfield','Burwood'],
     ['Redfern','Central','Town Hall','Wynyard']],
   T4:[['Bondi Junction','Kings Cross','Martin Place','Town Hall',
-    'Central','Redfern','Sydenham','Wolli Creek','Hurstville',
-    'Sutherland','Waterfall'],
-    ['Sutherland','Cronulla']],
+    'Central','Redfern','Sydenham','Tempe','Wolli Creek',
+    'Arncliffe','Banksia','Rockdale','Kogarah','Carlton','Allawah',
+    'Hurstville','Penshurst','Mortdale','Oatley','Como','Jannali',
+    'Sutherland','Loftus','Engadine','Heathcote','Waterfall'],
+    ['Sutherland','Kirrawee','Gymea','Miranda','Caringbah','Woolooware','Cronulla']],
   T5:[['Richmond','East Richmond','Clarendon','Windsor','Mulgrave',
     'Vineyard','Riverstone','Schofields','Quakers Hill','Marayong'],
     ['Blacktown','Parramatta','Merrylands','Guildford','Yennora',
@@ -293,23 +317,25 @@ export function locate2026Train(train,alignment,maxDistanceUnits=25) {
 }
 export function source2026StationHits(lineFilter='') {
   const selected=lineFilter?new Set((ROUTES_2026[lineFilter]||[]).flat()):null;
-  return Object.entries(STOP_PIXELS_2026)
-    .filter(([name])=>!selected||selected.has(name))
-    .filter(([name])=>lineFilter
-      ? Boolean(PDF_2026_LINE_STOPS[lineFilter]?.[name])
-      : Object.values(PDF_2026_LINE_STOPS).some(line=>line[name]))
-    .map(([name,point])=>{
-      const vetted=PDF_2026_LINE_STOPS[lineFilter]?.[name]||
-        Object.values(PDF_2026_LINE_STOPS).find(line=>line[name])?.[name];
-      return [name,vetted||point];
-    });
+  const hits=new Map();
+  // The generic PR64 registry covers only some printed stations. After
+  // the 2026 source-vector audit the line-specific registry is the actual
+  // authoritative set for both stop selection and diagram vehicle sections.
+  for(const [line,stations] of Object.entries(PDF_2026_LINE_STOPS)) {
+    if(lineFilter&&line!==lineFilter)continue;
+    for(const [name,point] of Object.entries(stations)) {
+      if(selected&&!selected.has(name))continue;
+      if(!hits.has(name))hits.set(name,point);
+    }
+  }
+  return [...hits];
 }
 
 
 export function officialDisruptionPins2026(live,lineFilter='') {
   const results=[],seen=new Set();
   const lines=lineFilter?new Set((ROUTES_2026[lineFilter]||[]).flat()):null;
-  const locations=new Map(Object.entries(STOP_PIXELS_2026)
+  const locations=new Map(source2026StationHits(lineFilter)
     .map(([name,xy])=>[normalise(name),{name,xy}]));
   for(const overlay of live?.overlays||[]) {
     if(lineFilter&&!(overlay.lines||[]).includes(lineFilter))continue;
