@@ -9,7 +9,7 @@ const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 // Every local asset referenced by index.html must receive an immutable URL.
 // ux-refresh.css was previously copied but not stamped, so cached Safari/PWA
 // sessions could mix old UX layouts with newly published JavaScript.
-const baseFiles = ['app.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'official-vector-stops.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css', 'ux-refresh.css', 'favicon.svg', 'rail-mark.svg'];
+const baseFiles = ['app.js', 'metro-southwest.js', 'charts.js', 'patronage.js', 'station-patronage.js', 'geo-map.js', 'official-map.js', 'official-vector-stops.js', 'styles.css', 'patronage.css', 'station-patronage.css', 'map-enhancements.css', 'official-map.css', 'ux-refresh.css', 'favicon.svg', 'rail-mark.svg'];
 
 function filesUnder(dir, prefix = '') {
   return fs.readdirSync(path.join(dir, prefix), { withFileTypes: true })
@@ -55,6 +55,8 @@ export function publishSiteRelease(siteDir, outputDir, { generatedAt = Date.now(
   let officialMap = fs.readFileSync(path.join(siteDir, 'official-map.js'), 'utf8');
   officialMap = replaceOnce(officialMap, "from './official-vector-stops.js'",
     "from './" + stamped['official-vector-stops.js'] + "'", 'official-map.js');
+  officialMap = replaceOnce(officialMap, "from './metro-southwest.js'",
+    "from './" + stamped['metro-southwest.js'] + "'", 'official-map.js');
   stamped['official-map.js'] = 'official-map.' + hash(officialMap).slice(0,12) + '.js';
   fs.writeFileSync(path.join(outputDir, stamped['official-map.js']), officialMap);
 
@@ -64,6 +66,8 @@ export function publishSiteRelease(siteDir, outputDir, { generatedAt = Date.now(
   app = replaceOnce(app, "from './station-patronage.js'", "from './" + stamped['station-patronage.js'] + "'", 'app.js');
   app = replaceOnce(app, "from './geo-map.js'", "from './" + stamped['geo-map.js'] + "'", 'app.js');
   app = replaceOnce(app, "from './official-map.js'", "from './" + stamped['official-map.js'] + "'", 'app.js');
+  app = replaceOnce(app, "from './metro-southwest.js'",
+    "from './" + stamped['metro-southwest.js'] + "'", 'app.js');
   app = replaceOnce(app, '__SITE_RELEASE__', release, 'app.js');
   stamped['app.js'] = 'app.' + hash(app).slice(0, 12) + '.js';
   fs.writeFileSync(path.join(outputDir, stamped['app.js']), app);

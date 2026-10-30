@@ -97,3 +97,10 @@ The Geographic Map already uses this current TfNSW Metro route geometry. A small
 The original TfNSW network PDF used by the Network diagram is dated 30 September 2024 and does not contain the M1 line from Sydenham to Bankstown. This 2024 image remains preserved and labelled. The official overlay now withholds 2026 Southwest M1 reported positions near the older Sydenham terminus, rather than placing them there. The interface explains the source limitation and directs viewers to the source-backed Geographic Map. The application does not forge, draw or recalibrate a replacement network diagram. An authenticated or published newer official schematic should be evaluated under its own source replacement and browser alignment review.
 
 None of this changes GTFS feed endpoints, trip calendars, collected coordinates, rail line shapes, station locations or live position calculations. The 2024 PDF image is unchanged.
+
+
+## 30 October 2026: refreshed TfNSW network artwork and Metro controls
+
+The new [official Sydney rail network PDF](https://transportnsw.info/sydney-trains-network-map) includes M1 through Bankstown. Its current download SHA-256 was captured and checked in CI: `7877f5bed61ef5f04fbda86752ca1582732544752242ca4777e2e93b00662669`. The live TfNSW PDF endpoint has been updated ahead of its slower Open Data catalogue entry. The production renderer now pins this checksum and creates a fresh `tfnsw-sydney-rail-2026.png` with its own unique GitHub Actions cache key. Any unexpected upstream PDF revision stops publication until independently reviewed.
+
+The 2024 PDF station-marker calibration is **not valid** on the updated 2026 artwork. Until separately calibrated and visually accepted, the official map shows the updated unmodified schematic without speculative station/train/incident overlays. Actual GTFS geographic routes and live vehicle positions remain on the Geographic Map with the existing line dropdown. The redundant Metro extension button was removed from the map notice.

@@ -27,7 +27,7 @@ export function verifyOfficialMap(file, {
     imageWidth = header.readUInt32BE(16);
     imageHeight = header.readUInt32BE(20);
     if (imageWidth !== width || imageHeight < minHeight || imageHeight > maxHeight) {
-      throw new Error('Official TfNSW map PNG dimensions differ from the calibrated 2024 PDF: ' +
+      throw new Error('Official TfNSW map PNG dimensions differ from the verified 2026 PDF: ' +
         imageWidth + ' × ' + imageHeight);
     }
     const tail = Buffer.alloc(12);
@@ -46,7 +46,7 @@ if (runningAsCli) {
     const file = process.argv[2];
     if (!file) throw new Error('Usage: node scripts/verify-official-map.mjs <path-to-map.png>');
     const result = verifyOfficialMap(file);
-    console.log('Verified original TfNSW map PNG:', JSON.stringify(result));
+    console.log('Verified TfNSW official network map PNG:', JSON.stringify(result));
   } catch (error) {
     console.error('::error::TfNSW original map is not publishable: ' + error.message);
     process.exitCode = 1;

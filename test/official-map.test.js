@@ -26,7 +26,7 @@ const align=buildOfficialAlignment({stations:stops});
 test('original source map and image geometry are explicitly labelled',()=>{
   assert.equal(OFFICIAL_MAP.width,1024);
   assert.equal(OFFICIAL_MAP.height,1447);
-  assert.equal(OFFICIAL_MAP.edition,'30 September 2024');
+  assert.equal(OFFICIAL_MAP.edition,'30 October 2026');
   assert.match(OFFICIAL_MAP.source,/^https:\/\/transportnsw\.info/);
   assert.match(OFFICIAL_MAP.image,/\/assets\/tfnsw-sydney-rail-2024\.png\?asset=verified-render-v3$/);
   assert.match(OFFICIAL_MAP.licence,/creativecommons\.org/);
@@ -156,7 +156,7 @@ test('official map preflight requires an actually decoded image, never an HTTP H
 
 test('official TfNSW map uses a module-rooted, absolute GitHub Pages image URL, unaffected by routes',()=>{
   const base='https://pdomoney.github.io/nsw-rail-disruptions/official-map.fingerprint.js';
-  const expected='https://pdomoney.github.io/nsw-rail-disruptions/assets/tfnsw-sydney-rail-2024.png?asset=verified-render-v3';
+  const expected='https://pdomoney.github.io/nsw-rail-disruptions/assets/tfnsw-sydney-rail-2026.png?asset=20261030-pinned-7877f5be';
   assert.equal(officialMapAssetUrl(base),expected);
   assert.equal(officialMapAssetUrl('https://pdomoney.github.io/nsw-rail-disruptions/official-map.js'),expected);
   assert.ok(OFFICIAL_MAP.image.startsWith('file:') || OFFICIAL_MAP.image.startsWith('https:'));
