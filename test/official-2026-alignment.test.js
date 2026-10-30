@@ -122,3 +122,26 @@ test('geographic tolerance is bounded at 250 metres even for an otherwise matche
   assert.ok(locate2026Train(['M1',...nearby],{M1:[edge]}));
   assert.equal(locate2026Train(['M1',...far],{M1:[edge]}),null);
 });
+
+test('only 2026 source-circle-backed conventional train corridors may display markers',()=>{
+  const expected={T1:27,T2:13,T3:8,T4:6,T5:18,T7:2,T8:14,T9:6};
+  for(const [line,count] of Object.entries(expected))
+    assert.equal(Object.keys(PDF_2026_LINE_STOPS[line]||{}).length,count,line);
+  assert.deepEqual(PDF_2026_LINE_STOPS.T7.Lidcombe,[448.6,672.95]);
+  assert.deepEqual(PDF_2026_LINE_STOPS.T7['Olympic Park'],[469.26,591.66]);
+  const network={stations:[
+    station('Lidcombe',-33.863,151.046,'T7'),
+    station('Olympic Park',-33.849,151.071,'T7'),
+    station('Bondi Junction',-33.891,151.249,'T4'),
+    station('Kings Cross',-33.875,151.222,'T4'),
+    station('Sydenham',-33.914,151.166,'T4'),
+    station('Wolli Creek',-33.928,151.153,'T4'),
+  ]};
+  const a=build2026PdfAlignment(network);
+  assert.ok(a.T7.some(e=>e.from==='Lidcombe'&&e.to==='Olympic Park'));
+  assert.ok(!a.T4.some(e=>e.from==='Bondi Junction'&&e.to==='Kings Cross'),
+    'unverified 2026 stop pair must not receive train symbols');
+  assert.ok(a.T4.some(e=>e.from==='Sydenham'&&e.to==='Wolli Creek'));
+  assert.ok(!source2026StationHits('T4').some(([name])=>name==='Bondi Junction'));
+  assert.ok(source2026StationHits('T7').some(([name])=>name==='Olympic Park'));
+});
