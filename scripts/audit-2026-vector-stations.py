@@ -101,9 +101,8 @@ if a.pairs:
         md.append('| '+row['line']+' | '+row['station']+' | '+str(row['manual'])+
           ' | '+str(row['nearest'][0] if row['nearest'] else None)+
           ' | '+str(row['delta'])+' |')
-        if row['delta'] is None or row['delta']>15:
-            print('OTHER_LINE_REVIEW',row['line'],row['station'],
-                  'delta='+str(row['delta']),'closest='+str(row['nearest'][:1]))
+        print('OTHER_LINE_PAIR',row['line'],row['station'],
+              'delta='+str(row['delta']),'closest='+str(row['nearest'][:1]))
 (out/'station-vector-audit.md').write_text('\n'.join(md)+'\n')
 print('SOURCE_VECTOR_COUNTS '+json.dumps(dict(counts),sort_keys=True))
 for line in ('M1','T6','T8'):
