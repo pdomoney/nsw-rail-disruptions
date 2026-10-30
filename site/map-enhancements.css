@@ -355,3 +355,22 @@
   .map-frame:has(.geo-map) .map-corner-label {max-width:67%;padding:9px 10px;}
   .map-frame:has(.geo-map) .map-corner-label strong {font-size:.78rem;}
 }
+
+
+/* Match the official TfNSW portrait diagram's aspect ratio and content width.
+   Leaflet tiles retain correct projection; only the responsive viewport changes.
+   Source lines, stations and vehicle coordinates are NOT transformed. */
+.map-frame.map-frame-geographic {
+  width:100%;max-width:1020px;margin-inline:auto;
+}
+.map-frame.map-frame-geographic .geo-map {
+  display:block;width:100%;aspect-ratio:1024 / 1447;
+  height:auto;min-height:0;
+}
+.map-frame.map-frame-geographic .map-holder {min-width:0;}
+@media(max-width:640px){
+  .map-frame.map-frame-geographic {
+    max-width:none;margin-left:-7px;margin-right:-7px;
+    width:calc(100% + 14px);
+  }
+}

@@ -1,7 +1,7 @@
 import {reconcilePdfStations,REFERENCE_2024_ROUTES,OFFICIAL_LINE_PALETTE,nearestPdfSymbol} from './official-vector-stops.js';
 import {reportedSouthwestMetroProjected} from './metro-southwest.js';
 import {build2026PdfAlignment,locate2026Train,source2026StationHits,
-  ROUTES_2026,officialDisruptionPins2026} from './official-2026-alignment.js';
+  ROUTES_2026,SHARED_PRINTED_CORRIDORS_2026,officialDisruptionPins2026} from './official-2026-alignment.js';
 
 // The official TfNSW published network PDF is rendered at deployment time.
 // Calibration is to the 2024 first-page artwork, in image units 1024 x 1447.
@@ -262,7 +262,7 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   const selected=new Set((ROUTES_2026[lineFilter]||[]).flat());
   const stationLayer=el('g',{class:'official-station-hits'});
   const hitRadius=Math.max(unit(11),3);
-  for (const [name,pos] of source2026StationHits(lineFilter)) {
+  for (const [name,pos] of source2026StationHits(lineFilter,network)) {
     if(lineFilter && !selected.has(name)) continue;
     const c=el('circle',{cx:pos[0],cy:pos[1],r:hitRadius,
       class:'official-station-target','aria-label':'Fixed station '+name,tabindex:'0',role:'button'});
@@ -274,7 +274,7 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   // Affected named stations only, not guessed affected corridors. The incident
   // panel below the map retains full descriptions and unpositioned alerts.
   const disruptions=el('g',{class:'official-disruption-markers'});
-  for (const pin of officialDisruptionPins2026(live,lineFilter)) {
+  for (const pin of officialDisruptionPins2026(live,lineFilter,network)) {
     const icon=el('circle',{cx:pin.xy[0],cy:pin.xy[1],r:unit(12),
       fill:'none',stroke:pin.kind==='closed'?'#a66c15':'#ce4226',
       'stroke-width':unit(3),class:'official-disruption',role:'img',
@@ -289,7 +289,7 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   for(const train of live?.trains||[]){
     const [line,,,delay,pax,fullest,,headsign]=train;
     if(lineFilter&&line!==lineFilter)continue;
-    if(!ROUTES_2026[line])continue; // only lines verified on 2026 source
+    if(!ROUTES_2026[line]&&!SHARED_PRINTED_CORRIDORS_2026[line])continue; // never invent source lines
     const pos=locate2026Train(train,alignment);
     if(!pos){unmatched++;continue;}
     positioned.push({train,pos});
@@ -398,6 +398,6 @@ g.append(label);
   svg.append(trainLayer);
   container.replaceChildren(svg);
   return {svg,base,W,H,positioned:positioned.length,unmatched,
-    namedStations:source2026StationHits(lineFilter).length,
+    namedStations:source2026StationHits(lineFilter,network).length,
     pdfSymbols:null,calibrationPending:false,edition:'2026'};
 }

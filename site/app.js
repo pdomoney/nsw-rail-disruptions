@@ -1,6 +1,7 @@
 import { heatmap, hbars, columns, line as lineChart, onColor, showTip, hideTip, compact } from './charts.js';
 import { viewPatronage } from './patronage.js';
 import { loadLeaflet, createGeographicMap, geographicStationLines, trainDescription } from './geo-map.js';
+import {officialDiagramCoverage} from './official-2026-alignment.js';
 import { drawOfficialOverlay, OFFICIAL_MAP, loadOfficialMapImage, mapTrainHoverRows } from './official-map.js';
 import { viewStationPatronage } from './station-patronage.js';
 
@@ -1794,7 +1795,7 @@ async function viewMap(main) {
   let railFocus = prefs.get('mapRailFocus','rail') === 'streets'?'streets':'rail';
   let officialContrast = prefs.get('officialMapContrast','enhanced') === 'original'?'original':'enhanced';
   let lineFilter = q.get('line') || '';
-  if (kind === 'official' && lineFilter && !/^T[1-9]$|^M1$/.test(lineFilter))
+  if (kind === 'official' && lineFilter && !trackedLine(lineFilter))
     lineFilter = '';
   const head = h('div', { class: 'map-head' });
   const filters = h('div', { class: 'filters map-controls',
@@ -1922,6 +1923,7 @@ async function viewMap(main) {
     const cols = D.live?.cols || [];
     const plotCount = liveTrains.filter(t => !lineFilter || t[0] === lineFilter).length;
     frame.classList.toggle('map-frame-diagram', kind === 'official');
+    frame.classList.toggle('map-frame-geographic', kind === 'track');
     frame.classList.toggle('map-frame-city', kind === 'official' && view === 'city');
     frame.classList.toggle('map-geographic-focus', kind === 'track' && railFocus === 'rail');
     mapLabel.replaceChildren(
@@ -1933,6 +1935,16 @@ async function viewMap(main) {
         : 'No live vehicle positions reported'));
     if (kind === 'official') {
       if (geographic) { geographic.destroy(); geographic=null; }
+      const mapCoverage=lineFilter?officialDiagramCoverage(lineFilter):null;
+      if(mapCoverage?.status==='outside-published-diagram') {
+        mapLabel.append(h('small',{},lineFilter+
+          ' is not depicted on this TfNSW Sydney rail PDF. '+
+          'Use the Geographic Map for its reported positions.'));
+      } else if(mapCoverage?.status==='shared') {
+        mapLabel.append(h('small',{},lineFilter+
+          ' trains plotted only on verified shared '+mapCoverage.sources.join('/')+
+          ' diagram sections; regional extensions are outside this PDF.'));
+      }
       if (!officialAvailable) {
         geo = null;
         // A mounted HTML image is a second way to load the authentic background.
@@ -2027,9 +2039,12 @@ async function viewMap(main) {
         c.late5 ? `${c.late5.toLocaleString('en-AU')} are 5 or more minutes late${top.length ? ', most on ' : '.'}` : 'Almost all are on time.',
         ...(c.late5 && top.length ? [...badgeList(top), '.'] : [])] : 'No live positions right now.'),
       h('p', { class: 'tw-sub' }, live.at ? `Positions at ${time(live.at)}. Train-shaped icons are moving services; open circles are stations. Tap to inspect.` : ''));
-    const lineIds = Object.keys((kind === 'track' ? net : D.schematic).lines)
-      .filter(id => trackedLine(id) && (kind !== 'official' || /^T[1-9]$|^M1$/.test(id)))
-      .sort((a, b) => orderOf(a) - orderOf(b));
+    // Every tracked line remains selectable. The source map explicitly notes
+    // lines it does NOT depict; source-backed Intercity segments are shown
+    // only where they share validated printed rail corridors.
+    const lineIds = D.meta.lines.map(l=>l.id)
+      .filter(id => trackedLine(id))
+      .sort((a,b) => orderOf(a)-orderOf(b));
     const mapKindControl=segmented([
       ['official','Network diagram · TfNSW'],
       ['track','Geographic map · GTFS']
@@ -2037,7 +2052,7 @@ async function viewMap(main) {
       if(kind===v)return;
       kind=v;vb=null;clearSelectedMapItem();
       if (kind === 'official' && view === 'all') view = 'sydney';
-      if (kind === 'official' && lineFilter && !/^T[1-9]$|^M1$/.test(lineFilter))
+      if (kind === 'official' && lineFilter && !trackedLine(lineFilter))
         lineFilter = '';
       if(kind==='official')await checkOfficialMap();
       if(kind==='track'&&!geographicReady){
