@@ -77,13 +77,116 @@ export const PDF_2026_LINE_STOPS = Object.freeze({
     'Regents Park':[448.56,748.22], 'Birrong':[457.60,771.99],
     'Yagoona':[469.52,783.89], 'Bankstown':[481.92,796.00],
   }),
-  T4:Object.freeze({'Central':[780,653], 'Sydenham':[691,749]}),
-  T8:Object.freeze({'Central':[766,653], 'Wolli Creek':[694,795]}),
-  T1:Object.freeze({'Central':[745,652],'Town Hall':[742,615],
-    'Wynyard':[741,581],'Lidcombe':[450,692]}),
-  T2:Object.freeze({'Central':[749,653],'Lidcombe':[452,694]}),
-  T3:Object.freeze({'Central':[752,653],'Lidcombe':[455,697]}),
-  T9:Object.freeze({'Central':[752,654]}),
+  T1:Object.freeze({
+    'Richmond':[160.27,295.29],
+    'East Richmond':[160.27,315.61],
+    'Clarendon':[160.27,335.76],
+    'Windsor':[160.27,355.92],
+    'Mulgrave':[160.27,376.15],
+    'Vineyard':[160.27,396.36],
+    'Riverstone':[160.27,416.4],
+    'Schofields':[160.27,436.69],
+    'Quakers Hill':[160.27,456.34],
+    'Marayong':[164.96,475.47],
+    'Blacktown':[244.74,551.85],
+    'Seven Hills':[278.28,551.85],
+    'Toongabbie':[295.17,551.85],
+    'Pendle Hill':[320.63,558.13],
+    'Wentworthville':[330.38,567.87],
+    'Westmead':[353.89,591.43],
+    'Harris Park':[387.22,624.79],
+    'Granville':[411.26,648.81],
+    'Strathfield':[519.96,679.66],
+    'Central':[748.34,651.67],
+    'Town Hall':[748.33,619.4],
+    'Wynyard':[748.34,583.83],
+    'North Sydney':[748.37,527.7],
+    'Chatswood':[696.23,465.96],
+    'Gordon':[609.93,379.84],
+    'Hornsby':[519.94,281.44],
+    'Berowra':[519.94,199.25],
+  }),
+  T2:Object.freeze({
+    'Leppington':[141.35,941.89],
+    'Edmondson Park':[174.99,941.89],
+    'Liverpool':[298.51,847.66],
+    'Warwick Farm':[298.51,820.75],
+    'Cabramatta':[298.51,793.89],
+    'Canley Vale':[298.51,767.02],
+    'Fairfield':[298.51,739.69],
+    'Yennora':[298.51,712.92],
+    'Granville':[406.32,653.3],
+    'Lidcombe':[448.6,686.34],
+    'Strathfield':[519.96,686.34],
+    'Burwood':[553.01,686.34],
+    'Central':[754.09,651.67],
+  }),
+  T3:Object.freeze({
+    'Liverpool':[305.2,847.66],
+    'Warwick Farm':[305.2,820.75],
+    'Cabramatta':[305.2,793.89],
+    'Regents Park':[441.74,748.22],
+    'Lidcombe':[448.6,693.32],
+    'Strathfield':[519.96,693.02],
+    'Burwood':[553.01,693.01],
+    'Central':[759.84,651.67],
+  }),
+  T4:Object.freeze({
+    'Martin Place':[789.09,606.57],
+    'Central':[771.35,651.67],
+    'Sydenham':[699.49,746.39],
+    'Wolli Creek':[688.74,801.27],
+    'Hurstville':[688.76,942.64],
+    'Waterfall':[688.76,1150.95],
+  }),
+  T5:Object.freeze({
+    'Richmond':[153.55,295.29],
+    'East Richmond':[153.55,315.61],
+    'Clarendon':[153.55,335.76],
+    'Windsor':[153.55,355.95],
+    'Mulgrave':[153.54,376.15],
+    'Vineyard':[153.54,396.36],
+    'Riverstone':[153.53,416.4],
+    'Schofields':[153.54,436.61],
+    'Quakers Hill':[153.54,456.25],
+    'Marayong':[160.2,480.22],
+    'Blacktown':[244.74,558.48],
+    'Yennora':[291.75,712.96],
+    'Fairfield':[291.75,739.74],
+    'Canley Vale':[291.75,767.07],
+    'Cabramatta':[291.75,793.94],
+    'Warwick Farm':[291.75,820.8],
+    'Casula':[291.75,881.37],
+    'Leppington':[141.3,935.14],
+  }),
+  T7:Object.freeze({
+    'Lidcombe':[448.6,672.95],
+    'Olympic Park':[469.26,591.66],
+  }),
+  T8:Object.freeze({
+    'Macarthur':[305.17,1096.52],
+    'Campbelltown':[305.2,1069.63],
+    'Holsworthy':[352.38,897.39],
+    'East Hills':[381.05,897.39],
+    'Panania':[409.71,897.39],
+    'Revesby':[438.38,897.39],
+    'Padstow':[467.04,897.39],
+    'Riverwood':[495.71,897.39],
+    'Narwee':[524.37,897.39],
+    'Wolli Creek':[695.48,794.52],
+    'International Airport':[749.65,789.36],
+    'Mascot':[765.58,745.79],
+    'Green Square':[765.58,717.78],
+    'Central':[765.59,651.67],
+  }),
+  T9:Object.freeze({
+    'Hornsby':[513.23,281.44],
+    'Epping':[513.23,417.89],
+    'Central':[742.56,651.67],
+    'Town Hall':[742.56,619.4],
+    'Wynyard':[742.56,583.83],
+    'North Sydney':[742.56,527.7],
+  }),
 });
 
 export const ROUTES_2026 = Object.freeze({
@@ -154,6 +257,11 @@ export function build2026PdfAlignment(network) {
       const from=chain[i-1],to=chain[i];
       const a=stationGeo.get(normalise(from)),b=stationGeo.get(normalise(to));
       if(!a?.lines.has(line)||!b?.lines.has(line))continue;
+      // For conventional trains the initial PR64 coordinates remain partly
+      // inaccurate. Only use station pairs individually matched to same-line
+      // coloured vector circles in the checksum-pinned 2026 official PDF.
+      if(line!=='M1'&&line!=='T6'&&
+        (!PDF_2026_LINE_STOPS[line]?.[from]||!PDF_2026_LINE_STOPS[line]?.[to]))continue;
       const pdfA=PDF_2026_LINE_STOPS[line]?.[from]||STOP_PIXELS_2026[from];
       const pdfB=PDF_2026_LINE_STOPS[line]?.[to]||STOP_PIXELS_2026[to];
       if(!pdfA||!pdfB||pointDistance(pdfA,pdfB)<2)continue;
@@ -187,7 +295,14 @@ export function source2026StationHits(lineFilter='') {
   const selected=lineFilter?new Set((ROUTES_2026[lineFilter]||[]).flat()):null;
   return Object.entries(STOP_PIXELS_2026)
     .filter(([name])=>!selected||selected.has(name))
-    .map(([name,point])=>[name,PDF_2026_LINE_STOPS[lineFilter]?.[name]||point]);
+    .filter(([name])=>lineFilter
+      ? Boolean(PDF_2026_LINE_STOPS[lineFilter]?.[name])
+      : Object.values(PDF_2026_LINE_STOPS).some(line=>line[name]))
+    .map(([name,point])=>{
+      const vetted=PDF_2026_LINE_STOPS[lineFilter]?.[name]||
+        Object.values(PDF_2026_LINE_STOPS).find(line=>line[name])?.[name];
+      return [name,vetted||point];
+    });
 }
 
 
@@ -201,7 +316,10 @@ export function officialDisruptionPins2026(live,lineFilter='') {
     for(const info of [...(overlay.pins||[]),...(overlay.spins||[])]) {
       const original=locations.get(normalise(info[2]));
       if(!original||lines&&!lines.has(original.name))continue;
-      const point={...original,xy:PDF_2026_LINE_STOPS[lineFilter]?.[original.name]||original.xy};
+      const chosen=PDF_2026_LINE_STOPS[lineFilter]?.[original.name]||
+        Object.values(PDF_2026_LINE_STOPS).find(line=>line[original.name])?.[original.name];
+      if(!chosen)continue; // no printed 2026 source-symbol match
+      const point={...original,xy:chosen};
       const id=overlay.kind+'|'+point.name;
       if(seen.has(id))continue;
       seen.add(id);
