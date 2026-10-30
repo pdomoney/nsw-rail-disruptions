@@ -63,6 +63,10 @@ for row in review:
       (str(hit['distance']) if hit else 'unknown')+' |')
 (out/'station-vector-audit.md').write_text('\n'.join(md)+'\n')
 print('SOURCE_VECTOR_COUNTS '+json.dumps(dict(counts),sort_keys=True))
+for line in ('M1','T6','T8'):
+    pts=sorted([x['point'] for x in candidates if x['line']==line],key=lambda p:(round(p[1]/12),p[0]))
+    print('SOURCE_CANDIDATES_'+line+' '+json.dumps(pts))
+
 for row in review:
     hit=row['near'][0] if row['near'] else None
     print('ANCHOR_REVIEW',row['line'],row['station'],'manual='+str(row['manual']),
