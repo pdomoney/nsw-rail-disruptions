@@ -104,3 +104,14 @@ test('operator workflow uses authenticated source only and never publishes maps'
   assert.match(script,/tripUpdateFeed:updates/);
   assert.doesNotMatch(script,/writeJson\(/);
 });
+
+test('when matching live trip updates are absent, a plausible static timetable is not fully corroborated',()=>{
+  const v=mock();
+  v.tripUpdateFeed.entity=[];
+  const a=auditDiagramTimetableFeed(v).vehicles[0];
+  assert.equal(a.shapeDistanceMetres,0);
+  assert.equal(a.serviceCalendarRuns,true);
+  assert.equal(a.scheduledPairWindowPlausible,true);
+  assert.equal(a.tripUpdateMatched,false);
+  assert.equal(a.classification,'trip-update-evidence-unavailable');
+});
