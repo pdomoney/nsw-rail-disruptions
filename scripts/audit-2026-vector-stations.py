@@ -42,10 +42,10 @@ named={k:[float(x),float(y)] for k,x,y in re.findall(r"'([^']+)':\s*\[\s*([\d.]+
 line_section=source.split('PDF_2026_LINE_STOPS = Object.freeze({',1)[1].split('export const ROUTES_2026',1)[0]
 verified_counts={}
 for line,expected in [('M1',31),('T6',6)]:
-    match=re.search(r'\\b'+line+r':Object\\.freeze\\(\\{(.*?)\\}\\)',line_section,re.S)
+    match=re.search(r'\b'+line+r':Object\.freeze\(\{(.*?)\}\)',line_section,re.S)
     if not match:raise RuntimeError('Missing source-specific '+line+' calibration')
     positions={name:[float(x),float(y)] for name,x,y in re.findall(
-        r"'([^']+)':\\s*\\[\\s*([\\d.]+)\\s*,\\s*([\\d.]+)\\s*\\]",match.group(1))}
+        r"'([^']+)':\s*\[\s*([\d.]+)\s*,\s*([\d.]+)\s*\]",match.group(1))}
     if len(positions)!=expected:raise RuntimeError(line+' requires '+str(expected)+' calibrated stations')
     source_points=[p['point'] for p in candidates if p['line']==line and p['point'][1]<1200]
     for name,point in positions.items():
