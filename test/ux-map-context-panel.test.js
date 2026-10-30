@@ -72,7 +72,7 @@ test('existing keyboard, pinch, drag, zoom, overlays and official attribution re
   assert.match(map,/svg\.addEventListener\('pointermove'/);
   assert.match(map,/geographic\.reset\(\)/);
   assert.match(map,/class:'map-source-credit'/);
-  assert.match(map,/© 2024 Transport for NSW/);
+  assert.match(map,/© 2026 Transport for NSW/);
   assert.match(map,/original TfNSW|Original map and attribution/);
   assert.match(map,/class:'map-methodology'/);
   assert.match(draw,/mapMethodDetails\.replaceChildren/);

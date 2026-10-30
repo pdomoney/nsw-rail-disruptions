@@ -49,6 +49,6 @@ test('Pages publisher cannot report success if the official PDF map fails to ren
   assert.match(workflow, /Install PDF renderer on first official-map publish/);
   assert.match(workflow, /sudo apt-get -y -qq install poppler-utils/);
   assert.match(workflow, /Publish and verify the original TfNSW map image/);
-  assert.match(workflow, /node scripts\/verify-official-map\.mjs dist\/assets\/tfnsw-sydney-rail-2024\.png/);
+  assert.match(workflow, /node scripts\/verify-official-map\.mjs dist\/assets\/tfnsw-sydney-rail-2026\.png/);
   assert.doesNotMatch(workflow, /TfNSW PDF background could not be verified\. The app will fall back/);
 });

@@ -28,7 +28,7 @@ test('original source map and image geometry are explicitly labelled',()=>{
   assert.equal(OFFICIAL_MAP.height,1447);
   assert.equal(OFFICIAL_MAP.edition,'30 October 2026');
   assert.match(OFFICIAL_MAP.source,/^https:\/\/transportnsw\.info/);
-  assert.match(OFFICIAL_MAP.image,/\/assets\/tfnsw-sydney-rail-2024\.png\?asset=verified-render-v3$/);
+  assert.match(OFFICIAL_MAP.image,/\/assets\/tfnsw-sydney-rail-2026\.png\?asset=20261030-pinned-7877f5be$/);
   assert.match(OFFICIAL_MAP.licence,/creativecommons\.org/);
 });
 

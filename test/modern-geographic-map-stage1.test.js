@@ -61,15 +61,15 @@ test('modern rail-focus display and station selection do not replace or repositi
 test('published network map keeps verified source artwork and honest confidence labels',()=>{
   assert.match(map,/loadOfficialMapImage\(officialImageUrl\)/);
   assert.match(map,/drawOfficialOverlay\(holder, \{/);
-  assert.match(map,/2024 TfNSW published network diagram is schematic, not geographically to scale/);
-  assert.match(map,/unmatched trains are omitted rather than placed speculatively/);
+  assert.match(map,/official 30 October 2026 TfNSW schematic includes M1 to Bankstown/);
+  assert.match(map,/2024 PDF are disabled on this revised artwork/);
   assert.match(map,/namedStations\+' confirmed station locations/);
   assert.match(map,/geo\.unmatched\+' unpositioned/);
   assert.match(official,/nearestPdfSymbol/);
   assert.match(official,/OFFICIAL_STOPS = Object\.freeze/);
   assert.match(panel,/TfNSW Sydney Train Routes dataset/);
   assert.match(panel,/Original map and attribution/);
-  assert.match(map,/© 2024 Transport for NSW/);
+  assert.match(map,/© 2026 Transport for NSW/);
 });
 
 test('no new paid or unauthorised map tile service is introduced',()=>{
