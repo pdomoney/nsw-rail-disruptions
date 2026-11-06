@@ -2115,7 +2115,9 @@ async function viewMap(main) {
       mapLabel.append(h('small',{},'2026 diagram · reliable marker alignment unavailable'));
     else if (kind === 'official' && geo?.positioned != null) {
       mapLabel.append(h('small', {}, geo.namedStations+' reviewed 2026 station anchors · '
-        +geo.positioned+' approximate live positions · '+geo.unmatched+' omitted (no verified station pair)'));
+        +geo.positioned+' approximate live positions · '
+        +geo.unmatched+' omitted (no verified station pair) · '
+        +geo.outsideDiagram+' omitted (line outside published diagram)'));
     }
     legend.replaceChildren(
       h('div', { class: 'key map-symbol-key' },
