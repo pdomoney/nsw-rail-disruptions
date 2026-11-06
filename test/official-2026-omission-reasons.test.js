@@ -81,6 +81,6 @@ test('empty feed stays empty and the application displays both omission reasons'
   assert.deepEqual([empty.result.positioned, empty.result.unmatched,
     empty.result.outsideDiagram, empty.movingIcons], [0, 0, 0, 0]);
   const app = fs.readFileSync(new URL('../site/app.js', import.meta.url), 'utf8');
-  assert.match(app, /geo\\.unmatched\\+' omitted \\(no verified station pair\\)'/);
-  assert.match(app, /geo\\.outsideDiagram\\+' omitted \\(line outside published diagram\\)'/);
+  assert.ok(app.includes("geo.unmatched+' omitted (no verified station pair)'"));
+  assert.ok(app.includes("geo.outsideDiagram+' omitted (line outside published diagram)'"));
 });
