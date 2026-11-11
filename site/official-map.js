@@ -287,11 +287,16 @@ export function drawOfficialOverlay(container,{network,live,view='sydney',lineFi
   svg.append(disruptions);
   const trainLayer=el('g',{class:'official-train-markers'});
   const positioned=[];
-  let unmatched=0;
+  let unmatched=0, outsideDiagram=0;
   for(const train of live?.trains||[]){
     const [line,,,delay,pax,fullest,,headsign]=train;
     if(lineFilter&&line!==lineFilter)continue;
-    if(!ROUTES_2026[line]&&!SHARED_PRINTED_CORRIDORS_2026[line])continue; // never invent source lines
+    // The geographic view can show lines outside this Sydney PDF. Count them
+    // separately instead of reporting zero omissions for those services.
+    if(!ROUTES_2026[line]&&!SHARED_PRINTED_CORRIDORS_2026[line]){
+      outsideDiagram++;
+      continue; // never invent source lines or diagram positions
+    }
     const pos=locate2026Train(train,alignment);
     if(!pos){unmatched++;continue;}
     positioned.push({train,pos});
@@ -399,7 +404,7 @@ g.append(label);
   }
   svg.append(trainLayer);
   container.replaceChildren(svg);
-  return {svg,base,W,H,positioned:positioned.length,unmatched,
+  return {svg,base,W,H,positioned:positioned.length,unmatched,outsideDiagram,
     namedStations:source2026StationHits(lineFilter,network).length,
     pdfSymbols:null,calibrationPending:false,edition:'2026'};
 }
