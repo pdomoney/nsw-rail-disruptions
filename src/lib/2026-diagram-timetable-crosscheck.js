@@ -40,11 +40,17 @@ const nearPolyline=(loc,points)=>{
 };
 const validDate=s=>/^\d{8}$/.test(String(s||''))&&!Number.isNaN(Date.parse(
   String(s).slice(0,4)+'-'+String(s).slice(4,6)+'-'+String(s).slice(6,8)+'T00:00:00Z'));
+// Printed PDF corridors have a fixed ordering, but GTFS trips may run in
+// either direction. Validate against the ordered *scheduled* stops, preserving
+// their real travel direction for the time-window check.
 const pairInTrip=(stops,from,to)=>{
-  const a=stops.findIndex(s=>stationKey(s.name)===stationKey(from));
-  const b=stops.findIndex((s,i)=>i>a&&stationKey(s.name)===stationKey(to));
-  if(a<0||b<0)return null;
-  return {from:stops[a],to:stops[b],startIndex:a,endIndex:b};
+  for(const [first,second] of [[from,to],[to,from]]){
+    const a=stops.findIndex(s=>stationKey(s.name)===stationKey(first));
+    if(a<0)continue;
+    const b=stops.findIndex((s,i)=>i>a&&stationKey(s.name)===stationKey(second));
+    if(b>=0)return {from:stops[a],to:stops[b],startIndex:a,endIndex:b};
+  }
+  return null;
 };
 const selectedReason=(r)=>{
   if(r.feedAgeSec>MAX_FEED_AGE_SECONDS||r.feedAgeSec<0)return 'stale-realtime-feed';

@@ -28,7 +28,7 @@ PDF_SHA="$(sha256sum "$TMP/map.pdf" | cut -d' ' -f1)"
 echo "Official TfNSW PDF SHA256: $PDF_SHA"
 # Some of the released PDF maps have only an accessibility summary in the
 # text layer. An image inspection AND a pinned SHA will validate this source.
-APPROVED_SHA="7877f5bed61ef5f04fbda86752ca1582732544752242ca4777e2e93b00662669"
+APPROVED_SHA="b9d5e1107111e1a9bb25739ff75d1ee6dc211a5e21b82d184c1b1afb9ca53cc3"
 if [[ "$PDF_SHA" != "$APPROVED_SHA" ]]; then
   if [[ "$OFFICIAL_MAP_PREVIEW_UNVERIFIED" != "1" ]]; then
     echo "::error::TfNSW PDF does not match the approved reference hash." >&2
