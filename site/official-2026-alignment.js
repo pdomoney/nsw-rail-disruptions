@@ -1,11 +1,11 @@
 // 2026 TfNSW published rail diagram: a separate, bounded manual crosswalk.
 // Source: https://transportnsw.info/sydney-trains-network-map
-// Approved PDF SHA-256: 7877f5bed61ef5f04fbda86752ca1582732544752242ca4777e2e93b00662669
+// Approved PDF SHA-256: b9d5e1107111e1a9bb25739ff75d1ee6dc211a5e21b82d184c1b1afb9ca53cc3
 // Pixel positions use the source's 1024 x 1447 page reference frame.
 // This is NOT a georeferencing transform. Only explicitly reviewed station
 // pairs can support approximate GTFS-progress markers. No 2024 pixels are used.
 export const PDF_2026_SHA256 =
-  '7877f5bed61ef5f04fbda86752ca1582732544752242ca4777e2e93b00662669';
+  'b9d5e1107111e1a9bb25739ff75d1ee6dc211a5e21b82d184c1b1afb9ca53cc3';
 export const PDF_2026_EDITION = '30 October 2026';
 export const STOP_PIXELS_2026 = Object.freeze({
   'Tallawong':[222.16,409.53], 'Rouse Hill':[255.36,401.49], 'Kellyville':[282.31,401.49],
