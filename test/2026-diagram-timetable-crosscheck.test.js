@@ -55,6 +55,41 @@ test('corroborates a positioned M1 vehicle only with exact trip, source shape, d
   assert.equal(r.counts.M1.byClassification['coordinate-and-timetable-corroborated'],1);
   assert.match(summariseDiagramCrosscheck([r],{source:[]}),/independent-source cross-check/);
 });
+test('reverse-direction trains use scheduled travel order, not the fixed PDF pair order',()=>{
+  const v=mock();
+  // The printed corridor remains Sydenham → Marrickville, but this train
+  // travels Marrickville → Sydenham. Keep the source times in travel order.
+  v.files['stop_times.txt']=B('trip_id,stop_id,stop_sequence,arrival_time,departure_time\n'+
+    'trip-1,mar,1,15:00:00,15:00:00\n'+
+    'trip-1,syd,2,16:00:00,16:00:00\n');
+  const row=auditDiagramTimetableFeed(v).vehicles[0];
+  assert.deepEqual(row.printedStationPair,['Sydenham','Marrickville']);
+  assert.equal(row.scheduledPairOnTrip,true);
+  assert.equal(row.scheduledFromSec,15*3600);
+  assert.equal(row.scheduledToSec,16*3600);
+  assert.equal(row.shapeDistanceMetres,0);
+  assert.equal(row.classification,'coordinate-and-timetable-corroborated');
+});
+
+test('bidirectional matching cannot invent an absent scheduled endpoint or bypass time checks',()=>{
+  const missing=mock();
+  missing.files['stop_times.txt']=B(
+    'trip_id,stop_id,stop_sequence,arrival_time,departure_time\n'+
+    'trip-1,mar,1,15:00:00,15:00:00\n');
+  const absent=auditDiagramTimetableFeed(missing).vehicles[0];
+  assert.equal(absent.scheduledPairOnTrip,false);
+  assert.equal(absent.classification,'diagram-pair-not-in-trip-stop-sequence');
+
+  const late=mock();
+  late.files['stop_times.txt']=B('trip_id,stop_id,stop_sequence,arrival_time,departure_time\n'+
+    'trip-1,mar,1,23:00:00,23:00:00\n'+
+    'trip-1,syd,2,23:30:00,23:30:00\n');
+  const outside=auditDiagramTimetableFeed(late).vehicles[0];
+  assert.equal(outside.scheduledPairOnTrip,true);
+  assert.equal(outside.scheduledPairWindowPlausible,false);
+  assert.equal(outside.classification,'timetable-not-corroborated');
+});
+
 test('calendar-excluded date and cancelled trip cannot be corroborated',()=>{
   const v=mock();
   v.staticMap.sched.services.daily[4].push('20261030');

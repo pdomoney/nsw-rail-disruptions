@@ -6,7 +6,7 @@ p.add_argument('--pdf',required=True);p.add_argument('--source',required=True);p
 a=p.parse_args()
 raw=pathlib.Path(a.pdf).read_bytes()
 sha=hashlib.sha256(raw).hexdigest()
-if sha!='7877f5bed61ef5f04fbda86752ca1582732544752242ca4777e2e93b00662669':
+if sha!='b9d5e1107111e1a9bb25739ff75d1ee6dc211a5e21b82d184c1b1afb9ca53cc3':
     raise RuntimeError('Unapproved TfNSW PDF checksum')
 import fitz
 doc=fitz.open(a.pdf)
