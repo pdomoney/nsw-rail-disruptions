@@ -216,7 +216,9 @@ export function vehiclePositions(feed) {
   for (const e of feed.entity || []) {
     const v = e.vehicle;
     const p = v?.position;
-    if (!v?.trip?.tripId || !p || !Number.isFinite(p.lat) || !Number.isFinite(p.lon) || !p.lat || !p.lon) continue;
+    // Reject impossible geographic positions before they reach live map publication.
+    if (!v?.trip?.tripId || !p || !Number.isFinite(p.lat) || !Number.isFinite(p.lon) ||
+        !p.lat || !p.lon || Math.abs(p.lat) > 90 || Math.abs(p.lon) > 180) continue;
     const consist = (v.consist || []).filter(Boolean).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
     const levels = consist.map(c => c.occupancy ?? c.departureOccupancy).filter(l => l != null && l <= 5);
     out.push({
