@@ -36,6 +36,10 @@ jobs:
       # the following production-source gate still checks the pinned PDF SHA.
       - name: Capture unapproved TfNSW PDF and raster for source-equivalence review
         run: |
+          if ! command -v pdftoppm >/dev/null || ! command -v pdftotext >/dev/null; then
+            sudo apt-get -qq update
+            sudo apt-get -y -qq install poppler-utils
+          fi
           OFFICIAL_MAP_PREVIEW_UNVERIFIED=1 OFFICIAL_MAP_SOURCE_AUDIT=1 bash scripts/render-official-map.sh test-artifacts/source-candidate
           sha256sum test-artifacts/source-candidate/* | tee test-artifacts/source-candidate/source-hashes.txt
           cat test-artifacts/source-candidate/source-hashes.txt >> "$GITHUB_STEP_SUMMARY"
