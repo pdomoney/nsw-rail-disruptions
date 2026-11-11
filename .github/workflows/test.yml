@@ -32,6 +32,19 @@ jobs:
           name: tfnsw-2026-all-line-coverage
           path: test-artifacts/all-line-review/
           retention-days: 21
+      # Temporary PR-only evidence capture. This never publishes an unapproved map:
+      # the following production-source gate still checks the pinned PDF SHA.
+      - name: Capture unapproved TfNSW PDF and raster for source-equivalence review
+        run: |
+          OFFICIAL_MAP_PREVIEW_UNVERIFIED=1 OFFICIAL_MAP_SOURCE_AUDIT=1 bash scripts/render-official-map.sh test-artifacts/source-candidate
+          sha256sum test-artifacts/source-candidate/* | tee test-artifacts/source-candidate/source-hashes.txt
+          cat test-artifacts/source-candidate/source-hashes.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain unapproved candidate only as short-lived review evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfnsw-2026-source-candidate-not-approved
+          path: test-artifacts/source-candidate/
+          retention-days: 1
       - name: Verify and render published TfNSW PDF background
         run: |
           if ! command -v pdftoppm >/dev/null || ! command -v pdftotext >/dev/null; then
