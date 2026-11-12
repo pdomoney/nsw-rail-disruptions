@@ -1,5 +1,5 @@
 {
- "alertsLastOkAt": "2026-11-12T14:01:53Z",
+ "alertsLastOkAt": "2026-11-12T14:06:38Z",
  "archiveImport": {
   "at": "2026-10-12T11:37:13Z",
   "since": "2023-07-01",
@@ -122,55 +122,92 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v2/gtfs/realtime/sydneytrains",
-    "bytes": 15,
-    "entities": 0,
-    "trips": 0,
-    "matched": 0,
-    "feedAgeS": 6,
-    "unmatched": [],
+    "bytes": 25234,
+    "entities": 86,
+    "trips": 86,
+    "matched": 52,
+    "feedAgeS": 7,
+    "unmatched": [
+     [
+      "RTTA_REV",
+      24
+     ],
+     [
+      "RTTA_DEF",
+      8
+     ],
+     [
+      "CTY_NC1a",
+      1
+     ],
+     [
+      "CTY_S1i",
+      1
+     ]
+    ],
     "shape": {
-     "withTimes": 0,
-     "delayOnly": 0,
-     "noStops": 0,
+     "withTimes": 5,
+     "delayOnly": 41,
+     "noStops": 6,
      "tripDelay": 0,
-     "active": 0,
+     "active": 40,
      "notStarted": 0,
-     "finished": 0,
-     "noDelay": 0
+     "finished": 1,
+     "noDelay": 11
     },
     "occupancy": {
-     "stops": 0,
-     "stopLevel": 0,
-     "stopCars": 0,
-     "trips": 0,
-     "tripsWithLevel": 0,
-     "tripsWithCars": 0,
-     "fromVehicles": 0,
-     "runningWithLevel": 0,
+     "stops": 337,
+     "stopLevel": 135,
+     "stopCars": 135,
+     "trips": 52,
+     "tripsWithLevel": 17,
+     "tripsWithCars": 17,
+     "fromVehicles": 14,
+     "runningWithLevel": 20,
      "levels": [
       0,
-      0,
+      135,
       0,
       0,
       0,
       0
      ],
-     "cars": {},
-     "models": {}
+     "cars": {
+      "4": 2,
+      "8": 15
+     },
+     "models": {
+      "A": 16,
+      "T": 10,
+      "D": 12,
+      "N": 2,
+      "B": 7,
+      "H": 4,
+      "M": 1
+     }
     },
     "ids": {
-     "trips": 0,
+     "trips": 52,
      "noId": 0,
      "dated": 0,
      "other": 0,
-     "inTimetable": 0,
-     "notInTimetable": 0,
-     "notInStatic": 0,
-     "bySr": {},
-     "missing": [],
-     "example": null
+     "inTimetable": 51,
+     "notInTimetable": 1,
+     "notInStatic": 1,
+     "bySr": {
+      "0": 52
+     },
+     "missing": [
+      [
+       "CN91.1421.149.64.N.2.92130319",
+       "SCO",
+       null,
+       false
+      ]
+     ],
+     "example": "14-A.1421.148.48.B.8.92606109"
     }
    },
    "census": {
@@ -180,27 +217,27 @@
     }
    },
    "vehicles": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v2/gtfs/vehiclepos/sydneytrains",
-    "bytes": 21039,
-    "vehicles": 139,
-    "withTrip": 139,
+    "bytes": 21843,
+    "vehicles": 145,
+    "withTrip": 145,
     "occupancy": {
      "1": 23
     },
     "withPercent": 0,
-    "withConsist": 62,
+    "withConsist": 65,
     "consistLevels": {
      "1": 172
     },
     "models": {
      "D": 14,
-     "T": 11,
+     "T": 12,
      "N": 4,
      "W": 4,
-     "A": 17,
+     "A": 18,
      "H": 4,
-     "B": 10,
+     "B": 11,
      "M": 1,
      "F": 1,
      "J": 1
@@ -301,33 +338,33 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v2/gtfs/realtime/metro",
-    "bytes": 12106,
-    "entities": 10,
-    "trips": 10,
-    "matched": 10,
-    "feedAgeS": 5,
+    "bytes": 9858,
+    "entities": 9,
+    "trips": 9,
+    "matched": 9,
+    "feedAgeS": 8,
     "unmatched": [],
     "shape": {
-     "withTimes": 10,
+     "withTimes": 9,
      "delayOnly": 0,
      "noStops": 0,
      "tripDelay": 0,
-     "active": 6,
+     "active": 5,
      "notStarted": 0,
      "finished": 4,
      "noDelay": 0
     },
     "occupancy": {
-     "stops": 310,
+     "stops": 249,
      "stopLevel": 0,
      "stopCars": 0,
-     "trips": 10,
+     "trips": 9,
      "tripsWithLevel": 0,
      "tripsWithCars": 0,
-     "fromVehicles": 4,
-     "runningWithLevel": 4,
+     "fromVehicles": 3,
+     "runningWithLevel": 3,
      "levels": [
       0,
       0,
@@ -340,15 +377,15 @@
      "models": {}
     },
     "ids": {
-     "trips": 10,
+     "trips": 9,
      "noId": 0,
-     "dated": 10,
+     "dated": 9,
      "other": 0,
-     "inTimetable": 10,
+     "inTimetable": 9,
      "notInTimetable": 0,
      "notInStatic": 0,
      "bySr": {
-      "0": 10
+      "0": 9
      },
      "missing": [],
      "example": "0271-001-101-002:1000"
@@ -386,23 +423,22 @@
     }
    },
    "vehicles": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v2/gtfs/vehiclepos/metro",
-    "bytes": 1827,
-    "vehicles": 6,
-    "withTrip": 6,
+    "bytes": 1223,
+    "vehicles": 4,
+    "withTrip": 4,
     "occupancy": {
-     "1": 4,
-     "2": 2
+     "1": 4
     },
     "withPercent": 0,
-    "withConsist": 6,
+    "withConsist": 4,
     "consistLevels": {
-     "1": 21,
-     "2": 15
+     "1": 15,
+     "2": 9
     },
     "models": {
-     "Alstom Metropolis": 6
+     "Alstom Metropolis": 4
     },
     "fields": {
      "1:2": 1,
@@ -519,29 +555,29 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v2/gtfs/realtime/lightrail/innerwest",
-    "bytes": 18532,
-    "entities": 14,
-    "trips": 14,
-    "matched": 14,
-    "feedAgeS": 1,
+    "bytes": 6966,
+    "entities": 6,
+    "trips": 6,
+    "matched": 6,
+    "feedAgeS": 4,
     "unmatched": [],
     "shape": {
-     "withTimes": 14,
+     "withTimes": 6,
      "delayOnly": 0,
      "noStops": 0,
-     "tripDelay": 14,
-     "active": 7,
+     "tripDelay": 6,
+     "active": 6,
      "notStarted": 0,
-     "finished": 7,
+     "finished": 0,
      "noDelay": 0
     },
     "occupancy": {
-     "stops": 368,
+     "stops": 138,
      "stopLevel": 0,
      "stopCars": 0,
-     "trips": 14,
+     "trips": 6,
      "tripsWithLevel": 0,
      "tripsWithCars": 0,
      "fromVehicles": 0,
@@ -558,15 +594,15 @@
      "models": {}
     },
     "ids": {
-     "trips": 14,
+     "trips": 6,
      "noId": 0,
-     "dated": 14,
+     "dated": 6,
      "other": 0,
-     "inTimetable": 4,
-     "notInTimetable": 10,
+     "inTimetable": 0,
+     "notInTimetable": 6,
      "notInStatic": 0,
      "bySr": {
-      "0": 14
+      "0": 6
      },
      "missing": [
       [
@@ -720,19 +756,19 @@
     }
    },
    "vehicles": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v2/gtfs/vehiclepos/lightrail/innerwest",
-    "bytes": 1100,
-    "vehicles": 6,
-    "withTrip": 6,
+    "bytes": 921,
+    "vehicles": 5,
+    "withTrip": 5,
     "occupancy": {},
     "withPercent": 0,
-    "withConsist": 6,
+    "withConsist": 5,
     "consistLevels": {},
     "models": {
-     "CAF Urbos 100 Light Rail Vehicle": 4,
-     "Alstom Citadis X05 Light Rail Vehicle": 1,
-     "CAF Urbos 3 Light Rail Vehicle": 1
+     "CAF Urbos 100 Light Rail Vehicle": 3,
+     "CAF Urbos 3 Light Rail Vehicle": 1,
+     "Alstom Citadis X05 Light Rail Vehicle": 1
     },
     "fields": {
      "1:2": 1,
@@ -839,29 +875,29 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/cbdandsoutheast",
-    "bytes": 16624,
-    "entities": 26,
-    "trips": 26,
-    "matched": 26,
-    "feedAgeS": 5,
+    "bytes": 14755,
+    "entities": 23,
+    "trips": 23,
+    "matched": 23,
+    "feedAgeS": 2,
     "unmatched": [],
     "shape": {
-     "withTimes": 26,
+     "withTimes": 23,
      "delayOnly": 0,
      "noStops": 0,
      "tripDelay": 0,
-     "active": 18,
+     "active": 17,
      "notStarted": 0,
-     "finished": 8,
+     "finished": 6,
      "noDelay": 0
     },
     "occupancy": {
-     "stops": 375,
+     "stops": 333,
      "stopLevel": 0,
      "stopCars": 0,
-     "trips": 26,
+     "trips": 23,
      "tripsWithLevel": 0,
      "tripsWithCars": 0,
      "fromVehicles": 0,
@@ -878,15 +914,15 @@
      "models": {}
     },
     "ids": {
-     "trips": 26,
+     "trips": 23,
      "noId": 0,
-     "dated": 26,
+     "dated": 23,
      "other": 0,
-     "inTimetable": 26,
+     "inTimetable": 23,
      "notInTimetable": 0,
      "notInStatic": 0,
      "bySr": {
-      "0": 26
+      "0": 23
      },
      "missing": [],
      "example": "47197-10012:1000"
@@ -923,17 +959,17 @@
     }
    },
    "vehicles": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/cbdandsoutheast",
-    "bytes": 1940,
-    "vehicles": 11,
-    "withTrip": 11,
+    "bytes": 1763,
+    "vehicles": 10,
+    "withTrip": 10,
     "occupancy": {},
     "withPercent": 0,
     "withConsist": 0,
     "consistLevels": {},
     "models": {
-     "CitadisX05": 11
+     "CitadisX05": 10
     },
     "fields": {
      "1:2": 1,
@@ -1035,29 +1071,29 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/parramatta",
-    "bytes": 7255,
-    "entities": 12,
-    "trips": 12,
-    "matched": 12,
-    "feedAgeS": -1,
+    "bytes": 6591,
+    "entities": 11,
+    "trips": 11,
+    "matched": 11,
+    "feedAgeS": 2,
     "unmatched": [],
     "shape": {
-     "withTimes": 12,
+     "withTimes": 11,
      "delayOnly": 0,
      "noStops": 0,
      "tripDelay": 0,
      "active": 7,
      "notStarted": 2,
-     "finished": 3,
+     "finished": 2,
      "noDelay": 0
     },
     "occupancy": {
-     "stops": 171,
+     "stops": 155,
      "stopLevel": 0,
      "stopCars": 0,
-     "trips": 12,
+     "trips": 11,
      "tripsWithLevel": 0,
      "tripsWithCars": 0,
      "fromVehicles": 4,
@@ -1074,15 +1110,15 @@
      "models": {}
     },
     "ids": {
-     "trips": 12,
+     "trips": 11,
      "noId": 0,
-     "dated": 12,
+     "dated": 11,
      "other": 0,
-     "inTimetable": 12,
+     "inTimetable": 11,
      "notInTimetable": 0,
      "notInStatic": 0,
      "bySr": {
-      "0": 12
+      "0": 11
      },
      "missing": [],
      "example": "42686-10006:1001"
@@ -1119,9 +1155,9 @@
     }
    },
    "vehicles": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/parramatta",
-    "bytes": 719,
+    "bytes": 718,
     "vehicles": 4,
     "withTrip": 4,
     "occupancy": {
@@ -1238,29 +1274,29 @@
    },
    "rebuildMap": false,
    "last": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v1/gtfs/realtime/lightrail/newcastle",
-    "bytes": 1887,
-    "entities": 6,
-    "trips": 6,
-    "matched": 6,
-    "feedAgeS": 11,
+    "bytes": 1634,
+    "entities": 5,
+    "trips": 5,
+    "matched": 5,
+    "feedAgeS": 10,
     "unmatched": [],
     "shape": {
      "withTimes": 3,
-     "delayOnly": 3,
+     "delayOnly": 2,
      "noStops": 0,
      "tripDelay": 0,
-     "active": 1,
+     "active": 0,
      "notStarted": 0,
-     "finished": 2,
-     "noDelay": 3
+     "finished": 3,
+     "noDelay": 2
     },
     "occupancy": {
-     "stops": 36,
+     "stops": 30,
      "stopLevel": 0,
      "stopCars": 0,
-     "trips": 6,
+     "trips": 5,
      "tripsWithLevel": 0,
      "tripsWithCars": 0,
      "fromVehicles": 0,
@@ -1277,15 +1313,15 @@
      "models": {}
     },
     "ids": {
-     "trips": 6,
+     "trips": 5,
      "noId": 0,
-     "dated": 6,
+     "dated": 5,
      "other": 0,
-     "inTimetable": 6,
+     "inTimetable": 5,
      "notInTimetable": 0,
      "notInStatic": 0,
      "bySr": {
-      "0": 6
+      "0": 5
      },
      "missing": [],
      "example": "71700.101126.62.0000"
@@ -1321,7 +1357,7 @@
     }
    },
    "vehicles": {
-    "at": "2026-11-12T14:01:53Z",
+    "at": "2026-11-12T14:06:38Z",
     "endpoint": "/v1/gtfs/vehiclepos/lightrail/newcastle",
     "bytes": 15,
     "vehicles": 0,
@@ -1341,7 +1377,7 @@
    }
   }
  },
- "lastRunAt": "2026-11-12T14:01:53Z",
+ "lastRunAt": "2026-11-12T14:06:38Z",
  "lastRunErrors": [],
  "alertsLastError": {
   "at": "2026-11-12T02:57:23Z",
